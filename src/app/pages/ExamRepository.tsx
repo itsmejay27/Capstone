@@ -165,12 +165,12 @@ export default function ExamRepository() {
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Assign modal state
   const [openAssignModal, setOpenAssignModal] = useState(false);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [selectedClassroomId, setSelectedClassroomId] = useState('');
-  
+
   // Set default post date to now, due date to tomorrow
   const getLocalDateTimeString = (date: Date) => {
     const tzoffset = date.getTimezoneOffset() * 60000;
@@ -348,12 +348,12 @@ export default function ExamRepository() {
           if (type === 'multiple-choice' && currentQ.options) {
             const originalOptions = [...currentQ.options];
             const correctText = originalOptions[currentQ.correctAnswer];
-            
+
             for (let i = originalOptions.length - 1; i > 0; i--) {
               const j = Math.floor(Math.random() * (i + 1));
               [originalOptions[i], originalOptions[j]] = [originalOptions[j], originalOptions[i]];
             }
-            
+
             const newCorrectIdx = originalOptions.indexOf(correctText);
             updatedQuestions[qIdx] = {
               ...currentQ,
@@ -366,13 +366,13 @@ export default function ExamRepository() {
             if (nextAnswer === 'false') {
               if (!newText.includes(' NOT ') && !newText.includes(' not ')) {
                 newText = newText.replace('runs in', 'does NOT run in')
-                                .replace('supports', 'does NOT support')
-                                .replace('is a', 'is NOT a');
+                  .replace('supports', 'does NOT support')
+                  .replace('is a', 'is NOT a');
               }
             } else {
               newText = newText.replace('does NOT run in', 'runs in')
-                              .replace('does NOT support', 'supports')
-                              .replace('is NOT a', 'is a');
+                .replace('does NOT support', 'supports')
+                .replace('is NOT a', 'is a');
             }
             updatedQuestions[qIdx] = {
               ...currentQ,
@@ -392,12 +392,12 @@ export default function ExamRepository() {
             let newText = currentQ.question;
             if (nextAnswer === 'false') {
               newText = newText.replace('runs in', 'does NOT run in')
-                              .replace('supports', 'does NOT support')
-                              .replace('is a', 'is NOT a');
+                .replace('supports', 'does NOT support')
+                .replace('is a', 'is NOT a');
             } else {
               newText = newText.replace('does NOT run in', 'runs in')
-                              .replace('does NOT support', 'supports')
-                              .replace('is NOT a', 'is a');
+                .replace('does NOT support', 'supports')
+                .replace('is NOT a', 'is a');
             }
             updatedQuestions[qIdx] = {
               ...currentQ,
@@ -602,7 +602,7 @@ export default function ExamRepository() {
                   >
                     Edit Template
                   </Button>
-                  
+
                   <Button
                     variant="contained"
                     size="small"
@@ -793,7 +793,7 @@ export default function ExamRepository() {
                         </Box>
 
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          
+
                           {/* Question Text (Smooth auto-expand) */}
                           <TextField
                             fullWidth
@@ -842,7 +842,7 @@ export default function ExamRepository() {
                                   const isCorrectOpt = q.correctAnswer === optIdx;
                                   return (
                                     <Box key={optIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 1 }}>
-                                      
+
                                       {/* Option Header Radio */}
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <Radio value={optIdx} checked={isCorrectOpt} size="small" />

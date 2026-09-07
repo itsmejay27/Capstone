@@ -120,7 +120,7 @@ function parseTruncatedJson(text: string): any {
   // 1. Try standard JSON.parse
   try {
     return JSON.parse(clean);
-  } catch (e) {}
+  } catch (e) { }
 
   // 2. Extract complete question objects inside array via Regex
   const questionObjects: any[] = [];
@@ -135,7 +135,7 @@ function parseTruncatedJson(text: string): any {
         const repaired = match[0] + '"';
         const withBrace = repaired.endsWith('}') ? repaired : repaired + '}';
         questionObjects.push(JSON.parse(withBrace));
-      } catch (e3) {}
+      } catch (e3) { }
     }
   }
 
@@ -428,7 +428,7 @@ Respond ONLY with valid JSON matching this schema:
               } else if (json.response) {
                 accumulatedText += json.response;
               }
-            } catch (e) {}
+            } catch (e) { }
           }
         }
 
@@ -439,8 +439,8 @@ Respond ONLY with valid JSON matching this schema:
         }
       }
     } catch (err: any) {
-      connectionError = err.name === 'AbortError' 
-        ? 'Ollama request timed out after 60s' 
+      connectionError = err.name === 'AbortError'
+        ? 'Ollama request timed out after 60s'
         : (err.message || 'Connection failed');
     }
   }
@@ -483,15 +483,15 @@ Respond ONLY with valid JSON matching this schema:
     };
 
     const rawOptions = q.o || q.options || q.choices || q.answers || q.opts;
-    const rawAnswer = q.a !== undefined 
-      ? q.a 
+    const rawAnswer = q.a !== undefined
+      ? q.a
       : (q.correctAnswer !== undefined ? q.correctAnswer : (q.answer !== undefined ? q.answer : q.key));
 
     if (qType === 'multiple-choice') {
-      formattedItem.options = Array.isArray(rawOptions) && rawOptions.length >= 2 
-        ? rawOptions.slice(0, 4) 
+      formattedItem.options = Array.isArray(rawOptions) && rawOptions.length >= 2
+        ? rawOptions.slice(0, 4)
         : ['Option A', 'Option B', 'Option C', 'Option D'];
-      
+
       let corr = Number(rawAnswer);
       if (isNaN(corr) || corr < 0 || corr >= formattedItem.options.length) {
         if (typeof rawAnswer === 'string') {
@@ -556,13 +556,14 @@ export async function regenerateQuestionWithOllama(
   const itemDiff = questionItem.difficulty || 'medium';
   const diffDirective = getDifficultyPromptDirective(itemDiff);
 
-  const systemPrompt = `You are an expert examination author AI assistant. Revise the question strictly for topic "${topic}".
+  const itemType = (questionItem.type || 'multiple-choice').toLowerCase();
+  let systemPrompt = `You are an expert examination author AI assistant. Revise the question strictly for topic "${topic}".
 Difficulty: ${diffDirective.levelLabel}
 ${diffDirective.instructions}
 ${diffDirective.stemLengthRule}
 Return ONLY a valid JSON object.`;
   
-  const userPrompt = `Revise this question (${mode} mode) strictly about "${topic}" in JSON format:
+  let userPrompt = `Revise this question (${mode} mode) strictly about "${topic}" in JSON format:
 Difficulty Target: ${itemDiff.toUpperCase()} (${diffDirective.levelLabel})
 Current Question: "${questionItem.question}"
 Type: ${questionItem.type}
@@ -574,6 +575,42 @@ Respond with JSON:
   "options": ["Plausible Choice A", "Plausible Choice B", "Plausible Choice C", "Plausible Choice D"],
   "correctAnswer": 0
 }`;
+
+  if (mode === 'answer') {
+    if (itemType === 'short-answer') {
+      systemPrompt = `You are an expert examination author AI assistant. Provide the exact expected answer key for this short answer question. Return ONLY a valid JSON object.`;
+      userPrompt = `Based strictly on this Short Answer question about "${topic}", provide ONLY the exact authoritative expected answer key term or statement.
+Question: "${questionItem.question}"
+Subject: ${topic}
+Do NOT change the question text.
+
+Respond with JSON:
+{
+  "correctAnswer": "Precise key term or concise factual statement"
+}`;
+    } else if (itemType === 'essay') {
+      systemPrompt = `You are an expert examination author AI assistant. Provide comprehensive grading rubric criteria for this essay question. Return ONLY a valid JSON object.`;
+      userPrompt = `Based strictly on this Essay question about "${topic}", generate comprehensive grading rubric criteria and core analytical points expected for full credit.
+Essay Prompt: "${questionItem.question}"
+Subject: ${topic}
+Do NOT change the essay prompt text.
+
+Respond with JSON:
+{
+  "correctAnswer": "Evaluation Rubric: Key analytical arguments, historical/technical context, and evaluation criteria required for full credit"
+}`;
+    } else if (itemType === 'multiple-choice') {
+      userPrompt = `Evaluate this Multiple Choice question about "${topic}". Provide 4 plausible choices with the accurate correct answer key index (0-3).
+Question: "${questionItem.question}"
+Current Choices: ${JSON.stringify(questionItem.options || [])}
+
+Respond with JSON:
+{
+  "options": ["Option A", "Option B", "Option C", "Option D"],
+  "correctAnswer": 0
+}`;
+    }
+  }
 
   for (const endpoint of endpointsToTry) {
     try {
@@ -608,11 +645,30 @@ Respond with JSON:
         const parsed = parseTruncatedJson(rawText);
         if (parsed) {
           const updated = { ...questionItem };
-          const qStem = parsed.question || parsed.stem || parsed.text || parsed.q;
-          if (qStem) updated.question = qStem;
-          if (parsed.options || parsed.o) updated.options = parsed.options || parsed.o;
-          const rawAns = parsed.correctAnswer ?? parsed.answer ?? parsed.a;
-          if (rawAns !== undefined) updated.correctAnswer = rawAns;
+          if (mode !== 'answer') {
+            const qStem = parsed.question || parsed.stem || parsed.text || parsed.q;
+            if (qStem) updated.question = qStem;
+          }
+          if (parsed.options || parsed.o) {
+            if (itemType === 'multiple-choice') {
+              updated.options = parsed.options || parsed.o;
+            }
+          }
+          const rawAns = parsed.correctAnswer ?? parsed.answer ?? parsed.rubric ?? parsed.criteria ?? parsed.expectedAnswer ?? parsed.key ?? parsed.a;
+          if (rawAns !== undefined) {
+            if (itemType === 'short-answer' || itemType === 'essay') {
+              const ansStr = String(rawAns).trim();
+              if (ansStr && ansStr !== '0' && ansStr !== '1' && ansStr !== '2' && ansStr !== '3') {
+                updated.correctAnswer = ansStr;
+              }
+            } else if (itemType === 'true-false') {
+              const ansStr = String(rawAns).toLowerCase();
+              updated.correctAnswer = ansStr.includes('false') ? 'false' : 'true';
+            } else {
+              const numAns = Number(rawAns);
+              if (!isNaN(numAns)) updated.correctAnswer = numAns;
+            }
+          }
           return updated;
         }
       }
@@ -728,7 +784,7 @@ Respond ONLY with valid JSON:
               } else if (json.response) {
                 accumulatedText += json.response;
               }
-            } catch (e) {}
+            } catch (e) { }
           }
         }
 
@@ -739,8 +795,8 @@ Respond ONLY with valid JSON:
         }
       }
     } catch (err: any) {
-      connectionError = err.name === 'AbortError' 
-        ? 'Ollama request timed out after 90s' 
+      connectionError = err.name === 'AbortError'
+        ? 'Ollama request timed out after 90s'
         : (err.message || 'Connection failed');
     }
   }

@@ -236,9 +236,9 @@ export default function ExamGenerator() {
     setGenerationError(null);
 
     // Prioritize user's generationPrompt as the core AI topic
-    const primarySubject = generationPrompt.trim() 
-      || topics.find((t) => t && t !== 'General Subject Matter') 
-      || examTitle.trim() 
+    const primarySubject = generationPrompt.trim()
+      || topics.find((t) => t && t !== 'General Subject Matter')
+      || examTitle.trim()
       || 'General Subject';
 
     const effectiveTopics = Array.from(new Set([primarySubject, ...topics.filter((t) => t && t !== 'General Subject Matter')]));
@@ -599,15 +599,31 @@ export default function ExamGenerator() {
               'flexbox': 'grid'
             };
             const currentAns = currentQ.correctAnswer;
-            const nextAns = alternatives[currentAns] || 'API Endpoint';
-            let newText = currentQ.question;
-            if (nextAns === 'const') {
-              newText = newText.replace('reassigned', 'reassigned (immutable reference)');
+            let nextAns = alternatives[currentAns];
+            if (!nextAns) {
+              const pool = [
+                'Specific authoritative domain keyword and standard technical definition',
+                'Core terminology with context-specific parameter',
+                'Essential conceptual mechanism required for implementation',
+                'Standard architectural model and operational specification'
+              ];
+              nextAns = pool[Math.floor(Math.random() * pool.length)];
             }
             updated[index] = {
               ...currentQ,
-              question: newText,
               correctAnswer: nextAns,
+            };
+          } else if (type === 'essay') {
+            const rubrics = [
+              'Grading Rubric: 1) Thesis Clarity (25%): Clear position addressing the core prompt. 2) Analytical Depth (35%): Evidence-backed evaluation and rigorous deductions. 3) Synthesis & Context (25%): Connection to systemic domain principles. 4) Organization (15%): Structured progression and academic precision.',
+              'Evaluation Criteria: Full credit requires: a) Detailed explanation of underlying mechanisms; b) Critical analysis of trade-offs and structural implications; c) Well-reasoned conclusion supported by concrete arguments.',
+              'Key Analytical Expectations: Demonstrates mastery of core subject concepts, integrates relevant domain citations, systematically evaluates counter-arguments, and articulates coherent problem-solving logic.'
+            ];
+            const currentAns = currentQ.correctAnswer || '';
+            const chosen = rubrics.find(r => r !== currentAns) || rubrics[0];
+            updated[index] = {
+              ...currentQ,
+              correctAnswer: chosen,
             };
           }
         }
@@ -648,7 +664,7 @@ export default function ExamGenerator() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4, width: '100%', px: { xs: 2, sm: 3, md: 4 } }}>
       <Button
         startIcon={<ArrowBack />}
         onClick={() => navigate('/dashboard')}
@@ -1255,8 +1271,8 @@ export default function ExamGenerator() {
                           {generationError ? 'Question Bank Built (Topic Engine Fallback)' : 'Question Bank Successfully Generated!'}
                         </Typography>
                         <Typography variant="body2" sx={{ color: generationError ? '#b45309' : '#166534', mt: 0.5, fontWeight: 500 }}>
-                          {aiEngine === 'gemini' 
-                            ? `Engine: Google Gemini AI (${geminiModel})` 
+                          {aiEngine === 'gemini'
+                            ? `Engine: Google Gemini AI (${geminiModel})`
                             : `Engine: Local Ollama AI (${ollamaModel})`} &bull; Created <strong>{generatedQuestions.length} total items</strong>
                         </Typography>
                       </Box>
@@ -1328,25 +1344,27 @@ export default function ExamGenerator() {
                   </Box>
                 </Box>
 
-                {/* Strictly Vertical Layout Questions Listing */}
-                <Grid container spacing={4.5}>
+                {/* Strictly Vertical Full-Width Questions Listing */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, width: '100%' }}>
                   {generatedQuestions.map((q, qIdx) => {
                     const isQExtra = q.isExtra || qIdx >= activeQuestionCount;
                     const isQRegenerating = !!regeneratingMap[q.id];
 
                     return (
-                      <Grid item xs={12} key={q.id}>
-                        <Card
-                          variant="outlined"
-                          sx={{
-                            border: isQExtra ? '2px dashed #9c27b0' : '1px solid #e2e8f0',
-                            borderRadius: 4.5,
-                            position: 'relative',
-                            transition: 'all 0.2s',
-                            boxShadow: '0 2px 10px rgba(0,0,0,0.01)',
-                            '&:hover': { boxShadow: '0 4px 18px rgba(0,0,0,0.04)' }
-                          }}
-                        >
+                      <Card
+                        key={q.id}
+                        variant="outlined"
+                        sx={{
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          border: isQExtra ? '2px dashed #9c27b0' : '1px solid #e2e8f0',
+                          borderRadius: 4.5,
+                          position: 'relative',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 2px 10px rgba(0,0,0,0.01)',
+                          '&:hover': { boxShadow: '0 4px 18px rgba(0,0,0,0.04)' }
+                        }}
+                      >
                           {/* Smart AI Regenerating Card Glass Overlay */}
                           {isQRegenerating && (
                             <Box sx={{
@@ -1399,10 +1417,10 @@ export default function ExamGenerator() {
                                       ...(q.difficulty.toLowerCase() === 'hard'
                                         ? { bgcolor: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }
                                         : q.difficulty.toLowerCase() === 'medium'
-                                        ? { bgcolor: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }
-                                        : q.difficulty.toLowerCase() === 'easy'
-                                        ? { bgcolor: '#dcfce7', color: '#166534', border: '1px solid #86efac' }
-                                        : { bgcolor: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe' }),
+                                          ? { bgcolor: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }
+                                          : q.difficulty.toLowerCase() === 'easy'
+                                            ? { bgcolor: '#dcfce7', color: '#166534', border: '1px solid #86efac' }
+                                            : { bgcolor: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe' }),
                                     }}
                                   />
                                 )}
@@ -1600,12 +1618,35 @@ export default function ExamGenerator() {
                                   </Box>
                                 )}
 
-                                {/* Short Answer Editor */}
+                                {/* Short Answer Editor with Dedicated Regenerate Answer Key Button */}
                                 {q.type === 'short-answer' && (
-                                  <Box sx={{ pl: 3, borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
-                                      Short Answer Key
-                                    </Typography>
+                                  <Box sx={{ pl: 3, borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                        Short Answer Key
+                                      </Typography>
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<AutoAwesome sx={{ fontSize: 13 }} />}
+                                        disabled={isQRegenerating}
+                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                        sx={{
+                                          textTransform: 'none',
+                                          borderRadius: 2,
+                                          fontWeight: 700,
+                                          fontSize: '0.75rem',
+                                          py: 0.3,
+                                          px: 1.5,
+                                          bgcolor: '#fffbeb',
+                                          borderColor: '#fde68a',
+                                          color: '#b45309',
+                                          '&:hover': { bgcolor: '#fef3c7', borderColor: '#f59e0b' }
+                                        }}
+                                      >
+                                        {isQRegenerating ? 'Regenerating Key...' : 'Regenerate Answer Key'}
+                                      </Button>
+                                    </Box>
                                     <TextField
                                       fullWidth
                                       label="Expected Correct Answer Statement / Key Term"
@@ -1618,12 +1659,35 @@ export default function ExamGenerator() {
                                   </Box>
                                 )}
 
-                                {/* Essay Editor */}
+                                {/* Essay Editor with Dedicated Regenerate Rubric Button */}
                                 {q.type === 'essay' && (
-                                  <Box sx={{ pl: 3, borderLeft: '4px solid #8b5cf6', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
-                                      Essay Grading Rubric & Criteria
-                                    </Typography>
+                                  <Box sx={{ pl: 3, borderLeft: '4px solid #8b5cf6', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                        Essay Grading Rubric & Criteria
+                                      </Typography>
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<AutoAwesome sx={{ fontSize: 13 }} />}
+                                        disabled={isQRegenerating}
+                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                        sx={{
+                                          textTransform: 'none',
+                                          borderRadius: 2,
+                                          fontWeight: 700,
+                                          fontSize: '0.75rem',
+                                          py: 0.3,
+                                          px: 1.5,
+                                          bgcolor: '#fbf7ff',
+                                          borderColor: '#ddd6fe',
+                                          color: '#6d28d9',
+                                          '&:hover': { bgcolor: '#ede9fe', borderColor: '#8b5cf6' }
+                                        }}
+                                      >
+                                        {isQRegenerating ? 'Regenerating Rubric...' : 'Regenerate Rubric / Answer Key'}
+                                      </Button>
+                                    </Box>
                                     <TextField
                                       fullWidth
                                       multiline
@@ -1678,7 +1742,7 @@ export default function ExamGenerator() {
                                   </Grid>
                                 </Box>
 
-                                {/* Clean, Unconfusing AI Revision Action Bar */}
+                                {/* Clean, Full-Featured AI Revision Action Bar */}
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, pt: 1.5, borderTop: '1px solid #f1f5f9' }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <AutoAwesome sx={{ color: '#6366f1', fontSize: 18 }} />
@@ -1692,6 +1756,7 @@ export default function ExamGenerator() {
                                       variant="outlined"
                                       size="small"
                                       startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                      disabled={isQRegenerating}
                                       onClick={() => handleRegenerateItem(qIdx, 'full')}
                                       sx={{
                                         textTransform: 'none',
@@ -1708,11 +1773,77 @@ export default function ExamGenerator() {
                                     </Button>
 
                                     {q.type === 'multiple-choice' && (
+                                      <>
+                                        <Button
+                                          variant="outlined"
+                                          size="small"
+                                          startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                          disabled={isQRegenerating}
+                                          onClick={() => handleRegenerateItem(qIdx, 'options')}
+                                          sx={{
+                                            textTransform: 'none',
+                                            borderRadius: 2,
+                                            fontWeight: 700,
+                                            fontSize: '0.8rem',
+                                            color: '#6d28d9',
+                                            borderColor: '#ddd6fe',
+                                            bgcolor: '#f5f3ff',
+                                            '&:hover': { bgcolor: '#ede9fe', borderColor: '#c4b5fd' }
+                                          }}
+                                        >
+                                          Shuffle Choices
+                                        </Button>
+                                        <Button
+                                          variant="outlined"
+                                          size="small"
+                                          startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                          disabled={isQRegenerating}
+                                          onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                          sx={{
+                                            textTransform: 'none',
+                                            borderRadius: 2,
+                                            fontWeight: 700,
+                                            fontSize: '0.8rem',
+                                            color: '#15803d',
+                                            borderColor: '#bbf7d0',
+                                            bgcolor: '#f0fdf4',
+                                            '&:hover': { bgcolor: '#dcfce7', borderColor: '#86efac' }
+                                          }}
+                                        >
+                                          Regenerate Key
+                                        </Button>
+                                      </>
+                                    )}
+
+                                    {q.type === 'short-answer' && (
                                       <Button
                                         variant="outlined"
                                         size="small"
                                         startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
-                                        onClick={() => handleRegenerateItem(qIdx, 'options')}
+                                        disabled={isQRegenerating}
+                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                        sx={{
+                                          textTransform: 'none',
+                                          borderRadius: 2,
+                                          fontWeight: 700,
+                                          fontSize: '0.8rem',
+                                          color: '#b45309',
+                                          borderColor: '#fde68a',
+                                          bgcolor: '#fffbeb',
+                                          '&:hover': { bgcolor: '#fef3c7', borderColor: '#f59e0b' }
+                                        }}
+                                      >
+                                        Regenerate Answer Key
+                                      </Button>
+                                    )}
+
+                                    {q.type === 'essay' && (
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                        disabled={isQRegenerating}
+                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
                                         sx={{
                                           textTransform: 'none',
                                           borderRadius: 2,
@@ -1724,7 +1855,29 @@ export default function ExamGenerator() {
                                           '&:hover': { bgcolor: '#ede9fe', borderColor: '#c4b5fd' }
                                         }}
                                       >
-                                        Shuffle Choices
+                                        Regenerate Rubric / Answer Key
+                                      </Button>
+                                    )}
+
+                                    {q.type === 'true-false' && (
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                        disabled={isQRegenerating}
+                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                        sx={{
+                                          textTransform: 'none',
+                                          borderRadius: 2,
+                                          fontWeight: 700,
+                                          fontSize: '0.8rem',
+                                          color: '#0369a1',
+                                          borderColor: '#bae6fd',
+                                          bgcolor: '#f0f9ff',
+                                          '&:hover': { bgcolor: '#e0f2fe', borderColor: '#7dd3fc' }
+                                        }}
+                                      >
+                                        Toggle Correct Key
                                       </Button>
                                     )}
                                   </Box>
@@ -1733,10 +1886,9 @@ export default function ExamGenerator() {
                             )}
                           </CardContent>
                         </Card>
-                      </Grid>
                     );
                   })}
-                </Grid>
+                </Box>
 
                 {/* Bottom save action control */}
                 <Box sx={{ mt: 5, display: 'flex', justifyContent: 'center' }}>

@@ -434,7 +434,17 @@ Respond with JSON matching the type:`;
       if (parsed.options && Array.isArray(parsed.options) && parsed.options.length >= 2) {
         updated.options = parsed.options;
       }
-      const rawAns = parsed.correctAnswer !== undefined ? parsed.correctAnswer : (parsed.answer !== undefined ? parsed.answer : parsed.a);
+      const rawAns = parsed.correctAnswer !== undefined 
+        ? parsed.correctAnswer 
+        : (parsed.answer !== undefined 
+          ? parsed.answer 
+          : (parsed.rubric !== undefined 
+            ? parsed.rubric 
+            : (parsed.criteria !== undefined 
+              ? parsed.criteria 
+              : (parsed.expectedAnswer !== undefined 
+                ? parsed.expectedAnswer 
+                : (parsed.key !== undefined ? parsed.key : parsed.a)))));
       if (rawAns !== undefined) {
         if (itemType === 'short-answer' || itemType === 'essay') {
           const ansStr = String(rawAns).trim();
@@ -496,7 +506,7 @@ export async function generateReviewerWithGemini(params: GeminiReviewerParams): 
   const count = moduleCounts[params.difficulty] || 3;
   const itemsCount = itemsPerModule[params.difficulty] || 5;
 
-  const topicPrompt = params.customInstructions?.trim() 
+  const topicPrompt = params.customInstructions?.trim()
     ? `${params.subject} - Focus on: ${params.customInstructions.trim()}`
     : params.subject;
 
@@ -615,7 +625,7 @@ function extractTopicName(promptText: string): string {
 export function buildTopicDrivenQuestions(params: GeminiExamParams): any[] {
   const promptLower = `${params.generationPrompt} ${params.topics.join(' ')}`.toLowerCase();
   const topicName = extractTopicName(params.generationPrompt)
-    || params.topics.find((t) => t && t !== 'General Subject Matter') 
+    || params.topics.find((t) => t && t !== 'General Subject Matter')
     || 'General Subject';
   const isHard = (params.difficulty || '').toLowerCase() === 'hard';
 
@@ -892,7 +902,7 @@ export function buildTopicDrivenQuestions(params: GeminiExamParams): any[] {
     } else {
       items.push({
         type: 'short-answer',
-        question: isHard 
+        question: isHard
           ? `In advanced analysis of ${topicName}, denote the technical paradigm used to systematically isolate concurrency and state mutation anomalies.`
           : `Identify the primary analytical method or framework used to evaluate concepts in ${topicName}.`,
         correctAnswer: isHard ? `Systematic State Isolation & Telemetry Analysis for ${topicName}` : `Core Analytical Framework for ${topicName}`,
@@ -955,7 +965,7 @@ export function buildTopicDrivenQuestions(params: GeminiExamParams): any[] {
   for (let i = 0; i < params.extraCount; i++) {
     items.push({
       type: 'multiple-choice',
-      question: isHard 
+      question: isHard
         ? `Anti-Cheat Pool Item ${i + 1} (${params.difficulty.toUpperCase()} Level) for ${topicName}: Under non-linear operational scaling, which verification step is essential before finalizing state transitions?`
         : `Anti-Cheat Pool Item ${i + 1} for ${topicName}: Which criterion determines optimal results when applying ${topicName}?`,
       options: isHard ? [
