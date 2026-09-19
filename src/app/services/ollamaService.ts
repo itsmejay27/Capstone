@@ -4,6 +4,7 @@
  */
 
 import { buildTopicDrivenQuestions, buildTopicDrivenModules } from './geminiService';
+import { TOSData, buildTOSConstraintText, normaliseCogLevel, extractFileText, isAdministrativeMetadata } from './tosParser';
 
 export const DEFAULT_OLLAMA_URL = '/api/ollama';
 
@@ -32,6 +33,7 @@ export interface ExamGenerationParams {
   generationPrompt: string;
   uploadedText?: string;
   baseUrl?: string;
+  tosData?: TOSData;
 }
 
 export interface ReviewerGenerationParams {
@@ -82,7 +84,7 @@ export async function checkOllamaConnection(baseUrl: string = DEFAULT_OLLAMA_URL
 }
 
 /**
- * Extracts plain text from uploaded files (text-based, markdown, json, etc.).
+ * Extracts plain text from uploaded files with PDF, DOCX, XLSX, and text support.
  */
 export async function extractFilesContent(files: (File | null)[]): Promise<string> {
   const textParts: string[] = [];
@@ -90,17 +92,11 @@ export async function extractFilesContent(files: (File | null)[]): Promise<strin
   for (const file of files) {
     if (!file) continue;
     try {
-      if (
-        file.type.startsWith('text/') ||
-        file.name.endsWith('.txt') ||
-        file.name.endsWith('.md') ||
-        file.name.endsWith('.json') ||
-        file.name.endsWith('.csv')
-      ) {
-        const content = await file.text();
+      const content = await extractFileText(file);
+      if (content.trim()) {
         textParts.push(`--- Attached Document (${file.name}) ---\n${content.substring(0, 4000)}`);
       } else {
-        textParts.push(`--- Attached File Reference ---\nFilename: ${file.name} (Size: ${(file.size / 1024).toFixed(1)} KB)`);
+        textParts.push(`--- Attached File (${file.name}, ${(file.size / 1024).toFixed(1)} KB) ---`);
       }
     } catch (err) {
       console.warn(`Error reading file ${file.name}:`, err);
@@ -273,86 +269,153 @@ export function getDifficultyPromptDirective(difficulty: string): DifficultyDire
 export async function generateExamWithOllama(params: ExamGenerationParams): Promise<any[]> {
   const userUrl = (params.baseUrl || DEFAULT_OLLAMA_URL).replace(/\/$/, '');
   const endpointsToTry = Array.from(new Set([userUrl, 'http://localhost:11434', 'http://127.0.0.1:11434']));
-  const totalQuestions = params.mcCount + params.tfCount + params.saCount + params.essayCount + params.extraCount;
+  const isTosMode = Boolean(params.tosData && (params.tosData.totalItems > 0 || params.tosData.rawText));
+
+  let totalQuestions = params.mcCount + params.tfCount + params.saCount + params.essayCount + params.extraCount;
+  if (isTosMode && params.tosData && params.tosData.totalItems > 0) {
+    totalQuestions = params.tosData.totalItems + params.extraCount;
+  }
 
   if (totalQuestions === 0) {
-    throw new Error('Please select at least 1 question to generate.');
+    throw new Error('Please select at least 1 question to generate or attach a Table of Specifications.');
   }
 
   // Ensure user's generation prompt is prioritized as the primary subject
   const promptTextRaw = params.generationPrompt?.trim() || '';
-  const primaryTopic = promptTextRaw || (params.topics && params.topics.find((t) => t && t !== 'General Subject Matter')) || 'General Subject';
+  const primaryTopic = promptTextRaw
+    || (params.topics && params.topics.find((t) => t && t !== 'General Subject Matter'))
+    || (params.tosData?.itemSpecs?.[0]?.topic)
+    || 'General Subject';
 
   const diffDirective = getDifficultyPromptDirective(params.difficulty);
 
-  // Build explicit type quotas and schema examples based on user's exact requested quantities
-  const typeRequirements: string[] = [];
-  const schemaExamples: any[] = [];
+  let systemPrompt = '';
+  let promptText = '';
 
-  if (params.mcCount > 0) {
-    typeRequirements.push(`${params.mcCount} Multiple-Choice questions (type: "multiple-choice")`);
-    schemaExamples.push({
-      t: "multiple-choice",
-      q: `Sample scenario or question about ${primaryTopic}?`,
-      o: ["Plausible Option A", "Plausible Option B", "Plausible Option C", "Plausible Option D"],
-      a: 0,
-      points: 2,
-      e: false
-    });
-  }
+  if (isTosMode && params.tosData) {
+    systemPrompt = `You are an expert examination author creating an exam strictly adhering to an official Table of Specifications (TOS).
 
-  if (params.tfCount > 0) {
-    typeRequirements.push(`${params.tfCount} True/False questions (type: "true-false")`);
-    schemaExamples.push({
-      t: "true-false",
-      q: `Conceptual statement regarding ${primaryTopic} that is either factual or false.`,
-      o: ["True", "False"],
-      a: "true",
-      points: 1,
-      e: false
-    });
-  }
+================================================================================
+=== [MANDATORY STEP 1: TOS ANALYSIS & INVENTORY] ===
+================================================================================
+Before generating any exam questions, perform the following verification:
+1. Read the attached TOS file thoroughly.
+2. List out the exact distribution requested in the TOS:
+   - Topics covered and their corresponding item counts.
+   - Cognitive level breakdown (e.g., Remembering/Understanding, Applying/Analyzing, Synthesizing/Evaluating).
+   - Total number of questions specified.
+3. ANTI-HALLUCINATION GUARDRAIL:
+   - NEVER generate questions asking about document administrative metadata (such as "Effectivity Date", "Revision No", "Form No", "Prepared by", "Approved by", "OMSC", "Page 1 of 3", or dates).
+   - Questions MUST exclusively test the substantive academic syllabus and domain knowledge (e.g. ${primaryTopic}).
 
-  if (params.saCount > 0) {
-    typeRequirements.push(`${params.saCount} Short-Answer questions (type: "short-answer")`);
-    schemaExamples.push({
-      t: "short-answer",
-      q: `Direct question requiring a specific key term, author, command, or concise concept about ${primaryTopic}?`,
-      o: [],
-      a: "Specific accurate key term or concise answer phrase",
-      points: 3,
-      e: false
-    });
-  }
+================================================================================
+=== MANDATORY STEP 2: COMPLETE QUESTION GENERATION ===
+================================================================================
+Generate the questions strictly matching the Table of Specifications.
+For each question, output: "cognitiveLevel", "topic", and "itemPlacement".
+Respond ONLY with raw, valid JSON.`;
 
-  if (params.essayCount > 0) {
-    typeRequirements.push(`${params.essayCount} Essay / Long-Response questions (type: "essay")`);
-    schemaExamples.push({
-      t: "essay",
-      q: `Analyze and critically evaluate the historical significance, mechanisms, or systemic impacts of ${primaryTopic}.`,
-      o: [],
-      a: "Expected key analytical arguments, historical context, and evaluation criteria required for full credit",
-      points: 5,
-      e: false
-    });
-  }
+    promptText = `[MANDATORY STEP 1: TOS ANALYSIS & INVENTORY]
+Before generating any exam questions, perform the following verification:
+1. Read the attached TOS file thoroughly.
+2. List out the exact distribution requested in the TOS:
+   - Topics covered and their corresponding item counts.
+   - Cognitive level breakdown (e.g., Remembering/Understanding, Applying/Analyzing, Synthesizing/Evaluating).
+   - Total number of questions specified.
 
-  if (params.extraCount > 0) {
-    typeRequirements.push(`${params.extraCount} Extra Anti-Cheat items (isExtra: true)`);
-  }
+${buildTOSConstraintText(params.tosData)}
 
-  if (schemaExamples.length === 0) {
-    schemaExamples.push({
-      t: "multiple-choice",
-      q: `Question about ${primaryTopic}?`,
-      o: ["Option A", "Option B", "Option C", "Option D"],
-      a: 0,
-      points: 2,
-      e: false
-    });
-  }
+${params.uploadedText ? `Context & Source Material:\n${params.uploadedText}\n` : ''}
 
-  const systemPrompt = `You are an expert examination author and university professor creating an exam strictly on: "${primaryTopic}".
+CRITICAL ANTI-HALLUCINATION DIRECTIVE:
+Under NO circumstances should you generate questions asking about document metadata such as "Effectivity Date", "Revision No", "Prepared by", "March 01, 2024", or college headers.
+You MUST generate substantive, authentic academic questions covering the actual course curriculum topics (e.g. ${primaryTopic}).
+
+Respond ONLY with valid JSON matching this schema:
+{
+  "questions": [
+    {
+      "itemPlacement": 1,
+      "t": "multiple-choice",
+      "cognitiveLevel": "Remembering",
+      "topic": "${primaryTopic}",
+      "q": "Sample question for Item 1 testing knowledge?",
+      "o": ["Choice A", "Choice B", "Choice C", "Choice D"],
+      "a": 0,
+      "points": 1,
+      "e": false
+    }
+  ]
+}`;
+  } else {
+    // Build explicit type quotas and schema examples based on user's exact requested quantities
+    const typeRequirements: string[] = [];
+    const schemaExamples: any[] = [];
+
+    if (params.mcCount > 0) {
+      typeRequirements.push(`${params.mcCount} Multiple-Choice questions (type: "multiple-choice")`);
+      schemaExamples.push({
+        t: "multiple-choice",
+        q: `Sample scenario or question about ${primaryTopic}?`,
+        o: ["Plausible Option A", "Plausible Option B", "Plausible Option C", "Plausible Option D"],
+        a: 0,
+        points: 2,
+        e: false
+      });
+    }
+
+    if (params.tfCount > 0) {
+      typeRequirements.push(`${params.tfCount} True/False questions (type: "true-false")`);
+      schemaExamples.push({
+        t: "true-false",
+        q: `Conceptual statement regarding ${primaryTopic} that is either factual or false.`,
+        o: ["True", "False"],
+        a: "true",
+        points: 1,
+        e: false
+      });
+    }
+
+    if (params.saCount > 0) {
+      typeRequirements.push(`${params.saCount} Short-Answer questions (type: "short-answer")`);
+      schemaExamples.push({
+        t: "short-answer",
+        q: `Direct question requiring a specific key term, author, command, or concise concept about ${primaryTopic}?`,
+        o: [],
+        a: "Specific accurate key term or concise answer phrase",
+        points: 3,
+        e: false
+      });
+    }
+
+    if (params.essayCount > 0) {
+      typeRequirements.push(`${params.essayCount} Essay / Long-Response questions (type: "essay")`);
+      schemaExamples.push({
+        t: "essay",
+        q: `Analyze and critically evaluate the historical significance, mechanisms, or systemic impacts of ${primaryTopic}.`,
+        o: [],
+        a: "Expected key analytical arguments, historical context, and evaluation criteria required for full credit",
+        points: 5,
+        e: false
+      });
+    }
+
+    if (params.extraCount > 0) {
+      typeRequirements.push(`${params.extraCount} Extra Anti-Cheat items (isExtra: true)`);
+    }
+
+    if (schemaExamples.length === 0) {
+      schemaExamples.push({
+        t: "multiple-choice",
+        q: `Question about ${primaryTopic}?`,
+        o: ["Option A", "Option B", "Option C", "Option D"],
+        a: 0,
+        points: 2,
+        e: false
+      });
+    }
+
+    systemPrompt = `You are an expert examination author and university professor creating an exam strictly on: "${primaryTopic}".
 Target Difficulty: ${diffDirective.levelLabel}
 ${diffDirective.instructions}
 ${diffDirective.stemLengthRule}
@@ -361,7 +424,7 @@ For short-answer questions, the "a" field MUST be the expected text answer state
 For essay questions, the "a" field MUST be the evaluation rubric or key expected analytical points (NOT a number).
 Respond ONLY with raw, valid JSON.`;
 
-  const promptText = `Generate a ${params.difficulty.toUpperCase()} difficulty exam strictly based on: "${primaryTopic}".
+    promptText = `Generate a ${params.difficulty.toUpperCase()} difficulty exam strictly based on: "${primaryTopic}".
 Difficulty Target: ${diffDirective.levelLabel}
 Rules:
 ${diffDirective.instructions}
@@ -376,6 +439,7 @@ Respond ONLY with valid JSON matching this schema:
 {
   "questions": ${JSON.stringify(schemaExamples, null, 2)}
 }`;
+  }
 
   let rawQuestions: any[] = [];
   let connectionError: string | null = null;
@@ -418,24 +482,26 @@ Respond ONLY with valid JSON matching this schema:
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunkStr = decoder.decode(value, { stream: true });
-          const lines = chunkStr.split('\n').filter((l) => l.trim());
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
           for (const line of lines) {
+            if (!line.trim()) continue;
             try {
-              const json = JSON.parse(line);
-              if (json.message?.content) {
-                accumulatedText += json.message.content;
-              } else if (json.response) {
-                accumulatedText += json.response;
+              const jsonLine = JSON.parse(line);
+              if (jsonLine.message?.content) {
+                accumulatedText += jsonLine.message.content;
               }
             } catch (e) { }
           }
         }
 
         const parsed = parseTruncatedJson(accumulatedText);
-        if (parsed) {
-          rawQuestions = extractQuestionsFromParsedJson(parsed);
-          if (rawQuestions.length > 0) break;
+        rawQuestions = extractQuestionsFromParsedJson(parsed);
+
+        if (rawQuestions.length > 0) {
+          break;
         }
       }
     } catch (err: any) {
@@ -453,31 +519,51 @@ Respond ONLY with valid JSON matching this schema:
 
   // Build target question type quotas to ensure user's requested types are strictly fulfilled
   const targetTypes: { type: string; isExtra: boolean; defaultPoints: number }[] = [];
-  for (let i = 0; i < params.mcCount; i++) targetTypes.push({ type: 'multiple-choice', isExtra: false, defaultPoints: 2 });
-  for (let i = 0; i < params.tfCount; i++) targetTypes.push({ type: 'true-false', isExtra: false, defaultPoints: 1 });
-  for (let i = 0; i < params.saCount; i++) targetTypes.push({ type: 'short-answer', isExtra: false, defaultPoints: 3 });
-  for (let i = 0; i < params.essayCount; i++) targetTypes.push({ type: 'essay', isExtra: false, defaultPoints: 5 });
-  for (let i = 0; i < params.extraCount; i++) targetTypes.push({ type: 'multiple-choice', isExtra: true, defaultPoints: 2 });
+  if (!isTosMode) {
+    for (let i = 0; i < params.mcCount; i++) targetTypes.push({ type: 'multiple-choice', isExtra: false, defaultPoints: 2 });
+    for (let i = 0; i < params.tfCount; i++) targetTypes.push({ type: 'true-false', isExtra: false, defaultPoints: 1 });
+    for (let i = 0; i < params.saCount; i++) targetTypes.push({ type: 'short-answer', isExtra: false, defaultPoints: 3 });
+    for (let i = 0; i < params.essayCount; i++) targetTypes.push({ type: 'essay', isExtra: false, defaultPoints: 5 });
+    for (let i = 0; i < params.extraCount; i++) targetTypes.push({ type: 'multiple-choice', isExtra: true, defaultPoints: 2 });
+  }
 
   let idCounter = 1;
   return rawQuestions.map((q: any, idx: number) => {
-    // Strictly enforce the user's blueprint allocation (MC, TF, SA, Essay)
-    let qType = targetTypes[idx] ? targetTypes[idx].type : (q.t || q.type || q.question_type || '').toLowerCase();
+    const spec = params.tosData?.itemSpecs?.[idx];
+
+    let qType = spec?.questionType || (targetTypes[idx] ? targetTypes[idx].type : (q.t || q.type || q.question_type || '').toLowerCase());
     if (!['multiple-choice', 'true-false', 'short-answer', 'essay'].includes(qType)) {
       qType = 'multiple-choice';
     }
 
     const isExtra = targetTypes[idx] ? targetTypes[idx].isExtra : Boolean(q.e || q.isExtra || q.is_extra);
-    const defaultPoints = qType === 'multiple-choice' ? 2 : qType === 'true-false' ? 1 : qType === 'short-answer' ? 3 : 5;
-    const questionStem = q.q || q.question || q.stem || q.text || q.title || `Question about ${primaryTopic}`;
+    const defaultPoints = spec?.points || (qType === 'multiple-choice' ? 2 : qType === 'true-false' ? 1 : qType === 'short-answer' ? 3 : 5);
+    const cogLevel = normaliseCogLevel(q.cognitiveLevel || q.bloomLevel || q.level) || spec?.cognitiveLevel || (params.difficulty === 'hard' ? 'Analyzing' : 'Understanding');
+    let topicName = q.topic || spec?.topic || primaryTopic;
+    if (isAdministrativeMetadata(topicName)) {
+      topicName = params.tosData?.topics?.find((t) => !isAdministrativeMetadata(t)) || primaryTopic;
+    }
+    const placementNum = q.itemPlacement || spec?.itemNumber || (idx + 1);
+
+    let questionStem = q.q || q.question || q.stem || q.text || q.title || `Question about ${topicName}`;
+    if (
+      isAdministrativeMetadata(questionStem) ||
+      questionStem.toLowerCase().includes('effectivity date') ||
+      questionStem.toLowerCase().includes('table of specification of') ||
+      questionStem.toLowerCase().includes('reference document for the table')
+    ) {
+      questionStem = `In ${topicName}, which of the following best describes its core purpose and functional mechanism?`;
+    }
 
     const formattedItem: any = {
       id: `gq-ollama-${Date.now()}-${idCounter++}`,
       type: qType,
       question: questionStem,
       points: Number(q.points || q.score) || defaultPoints,
-      difficulty: q.difficulty || params.difficulty,
-      topic: q.topic || primaryTopic,
+      difficulty: q.difficulty || (['Remembering', 'Understanding'].includes(cogLevel) ? 'easy' : ['Evaluating', 'Creating'].includes(cogLevel) ? 'hard' : 'medium'),
+      topic: topicName,
+      cognitiveLevel: cogLevel,
+      itemPlacement: placementNum,
       image: '',
       isExtra: isExtra,
     };
@@ -562,7 +648,7 @@ Difficulty: ${diffDirective.levelLabel}
 ${diffDirective.instructions}
 ${diffDirective.stemLengthRule}
 Return ONLY a valid JSON object.`;
-  
+
   let userPrompt = `Revise this question (${mode} mode) strictly about "${topic}" in JSON format:
 Difficulty Target: ${itemDiff.toUpperCase()} (${diffDirective.levelLabel})
 Current Question: "${questionItem.question}"

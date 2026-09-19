@@ -30,6 +30,8 @@ export interface Question {
   points: number;
   difficulty: 'easy' | 'medium' | 'hard';
   topic?: string;
+  cognitiveLevel?: string;
+  itemPlacement?: number | string;
   createdBy: string;
   createdAt: Date;
 }

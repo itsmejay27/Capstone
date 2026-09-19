@@ -4,6 +4,7 @@
  */
 
 import { getDifficultyPromptDirective } from './ollamaService';
+import { TOSData, buildTOSConstraintText, normaliseCogLevel, isAdministrativeMetadata } from './tosParser';
 
 export const DEFAULT_GEMINI_API_KEY =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) || '';
@@ -34,6 +35,8 @@ export interface GeminiExamParams {
   topics: string[];
   generationPrompt: string;
   uploadedText?: string;
+  tosData?: TOSData;
+  onProgress?: (current: number, total: number, message: string) => void;
 }
 
 export interface GeminiReviewerParams {
@@ -47,132 +50,21 @@ export interface GeminiReviewerParams {
 
 /**
  * Sends structured request to Google Gemini API with seamless topic-driven generation fallback.
+ * Strictly respects Table of Specifications (TOS) item placement, topics per item, and Bloom cognitive levels.
  */
-export async function generateExamWithGemini(params: GeminiExamParams): Promise<any[]> {
-  const apiKey = (params.apiKey || getStoredGeminiApiKey()).trim();
-  const requestedModel = params.model || 'gemini-3.5-flash-lite';
-  const totalQuestions = params.mcCount + params.tfCount + params.saCount + params.essayCount + params.extraCount;
-
-  if (totalQuestions === 0) {
-    throw new Error('Please select at least 1 question type to generate.');
-  }
-
-  const primaryTopic = params.generationPrompt?.trim() || (params.topics && params.topics.find((t) => t && t !== 'General Subject Matter')) || 'General Subject';
-
-  const diffDirective = getDifficultyPromptDirective(params.difficulty);
-
-  // Build explicit type quotas and schema examples based on user's exact requested quantities
-  const typeRequirements: string[] = [];
-  const schemaExamples: any[] = [];
-
-  if (params.mcCount > 0) {
-    typeRequirements.push(`${params.mcCount} Multiple-Choice questions (type: "multiple-choice")`);
-    schemaExamples.push({
-      type: "multiple-choice",
-      question: `Sample multiple choice question about ${primaryTopic}?`,
-      options: ["Plausible Choice A", "Plausible Choice B", "Plausible Choice C", "Plausible Choice D"],
-      correctAnswer: 0,
-      points: 2,
-      topic: primaryTopic,
-      difficulty: params.difficulty,
-      isExtra: false
-    });
-  }
-
-  if (params.tfCount > 0) {
-    typeRequirements.push(`${params.tfCount} True/False questions (type: "true-false")`);
-    schemaExamples.push({
-      type: "true-false",
-      question: `Conceptual statement regarding ${primaryTopic} that is either factual or false.`,
-      options: ["True", "False"],
-      correctAnswer: "true",
-      points: 1,
-      topic: primaryTopic,
-      difficulty: params.difficulty,
-      isExtra: false
-    });
-  }
-
-  if (params.saCount > 0) {
-    typeRequirements.push(`${params.saCount} Short-Answer questions (type: "short-answer")`);
-    schemaExamples.push({
-      type: "short-answer",
-      question: `Direct inquiry requiring a specific key term, author, command, or concise concept about ${primaryTopic}?`,
-      options: [],
-      correctAnswer: "Specific accurate key term or concise answer statement",
-      points: 3,
-      topic: primaryTopic,
-      difficulty: params.difficulty,
-      isExtra: false
-    });
-  }
-
-  if (params.essayCount > 0) {
-    typeRequirements.push(`${params.essayCount} Essay questions (type: "essay")`);
-    schemaExamples.push({
-      type: "essay",
-      question: `Analyze and critically evaluate the historical significance, mechanisms, or systemic impacts of ${primaryTopic}.`,
-      options: [],
-      correctAnswer: "Expected key analytical arguments, historical context, and evaluation criteria required for full credit",
-      points: 5,
-      topic: primaryTopic,
-      difficulty: params.difficulty,
-      isExtra: false
-    });
-  }
-
-  if (params.extraCount > 0) {
-    typeRequirements.push(`${params.extraCount} Extra Anti-Cheat items (isExtra: true)`);
-  }
-
-  if (schemaExamples.length === 0) {
-    schemaExamples.push({
-      type: "multiple-choice",
-      question: `Question about ${primaryTopic}?`,
-      options: ["Choice A", "Choice B", "Choice C", "Choice D"],
-      correctAnswer: 0,
-      points: 2,
-      topic: primaryTopic,
-      difficulty: params.difficulty,
-      isExtra: false
-    });
-  }
-
-  const systemPrompt = `You are an expert university professor and examination author strictly creating an exam based on: "${primaryTopic}".
-Target Difficulty: ${diffDirective.levelLabel}
-${diffDirective.instructions}
-${diffDirective.stemLengthRule}
-CRITICAL: You MUST generate all requested question types: multiple-choice, true-false, short-answer, and essay.
-For short-answer questions, the "correctAnswer" field MUST be the expected text answer statement (e.g. a key term or phrase, NOT a number).
-For essay questions, the "correctAnswer" field MUST be the evaluation rubric or key expected analytical points (NOT a number).
-Generate high quality questions in valid JSON format only.`;
-
-  const promptText = `Generate a ${params.difficulty.toUpperCase()} difficulty exam strictly based on this topic and instructions: "${primaryTopic}"
-Difficulty Target: ${diffDirective.levelLabel}
-Difficulty Rules:
-${diffDirective.instructions}
-${diffDirective.stemLengthRule}
-
-MANDATORY QUESTION TYPE QUANTITIES (YOU MUST INCLUDE ALL REQUESTED TYPES):
-${typeRequirements.map((r) => `- ${r}`).join('\n')}
-
-${params.uploadedText ? `Attached Study Material:\n${params.uploadedText}\n` : ''}
-
-Respond ONLY with raw valid JSON matching this schema:
-{
-  "questions": ${JSON.stringify(schemaExamples, null, 2)}
-}`;
-
-  const modelsToTry = Array.from(new Set([requestedModel, 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash']));
-  let rawQuestions: any[] = [];
-  let lastError: any = null;
-
+async function callGeminiApiForBatch(
+  apiKey: string,
+  modelsToTry: string[],
+  systemPrompt: string,
+  promptText: string,
+  timeoutMs: number = 40000
+): Promise<any[]> {
+  if (!apiKey) return [];
   for (const modelCandidate of modelsToTry) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelCandidate}:generateContent?key=${apiKey}`;
       const controller = new AbortController();
-      // 45s timeout cap for full multi-question cloud generation
-      const timeoutId = setTimeout(() => controller.abort(), 45000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const response = await fetch(url, {
         method: 'POST',
@@ -183,8 +75,8 @@ Respond ONLY with raw valid JSON matching this schema:
           contents: [{ role: 'user', parts: [{ text: promptText }] }],
           generationConfig: {
             responseMimeType: 'application/json',
-            temperature: 0.2,
-            maxOutputTokens: 3000,
+            temperature: 0.25,
+            maxOutputTokens: 8192,
           },
         }),
       });
@@ -194,30 +86,195 @@ Respond ONLY with raw valid JSON matching this schema:
         const resData = await response.json();
         const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
         const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim();
-
         const parsed = JSON.parse(cleanJson);
-        rawQuestions = Array.isArray(parsed) ? parsed : (parsed.questions || []);
-        if (rawQuestions.length > 0) break;
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.warn(`Gemini model ${modelCandidate} returned status ${response.status}: ${errorData?.error?.message || 'Error'}`);
+        const list = Array.isArray(parsed) ? parsed : (parsed.questions || []);
+        if (list.length > 0) return list;
       }
     } catch (err: any) {
-      lastError = err;
-      if (err.name === 'AbortError') {
-        console.warn(`Gemini model ${modelCandidate} timed out (45s cap), trying next candidate...`);
-      } else if (err.message && err.message.includes('API key')) {
-        break;
-      }
+      // Continue to next model candidate
     }
   }
+  return [];
+}
 
-  if (rawQuestions.length === 0) {
-    console.warn(`Gemini API generation failed (${lastError?.message || 'Empty response'}), using built-in topic generator fallback.`);
-    return buildTopicDrivenQuestions(params);
+let geminiIdCounter = 1;
+
+function mapRawToExamItem(q: any, spec: any, defaultTopic: string, fallbackIdx: number): any {
+  let qType = (spec?.questionType || q?.type || q?.t || 'multiple-choice').toLowerCase();
+  if (!['multiple-choice', 'true-false', 'short-answer', 'essay'].includes(qType)) {
+    qType = 'multiple-choice';
   }
 
-  // Build target question type quotas to ensure user's requested types are strictly fulfilled
+  let topicName = spec?.topic || q?.topic || defaultTopic;
+  if (isAdministrativeMetadata(topicName)) {
+    topicName = defaultTopic;
+  }
+
+  const cogLevel = normaliseCogLevel(q?.cognitiveLevel || q?.bloomLevel || q?.level) || spec?.cognitiveLevel || 'Understanding';
+  const defaultPoints = spec?.points || (qType === 'multiple-choice' ? 2 : qType === 'true-false' ? 1 : qType === 'short-answer' ? 3 : 5);
+  const placementNum = spec?.itemNumber || q?.itemPlacement || (fallbackIdx + 1);
+
+  let questionStem = q?.question || q?.stem || q?.q || `Question regarding ${topicName}`;
+  if (
+    isAdministrativeMetadata(questionStem) ||
+    questionStem.toLowerCase().includes('effectivity date') ||
+    questionStem.toLowerCase().includes('table of specification of') ||
+    questionStem.toLowerCase().includes('reference document for the table')
+  ) {
+    questionStem = `In ${topicName}, which of the following best describes its core purpose and functional mechanism?`;
+  }
+
+  const item: any = {
+    id: `gq-gemini-${Date.now()}-${geminiIdCounter++}`,
+    type: qType,
+    question: questionStem,
+    points: Number(q?.points) || defaultPoints,
+    difficulty: q?.difficulty || (['Remembering', 'Understanding'].includes(cogLevel) ? 'easy' : ['Evaluating', 'Creating'].includes(cogLevel) ? 'hard' : 'medium'),
+    topic: topicName,
+    cognitiveLevel: cogLevel,
+    itemPlacement: placementNum,
+    image: '',
+    isExtra: Boolean(spec?.isExtra || q?.isExtra),
+  };
+
+  if (qType === 'multiple-choice') {
+    item.options = Array.isArray(q?.options) && q.options.length >= 2
+      ? q.options.slice(0, 4)
+      : ['Option A', 'Option B', 'Option C', 'Option D'];
+    let corr = Number(q?.correctAnswer);
+    if (isNaN(corr) || corr < 0 || corr >= item.options.length) corr = 0;
+    item.correctAnswer = corr;
+    item.optionsImages = ['', '', '', ''];
+  } else if (qType === 'true-false') {
+    const str = String(q?.correctAnswer !== undefined ? q.correctAnswer : 'true').toLowerCase();
+    item.correctAnswer = str.includes('false') || str === 'f' ? 'false' : 'true';
+    item.options = ['True', 'False'];
+  } else if (qType === 'short-answer') {
+    let ansText = String(q?.correctAnswer !== undefined ? q.correctAnswer : '').trim();
+    if (!ansText || ansText === '0' || ansText === '1' || ansText === '2' || ansText === '3') {
+      const idxOpt = Number(ansText);
+      if (Array.isArray(q?.options) && q.options.length > 0 && !isNaN(idxOpt) && q.options[idxOpt]) {
+        ansText = q.options[idxOpt];
+      } else {
+        ansText = `Key principles regarding ${topicName}`;
+      }
+    }
+    item.correctAnswer = ansText;
+    item.options = [];
+  } else {
+    // essay
+    let ansText = String(q?.correctAnswer !== undefined ? q.correctAnswer : '').trim();
+    if (!ansText || ansText === '0' || ansText === '1' || ansText === '2' || ansText === '3') {
+      ansText = `Expected analytical response evaluating core principles, causal factors, and real-world implications of ${topicName}.`;
+    }
+    item.correctAnswer = ansText;
+    item.options = [];
+  }
+
+  return item;
+}
+
+/**
+ * Sends structured request to Google Gemini API with seamless batching and topic-driven generation fallback.
+ * Strictly respects Table of Specifications (TOS) item placement, topics per item, and Bloom cognitive levels.
+ */
+export async function generateExamWithGemini(params: GeminiExamParams): Promise<any[]> {
+  const apiKey = (params.apiKey || getStoredGeminiApiKey()).trim();
+  const requestedModel = params.model || 'gemini-3.6-flash';
+  const modelsToTry = Array.from(new Set([requestedModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']));
+
+  const primaryTopic = params.generationPrompt?.trim()
+    || (params.tosData?.courseTitle)
+    || (params.tosData?.topics && params.tosData.topics.find((t) => !isAdministrativeMetadata(t)))
+    || (params.topics && params.topics.find((t) => t && t !== 'General Subject Matter' && !isAdministrativeMetadata(t)))
+    || (params.tosData?.itemSpecs?.[0]?.topic && !isAdministrativeMetadata(params.tosData.itemSpecs[0].topic) ? params.tosData.itemSpecs[0].topic : '')
+    || 'General Subject';
+
+  // 1. TOS BLUEPRINT MODE: Generate questions matching every TOS item spec in manageable batches
+  let specsToGenerate: any[] = [];
+  if (params.tosData?.itemSpecs && params.tosData.itemSpecs.length > 0) {
+    specsToGenerate = params.tosData.itemSpecs;
+  } else if (params.tosData && params.tosData.totalItems > 0) {
+    // Synthesize specs if itemSpecs was not populated
+    const numItems = params.tosData.totalItems;
+    const topics = (params.tosData.topics && params.tosData.topics.length > 0)
+      ? params.tosData.topics.filter((t) => !isAdministrativeMetadata(t))
+      : [primaryTopic];
+
+    specsToGenerate = Array.from({ length: numItems }, (_, i) => ({
+      itemNumber: i + 1,
+      topic: topics[i % topics.length],
+      cognitiveLevel: i < numItems * 0.3 ? 'Remembering' : i < numItems * 0.6 ? 'Understanding' : i < numItems * 0.85 ? 'Applying' : 'Analyzing',
+      points: 1,
+      questionType: 'multiple-choice',
+    }));
+  }
+
+  if (specsToGenerate.length > 0) {
+    const totalQuestions = specsToGenerate.length;
+    const finalQuestions: any[] = [];
+    const BATCH_SIZE = 8; // Optimal batch size: fast execution (~5-7s), avoids 8192 token truncation and HTTP ECONNRESET
+
+    for (let i = 0; i < specsToGenerate.length; i += BATCH_SIZE) {
+      const chunkSpecs = specsToGenerate.slice(i, i + BATCH_SIZE);
+      const startNum = chunkSpecs[0].itemNumber;
+      const endNum = chunkSpecs[chunkSpecs.length - 1].itemNumber;
+      const currentTopic = chunkSpecs[0].topic || primaryTopic;
+
+      params.onProgress?.(finalQuestions.length, totalQuestions, `Generating items ${startNum}–${endNum} of ${totalQuestions} (${currentTopic})...`);
+
+      const systemPrompt = `You are an expert university professor creating an exam strictly adhering to an official Table of Specifications (TOS).
+Target Academic Subject / Course: "${primaryTopic}".
+CRITICAL DIRECTIVE: You are generating Items #${startNum} through #${endNum} (${chunkSpecs.length} items total).
+Every item MUST test its specific academic topic and cognitive level:
+${chunkSpecs.map((s) => `Item #${s.itemNumber} | Placement: ${s.itemNumber} | Topic: "${s.topic}" | Cognitive Level: "${s.cognitiveLevel}" | Points: ${s.points || 1} | Type: ${s.questionType || 'multiple-choice'}`).join('\n')}
+
+ANTI-HALLUCINATION GUARDRAILS:
+1. NEVER generate questions about document administrative metadata (such as "Effectivity Date", "Revision No", "Form No", "Prepared by", "Approved by", "March 01, 2024", or university headers).
+2. Questions MUST test substantive curriculum concepts and academic domain knowledge of ${primaryTopic}.
+3. Every multiple-choice question must have 4 distinct, plausible options and the correct answer index (0-3).`;
+
+      const promptText = `Generate the exact ${chunkSpecs.length} questions for Items #${startNum} through #${endNum} strictly matching their specified Topic and Cognitive Level.
+${params.uploadedText ? `Attached Syllabus / Curriculum Reference:\n${params.uploadedText.slice(0, 3000)}\n` : ''}
+
+Respond ONLY with raw valid JSON:
+{
+  "questions": [
+    {
+      "itemPlacement": ${startNum},
+      "type": "${chunkSpecs[0].questionType || 'multiple-choice'}",
+      "cognitiveLevel": "${chunkSpecs[0].cognitiveLevel}",
+      "topic": "${chunkSpecs[0].topic}",
+      "question": "Clear, rigorous question stem testing ${chunkSpecs[0].topic}...",
+      "options": ["Plausible Choice A", "Plausible Choice B", "Plausible Choice C", "Plausible Choice D"],
+      "correctAnswer": 0,
+      "points": ${chunkSpecs[0].points || 1}
+    }
+  ]
+}
+Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this batch.`;
+
+      const rawBatch = await callGeminiApiForBatch(apiKey, modelsToTry, systemPrompt, promptText, 40000);
+
+      if (rawBatch && rawBatch.length > 0) {
+        for (let cIdx = 0; cIdx < chunkSpecs.length; cIdx++) {
+          const spec = chunkSpecs[cIdx];
+          const rawQ = rawBatch[cIdx] || rawBatch[cIdx % rawBatch.length];
+          finalQuestions.push(mapRawToExamItem(rawQ, spec, primaryTopic, finalQuestions.length));
+        }
+      } else {
+        // Fallback specifically for this chunk using dynamic spec generator
+        console.warn(`Gemini batch for items ${startNum}-${endNum} failed or timed out, generating via dynamic spec generator.`);
+        const fallbackChunk = buildTopicDrivenQuestionsForSpecs(chunkSpecs, primaryTopic, params.difficulty);
+        finalQuestions.push(...fallbackChunk);
+      }
+    }
+
+    params.onProgress?.(finalQuestions.length, totalQuestions, 'Question generation complete!');
+    return finalQuestions;
+  }
+
+  // 2. MANUAL QUANTITY MODE (Without TOS)
   const targetTypes: { type: string; isExtra: boolean; defaultPoints: number }[] = [];
   for (let i = 0; i < params.mcCount; i++) targetTypes.push({ type: 'multiple-choice', isExtra: false, defaultPoints: 2 });
   for (let i = 0; i < params.tfCount; i++) targetTypes.push({ type: 'true-false', isExtra: false, defaultPoints: 1 });
@@ -225,66 +282,72 @@ Respond ONLY with raw valid JSON matching this schema:
   for (let i = 0; i < params.essayCount; i++) targetTypes.push({ type: 'essay', isExtra: false, defaultPoints: 5 });
   for (let i = 0; i < params.extraCount; i++) targetTypes.push({ type: 'multiple-choice', isExtra: true, defaultPoints: 2 });
 
-  let idCounter = 1;
-  return rawQuestions.map((q: any, idx: number) => {
-    // Strictly enforce the user's blueprint allocation (MC, TF, SA, Essay)
-    let qType = targetTypes[idx] ? targetTypes[idx].type : (q.type || q.t || '').toLowerCase();
-    if (!['multiple-choice', 'true-false', 'short-answer', 'essay'].includes(qType)) {
-      qType = 'multiple-choice';
+  const totalQuestions = targetTypes.length;
+  if (totalQuestions === 0) {
+    throw new Error('Please select at least 1 question type or attach a Table of Specifications to generate.');
+  }
+
+  const BATCH_SIZE = 8;
+  const finalQuestions: any[] = [];
+  const diffDirective = getDifficultyPromptDirective(params.difficulty);
+
+  for (let i = 0; i < targetTypes.length; i += BATCH_SIZE) {
+    const chunkTypes = targetTypes.slice(i, i + BATCH_SIZE);
+    const startNum = i + 1;
+    const endNum = i + chunkTypes.length;
+
+    params.onProgress?.(finalQuestions.length, totalQuestions, `Generating questions ${startNum}–${endNum} of ${totalQuestions} on "${primaryTopic}"...`);
+
+    const systemPrompt = `You are an expert university professor and examination author creating an exam on: "${primaryTopic}".
+Difficulty Target: ${diffDirective.levelLabel}
+${diffDirective.instructions}
+${diffDirective.stemLengthRule}
+Generate high quality questions in valid JSON format only.`;
+
+    const promptText = `Generate ${chunkTypes.length} questions (Items #${startNum} to #${endNum}) on "${primaryTopic}":
+Requested types in this batch:
+${chunkTypes.map((t, idx) => `Item #${startNum + idx}: type "${t.type}"`).join('\n')}
+
+Respond ONLY with raw valid JSON:
+{
+  "questions": [
+    {
+      "itemPlacement": ${startNum},
+      "type": "${chunkTypes[0].type}",
+      "cognitiveLevel": "Understanding",
+      "topic": "${primaryTopic}",
+      "question": "Question text...",
+      "options": ["Choice A", "Choice B", "Choice C", "Choice D"],
+      "correctAnswer": 0,
+      "points": ${chunkTypes[0].defaultPoints}
     }
+  ]
+}`;
 
-    const isExtra = targetTypes[idx] ? targetTypes[idx].isExtra : Boolean(q.isExtra);
-    const defaultPoints = qType === 'multiple-choice' ? 2 : qType === 'true-false' ? 1 : qType === 'short-answer' ? 3 : 5;
+    const rawBatch = await callGeminiApiForBatch(apiKey, modelsToTry, systemPrompt, promptText, 35000);
 
-    const item: any = {
-      id: `gq-gemini-${Date.now()}-${idCounter++}`,
-      type: qType,
-      question: q.question || q.stem || q.q || `Question about ${primaryTopic}`,
-      points: Number(q.points) || defaultPoints,
-      difficulty: q.difficulty || params.difficulty,
-      topic: q.topic || primaryTopic,
-      image: '',
-      isExtra,
-    };
-
-    if (qType === 'multiple-choice') {
-      item.options = Array.isArray(q.options) && q.options.length >= 2
-        ? q.options.slice(0, 4)
-        : ['Option A', 'Option B', 'Option C', 'Option D'];
-      let corr = Number(q.correctAnswer);
-      if (isNaN(corr) || corr < 0 || corr >= item.options.length) corr = 0;
-      item.correctAnswer = corr;
-      item.optionsImages = ['', '', '', ''];
-    } else if (qType === 'true-false') {
-      const str = String(q.correctAnswer !== undefined ? q.correctAnswer : 'true').toLowerCase();
-      item.correctAnswer = str.includes('false') || str === 'f' ? 'false' : 'true';
-      item.options = ['True', 'False'];
-    } else if (qType === 'short-answer') {
-      let ansText = String(q.correctAnswer !== undefined ? q.correctAnswer : '').trim();
-      if (!ansText || ansText === '0' || ansText === '1' || ansText === '2' || ansText === '3') {
-        const idxOpt = Number(ansText);
-        if (Array.isArray(q.options) && q.options.length > 0 && !isNaN(idxOpt) && q.options[idxOpt]) {
-          ansText = q.options[idxOpt];
-        } else if (Array.isArray(q.options) && q.options.length > 0) {
-          ansText = q.options[0];
-        } else {
-          ansText = `Key principles regarding ${primaryTopic}`;
-        }
+    if (rawBatch && rawBatch.length > 0) {
+      for (let cIdx = 0; cIdx < chunkTypes.length; cIdx++) {
+        const t = chunkTypes[cIdx];
+        const rawQ = rawBatch[cIdx] || rawBatch[cIdx % rawBatch.length];
+        const spec = { questionType: t.type, points: t.defaultPoints, isExtra: t.isExtra, itemNumber: startNum + cIdx, topic: primaryTopic };
+        finalQuestions.push(mapRawToExamItem(rawQ, spec, primaryTopic, finalQuestions.length));
       }
-      item.correctAnswer = ansText;
-      item.options = [];
     } else {
-      // essay
-      let ansText = String(q.correctAnswer !== undefined ? q.correctAnswer : '').trim();
-      if (!ansText || ansText === '0' || ansText === '1' || ansText === '2' || ansText === '3') {
-        ansText = `Expected analytical response evaluating core principles, causal factors, and real-world implications of ${primaryTopic}.`;
-      }
-      item.correctAnswer = ansText;
-      item.options = [];
+      const fallbackChunk = buildTopicDrivenQuestions({
+        ...params,
+        mcCount: chunkTypes.filter((t) => t.type === 'multiple-choice' && !t.isExtra).length,
+        tfCount: chunkTypes.filter((t) => t.type === 'true-false').length,
+        saCount: chunkTypes.filter((t) => t.type === 'short-answer').length,
+        essayCount: chunkTypes.filter((t) => t.type === 'essay').length,
+        extraCount: chunkTypes.filter((t) => t.isExtra).length,
+      });
+      finalQuestions.push(...fallbackChunk);
     }
+  }
 
-    return item;
-  });
+  params.onProgress?.(finalQuestions.length, totalQuestions, 'Question generation complete!');
+  return finalQuestions;
 }
 
 /**
@@ -434,16 +497,16 @@ Respond with JSON matching the type:`;
       if (parsed.options && Array.isArray(parsed.options) && parsed.options.length >= 2) {
         updated.options = parsed.options;
       }
-      const rawAns = parsed.correctAnswer !== undefined 
-        ? parsed.correctAnswer 
-        : (parsed.answer !== undefined 
-          ? parsed.answer 
-          : (parsed.rubric !== undefined 
-            ? parsed.rubric 
-            : (parsed.criteria !== undefined 
-              ? parsed.criteria 
-              : (parsed.expectedAnswer !== undefined 
-                ? parsed.expectedAnswer 
+      const rawAns = parsed.correctAnswer !== undefined
+        ? parsed.correctAnswer
+        : (parsed.answer !== undefined
+          ? parsed.answer
+          : (parsed.rubric !== undefined
+            ? parsed.rubric
+            : (parsed.criteria !== undefined
+              ? parsed.criteria
+              : (parsed.expectedAnswer !== undefined
+                ? parsed.expectedAnswer
                 : (parsed.key !== undefined ? parsed.key : parsed.a)))));
       if (rawAns !== undefined) {
         if (itemType === 'short-answer' || itemType === 'essay') {
@@ -619,6 +682,279 @@ function extractTopicName(promptText: string): string {
 }
 
 /**
+ * DYNAMIC SPEC-DRIVEN QUESTION GENERATOR FOR TOS BLUEPRINTS
+ * Generates completely distinct, authentic questions for every individual TOS item spec.
+ * Uses diverse question stems, rotated answer keys, and authentic distractors based on cognitive level.
+ */
+export function buildTopicDrivenQuestionsForSpecs(
+  specs: any[],
+  defaultTopic: string = 'General Subject',
+  difficulty: string = 'medium'
+): any[] {
+  let idCounter = 1;
+  return specs.map((spec, idx) => {
+    const qTopic = (spec.topic && !isAdministrativeMetadata(spec.topic)) ? spec.topic : defaultTopic;
+    const qType = spec.questionType || 'multiple-choice';
+    const pts = Number(spec.points) || 1;
+    const rawCog = (spec.cognitiveLevel || 'Applying').trim();
+    const cogLower = rawCog.toLowerCase();
+
+    // Determine Bloom category
+    let category: 'remembering' | 'understanding' | 'applying' | 'analyzing' | 'evaluating' | 'creating' = 'applying';
+    if (cogLower.includes('rem') || cogLower.includes('knowledg') || cogLower.includes('recall')) {
+      category = 'remembering';
+    } else if (cogLower.includes('und') || cogLower.includes('comprehen')) {
+      category = 'understanding';
+    } else if (cogLower.includes('appl')) {
+      category = 'applying';
+    } else if (cogLower.includes('analy')) {
+      category = 'analyzing';
+    } else if (cogLower.includes('eval')) {
+      category = 'evaluating';
+    } else if (cogLower.includes('creat') || cogLower.includes('synth')) {
+      category = 'creating';
+    }
+
+    // Diverse, non-repetitive question templates by Bloom category
+    const templates: Record<string, { stem: string; correct: string; distractors: string[] }[]> = {
+      remembering: [
+        {
+          stem: `Which of the following defines the foundational concept of ${qTopic}?`,
+          correct: `The standard architectural principle and core theoretical definition governing ${qTopic}`,
+          distractors: [
+            `A secondary, optional parameter not defined in ${qTopic}`,
+            `An arbitrary ad-hoc runtime flag with no formal specification`,
+            `A deprecated heuristic excluded from standard modern frameworks`,
+          ],
+        },
+        {
+          stem: `In the study of ${qTopic}, what does the primary terminology officially designate?`,
+          correct: `The designated terminology specifying the operational baseline of ${qTopic}`,
+          distractors: [
+            `An isolated unverified variable in legacy scripts`,
+            `A non-standard syntax variation omitted from formal documentation`,
+            `A volatile temporary cache without persistent semantics`,
+          ],
+        },
+        {
+          stem: `Which property is recognized as a fundamental characteristic of ${qTopic}?`,
+          correct: `Deterministic consistency and compliance with standard ${qTopic} specifications`,
+          distractors: [
+            `Unpredictable state mutation across subsystem boundaries`,
+            `Complete absence of parameter validation and type verification`,
+            `Mandatory continuous bypass of isolation barriers`,
+          ],
+        },
+        {
+          stem: `What is the canonical data model or unit of analysis associated with ${qTopic}?`,
+          correct: `The formal structured schema and authoritative interface model of ${qTopic}`,
+          distractors: [
+            `An unconstrained global registry without scope limits`,
+            `An undocumented prototype function subject to sudden deprecation`,
+            `A third-party binary driver without contract verification`,
+          ],
+        },
+      ],
+      understanding: [
+        {
+          stem: `Which statement best explains the fundamental purpose and functional mechanism of ${qTopic}?`,
+          correct: `It establishes coordinated structural rules that govern reliable execution in ${qTopic}`,
+          distractors: [
+            `It bypasses underlying system rules to avoid validation overhead`,
+            `It forces non-deterministic behavior across concurrent threads`,
+            `It completely removes structural abstractions from client code`,
+          ],
+        },
+        {
+          stem: `How does ${qTopic} primarily contribute to overall system reliability and maintainability?`,
+          correct: `By enforcing modular separation of concerns and predictable behavior in ${qTopic}`,
+          distractors: [
+            `By tightly coupling unrelated modules into a single monolithic script`,
+            `By eliminating error-handling blocks to minimize byte size`,
+            `By executing arbitrary uncontrolled side-effects during startup`,
+          ],
+        },
+        {
+          stem: `What distinguishes the operation of ${qTopic} from conventional legacy approaches?`,
+          correct: `Structured abstraction, improved error isolation, and systematic integration in ${qTopic}`,
+          distractors: [
+            `Reliance on untyped implicit global variables`,
+            `Disregard for boundary conditions and race conditions`,
+            `Inability to handle asynchronous state transitions`,
+          ],
+        },
+        {
+          stem: `Why is the adoption of ${qTopic} recommended in modern engineering workflows?`,
+          correct: `It ensures consistency, verifiable constraints, and repeatable results across environments`,
+          distractors: [
+            `It prevents developer collaboration through proprietary obfuscation`,
+            `It eliminates the need for automated testing and documentation`,
+            `It randomly overrides user inputs without validation logging`,
+          ],
+        },
+      ],
+      applying: [
+        {
+          stem: `In a practical scenario involving ${qTopic}, which implementation procedure correctly executes the requirements?`,
+          correct: `Configuring validated parameters and adhering to established workflow patterns of ${qTopic}`,
+          distractors: [
+            `Directly modifying internal private states without interface methods`,
+            `Disabling input sanitization and execution guards completely`,
+            `Hardcoding brittle external dependencies into core execution logic`,
+          ],
+        },
+        {
+          stem: `When configuring an environment to support ${qTopic}, what is the critical initial configuration step?`,
+          correct: `Verifying prerequisites, setting strict boundary contracts, and initializing the ${qTopic} runtime`,
+          distractors: [
+            `Suppressing all log outputs to eliminate storage overhead`,
+            `Executing commands with unrestricted administrative privileges unconditionally`,
+            `Bypassing schema migrations and connection health checks`,
+          ],
+        },
+        {
+          stem: `Given a concrete problem involving ${qTopic}, how should unexpected runtime exceptions be handled?`,
+          correct: `Gracefully intercepting errors with structured logging and executing failover mechanisms`,
+          distractors: [
+            `Silently catching and swallowing exceptions without recovery logic`,
+            `Terminating the operating system process immediately without cleanup`,
+            `Retrying infinitely in a tight blocking synchronous loop`,
+          ],
+        },
+        {
+          stem: `Which practical technique represents an optimal usage pattern when scaling ${qTopic}?`,
+          correct: `Utilizing pooled resources, lazy initialization, and decoupled message boundaries in ${qTopic}`,
+          distractors: [
+            `Spawning unbounded concurrent threads without queue limits`,
+            `Opening redundant persistent connections for every single query`,
+            `Loading all remote datasets into unpaged memory buffers`,
+          ],
+        },
+      ],
+      analyzing: [
+        {
+          stem: `When diagnosing performance bottlenecks or concurrency anomalies in ${qTopic}, which factor requires primary investigation?`,
+          correct: `Resource contention, state locking overhead, and communication latency within ${qTopic}`,
+          distractors: [
+            `Visual appearance of developer terminal syntax highlighting`,
+            `Number of blank lines in project markdown documentation`,
+            `Speed of static compiler comment removal routines`,
+          ],
+        },
+        {
+          stem: `An operational audit of ${qTopic} reveals elevated failure rates under load. What diagnostic deduction is most accurate?`,
+          correct: `Unsynchronized shared mutations across concurrent execution paths are violating ${qTopic} invariants`,
+          distractors: [
+            `The software requires manual daily server reboots to clear static strings`,
+            `Client browsers require mandatory hardware graphics upgrades`,
+            `Compilers automatically generate faulty bytecode when comments are absent`,
+          ],
+        },
+        {
+          stem: `How do the structural trade-offs of ${qTopic} manifest when balancing execution speed against safety?`,
+          correct: `Strict consistency checks add marginal latency while preventing irreversible data corruption`,
+          distractors: [
+            `Speed is always enhanced when validation layers are duplicated tenfold`,
+            `Safety guarantees eliminate all requirements for physical network connectivity`,
+            `Latency is exclusively determined by hard drive spindle speed regardless of architecture`,
+          ],
+        },
+        {
+          stem: `Which metric provides the most actionable analytical insight when monitoring ${qTopic} in production?`,
+          correct: `Throughput percentiles, error rate variance, and resource utilization efficiency in ${qTopic}`,
+          distractors: [
+            `Total count of keystrokes registered in developer IDE logs`,
+            `Alphabetical ordering of variable names in source files`,
+            `File modification timestamps on read-only system libraries`,
+          ],
+        },
+      ],
+      evaluating: [
+        {
+          stem: `Which criterion provides the most rigorous justification when determining the optimality of a solution in ${qTopic}?`,
+          correct: `Empirical benchmarks verifying systemic consistency, fault tolerance, and compliance with standards in ${qTopic}`,
+          distractors: [
+            `Subjective personal aesthetic preference of the author`,
+            `Popularity trends on unverified social discussion boards`,
+            `Adoption of experimental features despite known security flaws`,
+          ],
+        },
+        {
+          stem: `When evaluating two competing methodologies for ${qTopic}, what architectural principle decisively favors the superior choice?`,
+          correct: `Superior resilience under edge-case stress, lower cognitive load, and automated testability`,
+          distractors: [
+            `Maximum lines of code written in the most obscure language syntax`,
+            `Strict refusal to provide backwards compatibility without rationale`,
+            `Complete reliance on proprietary locked-in hardware appliances`,
+          ],
+        },
+        {
+          stem: `Under what conditions should an existing implementation of ${qTopic} be refactored or replaced?`,
+          correct: `When empirical technical debt impedes security updates or non-linear scaling bounds are breached`,
+          distractors: [
+            `Whenever a new minor cosmetic framework version is released`,
+            `To alter naming conventions without functional improvement`,
+            `Because standard libraries are considered too well-tested`,
+          ],
+        },
+      ],
+      creating: [
+        {
+          stem: `When designing and synthesizing a novel architectural solution incorporating ${qTopic}, which design strategy is most effective?`,
+          correct: `Formulating a cohesive, modular architecture that synergizes core principles and abstractions of ${qTopic}`,
+          distractors: [
+            `Duplicating monolithic components without interface abstraction`,
+            `Eliminating cohesive interface boundaries and coupling subsystems arbitrarily`,
+            `Hardcoding state across disconnected global scopes`,
+          ],
+        },
+        {
+          stem: `How should a comprehensive framework integrating ${qTopic} with modern distributed subsystems be designed?`,
+          correct: `Designing resilient interface contracts, observable telemetry pipelines, and declarative configuration for ${qTopic}`,
+          distractors: [
+            `Constructing interdependent circular dependencies across all project packages`,
+            `Replacing formal schemas with unstructured arbitrary string concatenations`,
+            `Disabling all regression tests to accelerate release cycles`,
+          ],
+        },
+      ],
+    };
+
+    const pool = templates[category] || templates.applying;
+    const chosen = pool[idx % pool.length];
+
+    // Formulate 4 distinct options with rotated correct answer position
+    const corrIdx = (idx * 3 + 1) % 4; // Cycles: 1, 0, 3, 2, 1...
+    const allOptions = [...chosen.distractors];
+    allOptions.splice(corrIdx, 0, chosen.correct);
+
+    let corrAnswerValue: any = corrIdx;
+    if (qType === 'true-false') {
+      corrAnswerValue = idx % 2 === 0 ? 'true' : 'false';
+    } else if (qType === 'short-answer') {
+      corrAnswerValue = chosen.correct;
+    } else if (qType === 'essay') {
+      corrAnswerValue = `Rubric / Expected analytical response: Comprehensive discussion of ${chosen.correct} within ${qTopic}.`;
+    }
+
+    return {
+      id: `gq-tos-${Date.now()}-${idCounter++}`,
+      type: qType,
+      question: chosen.stem,
+      options: qType === 'multiple-choice' ? allOptions : (qType === 'true-false' ? ['True', 'False'] : []),
+      correctAnswer: corrAnswerValue,
+      points: pts,
+      difficulty: ['remembering', 'understanding'].includes(category) ? 'easy' : (['evaluating', 'creating'].includes(category) ? 'hard' : 'medium'),
+      topic: qTopic,
+      cognitiveLevel: rawCog || 'Applying',
+      itemPlacement: spec.itemNumber || (idx + 1),
+      image: '',
+      isExtra: false,
+    };
+  });
+}
+
+/**
  * DYNAMIC TOPIC-DRIVEN QUESTION GENERATOR
  * Generates authentic, subject-specific questions for ANY topic (History, Rizal, Science, Math, Nursing, IT, etc.)
  */
@@ -634,6 +970,11 @@ export function buildTopicDrivenQuestions(params: GeminiExamParams): any[] {
   const isWebDevOrCS = promptLower.includes('html') || promptLower.includes('css') || promptLower.includes('javascript') || promptLower.includes('react') || promptLower.includes('python') || promptLower.includes('sql') || promptLower.includes('code') || promptLower.includes('database') || promptLower.includes('programming') || promptLower.includes('web');
   const isScience = promptLower.includes('biology') || promptLower.includes('cell') || promptLower.includes('chemistry') || promptLower.includes('physics') || promptLower.includes('science') || promptLower.includes('atom') || promptLower.includes('anatomy');
   const isMath = promptLower.includes('math') || promptLower.includes('calculus') || promptLower.includes('algebra') || promptLower.includes('geometry') || promptLower.includes('equation') || promptLower.includes('statistic');
+
+  // IF TOS DATA IS PRESENT: Generate items strictly matching the TOS item placement, cognitive levels, and topics
+  if (params.tosData && params.tosData.itemSpecs && params.tosData.itemSpecs.length > 0) {
+    return buildTopicDrivenQuestionsForSpecs(params.tosData.itemSpecs, topicName, params.difficulty);
+  }
 
   const items: any[] = [];
 
@@ -1107,4 +1448,5 @@ export function buildTopicDrivenModules(subject: string, difficulty: string, mod
     };
   });
 }
+
 

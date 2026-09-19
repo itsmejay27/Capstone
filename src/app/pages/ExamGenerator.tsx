@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import OllamaConfigControl, { AIEngineType } from '../components/OllamaConfigControl';
-import { extractFilesContent, generateExamWithOllama, regenerateQuestionWithOllama } from '../services/ollamaService';
-import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions } from '../services/geminiService';
+import { generateExamWithOllama, regenerateQuestionWithOllama } from '../services/ollamaService';
+import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey } from '../services/geminiService';
+import { parseTOSFile, extractFilesContentEnhanced, TOSData, BLOOM_LEVELS } from '../services/tosParser';
 import {
   Container,
   Paper,
@@ -54,6 +55,10 @@ import {
   Assignment,
   FolderZip,
   Topic,
+  Close,
+  AssignmentTurnedIn,
+  Psychology,
+  Lock,
 } from '@mui/icons-material';
 
 const steps = ['Exam Details & Configuration', 'Summary Checklist', 'Review & Generate'];
@@ -174,6 +179,17 @@ const ALTERNATIVE_QUESTIONS: Record<string, any[]> = {
   ]
 };
 
+const getBloomBadgeColor = (level?: string) => {
+  const norm = (level || '').toLowerCase();
+  if (norm.includes('rememb')) return { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd' }; // Remembering: Blue
+  if (norm.includes('underst')) return { bg: '#ccfbf1', text: '#115e59', border: '#5eead4' }; // Understanding: Teal
+  if (norm.includes('apply') || norm.includes('applic')) return { bg: '#dcfce7', text: '#166534', border: '#86efac' }; // Applying: Green
+  if (norm.includes('analy')) return { bg: '#fef3c7', text: '#92400e', border: '#fcd34d' }; // Analyzing: Amber
+  if (norm.includes('eval')) return { bg: '#ffe4e6', text: '#9f1239', border: '#fda4af' }; // Evaluating: Rose
+  if (norm.includes('creat')) return { bg: '#f3e8ff', text: '#6b21a8', border: '#d8b4fe' }; // Creating: Purple
+  return { bg: '#f1f5f9', text: '#334155', border: '#cbd5e1' };
+};
+
 export default function ExamGenerator() {
   const { classroomId } = useParams();
   const { currentUser, saveExamToRepository } = useAuth();
@@ -195,6 +211,9 @@ export default function ExamGenerator() {
   const [syllabus, setSyllabus] = useState<File | null>(null);
   const [materials, setMaterials] = useState<File[]>([]);
   const [tos, setTos] = useState<File | null>(null);
+  const [tosData, setTosData] = useState<TOSData | null>(null);
+  const [isTosParsing, setIsTosParsing] = useState(false);
+  const [tosParseError, setTosParseError] = useState<string | null>(null);
 
   // Question Type Allocations
   const [mcCount, setMcCount] = useState(5);
@@ -204,7 +223,7 @@ export default function ExamGenerator() {
   const [extraCount, setExtraCount] = useState(3); // Extra questions pool size (e.g. 3 extra)
   const [difficulty, setDifficulty] = useState('medium');
   const [topics, setTopics] = useState<string[]>(['General Subject Matter']);
-  const [generationPrompt, setGenerationPrompt] = useState('Write an exam covering fundamental web development technologies including HTML5, CSS layout engines, and basic JavaScript dynamics.');
+  const [generationPrompt, setGenerationPrompt] = useState('');
 
   // Generated list of N + E items
   const [generatedQuestions, setGeneratedQuestions] = useState<any[]>([]);
@@ -213,14 +232,19 @@ export default function ExamGenerator() {
 
   // AI Engine states
   const [aiEngine, setAiEngine] = useState<AIEngineType>('gemini');
-  const [geminiModel, setGeminiModel] = useState('gemini-3.5-flash-lite');
+  const [geminiModel, setGeminiModel] = useState('gemini-3.6-flash');
   const [ollamaModel, setOllamaModel] = useState('llama3.2:latest');
   const [ollamaUrl, setOllamaUrl] = useState('/api/ollama');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationStatusText, setGenerationStatusText] = useState('');
 
-  const activeQuestionCount = mcCount + tfCount + saCount + essayCount;
-  const totalGeneratedCount = activeQuestionCount + extraCount;
+  const isTosActive = Boolean(tos);
+  const activeQuestionCount = (tosData && tosData.totalItems > 0)
+    ? tosData.totalItems
+    : (mcCount + tfCount + saCount + essayCount);
+  const totalGeneratedCount = (tosData && tosData.totalItems > 0)
+    ? tosData.totalItems
+    : (activeQuestionCount + extraCount);
 
   const handleNext = () => {
     if (activeStep === 1) {
@@ -230,95 +254,124 @@ export default function ExamGenerator() {
     }
   };
 
+  const handleRemoveTos = () => {
+    setTos(null);
+    setTosData(null);
+    setTosParseError(null);
+  };
+
   const handleGenerateQuestions = async () => {
     setActiveStep(2);
     setGenerating(true);
     setGenerationError(null);
 
-    // Prioritize user's generationPrompt as the core AI topic
-    const primarySubject = generationPrompt.trim()
-      || topics.find((t) => t && t !== 'General Subject Matter')
-      || examTitle.trim()
-      || 'General Subject';
+    try {
+      setGenerationStatusText(
+        isTosActive
+          ? `Extracting full TOS matrix & cognitive levels for strict blueprint generation...`
+          : `Reading curriculum files and preparing AI generation...`
+      );
 
-    const effectiveTopics = Array.from(new Set([primarySubject, ...topics.filter((t) => t && t !== 'General Subject Matter')]));
-    const effectivePrompt = generationPrompt.trim() || primarySubject;
+      const allFiles = [syllabus, tos, ...materials].filter(Boolean) as File[];
+      const { text: extractedText, tosData: parsedFromExtractor } = await extractFilesContentEnhanced(allFiles, tos, getStoredGeminiApiKey());
+      const effectiveTos = tosData || parsedFromExtractor;
 
-    if (aiEngine === 'gemini') {
-      try {
-        setGenerationStatusText(`Prompting Google Gemini AI (${geminiModel}) for ultra-fast generation on "${primarySubject}"...`);
-        const extractedText = await extractFilesContent([syllabus, tos, ...materials]);
+      // Prioritize TOS course title or topic when prompt is empty
+      const primarySubject = generationPrompt.trim()
+        || (effectiveTos?.courseTitle)
+        || (effectiveTos?.topics && effectiveTos.topics[0])
+        || topics.find((t) => t && t !== 'General Subject Matter')
+        || examTitle.trim()
+        || 'General Subject';
 
-        const questions = await generateExamWithGemini({
-          model: geminiModel,
-          mcCount,
-          tfCount,
-          saCount,
-          essayCount,
-          extraCount,
-          difficulty,
-          topics: effectiveTopics,
-          generationPrompt: effectivePrompt,
-          uploadedText: extractedText,
-        });
+      const effectiveTopics = Array.from(new Set([primarySubject, ...topics.filter((t) => t && t !== 'General Subject Matter')]));
+      const effectivePrompt = generationPrompt.trim() || primarySubject;
 
-        setGeneratedQuestions(questions);
-      } catch (err: any) {
-        console.error('Gemini Generation error:', err);
-        const fallbackQuestions = buildTopicDrivenQuestions({
-          model: geminiModel,
-          mcCount,
-          tfCount,
-          saCount,
-          essayCount,
-          extraCount,
-          difficulty,
-          topics: effectiveTopics,
-          generationPrompt: effectivePrompt,
-        });
-        setGeneratedQuestions(fallbackQuestions);
-        setGenerationError(`Notice: Cloud AI call hit an error (${err.message || err}). Generated using topic-driven engine fallback.`);
-      } finally {
-        setGenerating(false);
+      if (aiEngine === 'gemini') {
+        try {
+          setGenerationStatusText(`Connecting to Google Gemini AI (${geminiModel}) for ${isTosActive ? 'TOS-aligned' : 'topic-driven'} generation on "${primarySubject}"...`);
+
+          const questions = await generateExamWithGemini({
+            model: geminiModel,
+            mcCount,
+            tfCount,
+            saCount,
+            essayCount,
+            extraCount: isTosActive ? 0 : extraCount,
+            difficulty,
+            topics: effectiveTopics,
+            generationPrompt: effectivePrompt,
+            uploadedText: extractedText,
+            tosData: effectiveTos,
+            onProgress: (current, total, msg) => {
+              setGenerationStatusText(msg);
+            },
+          });
+
+          setGeneratedQuestions(questions);
+        } catch (err: any) {
+          console.error('Gemini Generation error:', err);
+          const fallbackQuestions = buildTopicDrivenQuestions({
+            model: geminiModel,
+            mcCount,
+            tfCount,
+            saCount,
+            essayCount,
+            extraCount: isTosActive ? 0 : extraCount,
+            difficulty,
+            topics: effectiveTopics,
+            generationPrompt: effectivePrompt,
+            tosData: effectiveTos,
+          });
+          setGeneratedQuestions(fallbackQuestions);
+          setGenerationError(`Notice: Cloud AI call hit an error (${err.message || err}). Generated using topic-driven engine fallback.`);
+        } finally {
+          setGenerating(false);
+        }
+      } else {
+        try {
+          setGenerationStatusText(`Prompting local Ollama model (${ollamaModel}) for "${primarySubject}"...`);
+
+          const questions = await generateExamWithOllama({
+            model: ollamaModel,
+            mcCount,
+            tfCount,
+            saCount,
+            essayCount,
+            extraCount: isTosActive ? 0 : extraCount,
+            difficulty,
+            topics: effectiveTopics,
+            generationPrompt: effectivePrompt,
+            uploadedText: extractedText,
+            baseUrl: ollamaUrl,
+            tosData: effectiveTos,
+          });
+
+          setGeneratedQuestions(questions);
+        } catch (err: any) {
+          console.error('Ollama Generation error:', err);
+          const fallbackQuestions = buildTopicDrivenQuestions({
+            model: ollamaModel,
+            mcCount,
+            tfCount,
+            saCount,
+            essayCount,
+            extraCount: isTosActive ? 0 : extraCount,
+            difficulty,
+            topics: effectiveTopics,
+            generationPrompt: effectivePrompt,
+            tosData: effectiveTos,
+          });
+          setGeneratedQuestions(fallbackQuestions);
+          setGenerationError(`Notice: Ollama local AI connection issue (${err.message || err}). Generated using topic-driven engine fallback.`);
+        } finally {
+          setGenerating(false);
+        }
       }
-    } else {
-      try {
-        setGenerationStatusText(`Prompting local Ollama model (${ollamaModel}) for "${primarySubject}"...`);
-        const extractedText = await extractFilesContent([syllabus, tos, ...materials]);
-
-        const questions = await generateExamWithOllama({
-          model: ollamaModel,
-          mcCount,
-          tfCount,
-          saCount,
-          essayCount,
-          extraCount,
-          difficulty,
-          topics: effectiveTopics,
-          generationPrompt: effectivePrompt,
-          uploadedText: extractedText,
-          baseUrl: ollamaUrl,
-        });
-
-        setGeneratedQuestions(questions);
-      } catch (err: any) {
-        console.error('Ollama Generation error:', err);
-        const fallbackQuestions = buildTopicDrivenQuestions({
-          model: ollamaModel,
-          mcCount,
-          tfCount,
-          saCount,
-          essayCount,
-          extraCount,
-          difficulty,
-          topics: effectiveTopics,
-          generationPrompt: effectivePrompt,
-        });
-        setGeneratedQuestions(fallbackQuestions);
-        setGenerationError(`Notice: Ollama local AI connection issue (${err.message || err}). Generated using topic-driven engine fallback.`);
-      } finally {
-        setGenerating(false);
-      }
+    } catch (outerErr: any) {
+      console.error('Generation pipeline error:', outerErr);
+      setGenerating(false);
+      setGenerationError(`File extraction or generation error: ${outerErr.message || outerErr}`);
     }
   };
 
@@ -334,13 +387,36 @@ export default function ExamGenerator() {
     type: 'syllabus' | 'materials' | 'tos'
   ) => {
     const files = e.target.files;
-    if (files) {
+    if (files && files.length > 0) {
       if (type === 'materials') {
         setMaterials([...materials, ...Array.from(files)]);
       } else if (type === 'syllabus') {
         setSyllabus(files[0]);
       } else if (type === 'tos') {
-        setTos(files[0]);
+        const file = files[0];
+        setTos(file);
+        setIsTosParsing(true);
+        setTosParseError(null);
+        const apiKey = getStoredGeminiApiKey();
+        parseTOSFile(file, apiKey)
+          .then((parsed) => {
+            setTosData(parsed);
+            setIsTosParsing(false);
+            if (parsed.courseTitle && !examTitle) {
+              setExamTitle(`${parsed.courseTitle} Examination`);
+            }
+            if (parsed.topics && parsed.topics.length > 0) {
+              const nonDefault = topics.filter(t => t && t !== 'General Subject Matter');
+              if (nonDefault.length === 0) {
+                setTopics(parsed.topics);
+              }
+            }
+          })
+          .catch((err) => {
+            console.error('TOS parsing failed:', err);
+            setTosParseError(`Could not extract table matrix: ${err.message || err}. AI will read raw file.`);
+            setIsTosParsing(false);
+          });
       }
     }
   };
@@ -417,6 +493,8 @@ export default function ExamGenerator() {
       question: `New custom ${type === 'multiple-choice' ? 'Multiple Choice' : type === 'true-false' ? 'True/False' : type === 'short-answer' ? 'Short Answer' : 'Essay'} question: Enter text here...`,
       points: type === 'multiple-choice' ? 2 : type === 'true-false' ? 1 : type === 'short-answer' ? 3 : 5,
       difficulty: 'medium',
+      cognitiveLevel: 'Applying',
+      itemPlacement: generatedQuestions.length + 1,
       topic: topics[0] || 'Custom Topic',
       image: '',
       isExtra: false,
@@ -855,21 +933,162 @@ export default function ExamGenerator() {
 
             {/* RIGHT COLUMN: AI Topics, Difficulty, Allocations & File Attachments */}
             <Grid item xs={12} md={6}>
-              <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: '#e2e8f0', height: '100%', p: 1 }}>
+              <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: isTosActive ? '#c084fc' : '#e2e8f0', height: '100%', p: 1 }}>
                 <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-                    <Tune color="primary" />
-                    <Typography variant="h6" fontWeight="bold">2. Question Rules & Content</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Tune color={isTosActive ? 'secondary' : 'primary'} />
+                      <Typography variant="h6" fontWeight="bold">2. Question Rules & Content</Typography>
+                    </Box>
+                    {isTosActive && (
+                      <Chip
+                        icon={<AssignmentTurnedIn sx={{ fontSize: '0.9rem !important' }} />}
+                        label="TOS Governing"
+                        color="secondary"
+                        size="small"
+                        sx={{ fontWeight: 800 }}
+                      />
+                    )}
                   </Box>
 
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                    {/* Dedicated TOS Blueprint Card when TOS is Attached */}
+                    {isTosActive && (
+                      <Card
+                        variant="outlined"
+                        sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          bgcolor: '#faf5ff',
+                          borderColor: '#d8b4fe',
+                          borderLeft: '5px solid #9333ea',
+                          boxShadow: '0 4px 12px rgba(147, 51, 234, 0.07)',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AssignmentTurnedIn sx={{ color: '#7c3aed', fontSize: 24 }} />
+                            <Box>
+                              <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#581c87', lineHeight: 1.2 }}>
+                                Table of Specifications (TOS) Active
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#7e22ce', fontWeight: 600 }}>
+                                {tos?.name}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            startIcon={<Close sx={{ fontSize: '0.85rem !important' }} />}
+                            onClick={handleRemoveTos}
+                            sx={{ textTransform: 'none', borderRadius: 2, py: 0.2, px: 1, fontSize: '0.75rem', fontWeight: 700 }}
+                          >
+                            Remove TOS
+                          </Button>
+                        </Box>
+
+                        {isTosParsing ? (
+                          <Box sx={{ py: 1 }}>
+                            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 700, color: '#6b21a8' }}>
+                              Reading Table of Specifications matrix & cognitive levels...
+                            </Typography>
+                            <LinearProgress color="secondary" sx={{ borderRadius: 2, height: 6 }} />
+                          </Box>
+                        ) : tosData ? (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                            {tosData.courseTitle && (
+                              <Box sx={{ p: 1, bgcolor: '#f5f3ff', borderRadius: 1.5, border: '1px solid #ddd6fe' }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#6d28d9', display: 'block' }}>
+                                  COURSE SPECIFICATION:
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#4c1d95' }}>
+                                  {tosData.courseTitle}
+                                </Typography>
+                              </Box>
+                            )}
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                              <Chip
+                                label={`${tosData.totalItems} Items Required`}
+                                size="small"
+                                color="secondary"
+                                sx={{ fontWeight: 800, fontSize: '0.7rem' }}
+                              />
+                              {tosData.totalPoints > 0 && (
+                                <Chip
+                                  label={`${tosData.totalPoints} Total Points`}
+                                  size="small"
+                                  variant="outlined"
+                                  color="secondary"
+                                  sx={{ fontWeight: 700, fontSize: '0.7rem' }}
+                                />
+                              )}
+                              <Chip
+                                icon={<Lock sx={{ fontSize: '0.75rem !important' }} />}
+                                label="Rules Locked by TOS"
+                                size="small"
+                                sx={{ fontWeight: 800, fontSize: '0.7rem', bgcolor: '#ede9fe', color: '#6b21a8' }}
+                              />
+                            </Box>
+
+                            <Box>
+                              <Typography variant="caption" sx={{ fontWeight: 750, color: '#4c1d95', display: 'block', mb: 0.5 }}>
+                                Bloom's Cognitive Distribution:
+                              </Typography>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                                {Object.entries(tosData.cognitiveLevels || tosData.cognitiveBreakdown || {})
+                                  .filter(([_, cnt]) => cnt > 0)
+                                  .map(([lvl, cnt]) => {
+                                    const style = getBloomBadgeColor(lvl);
+                                    return (
+                                      <Chip
+                                        key={lvl}
+                                        label={`${lvl}: ${cnt}`}
+                                        size="small"
+                                        sx={{
+                                          fontWeight: 750,
+                                          fontSize: '0.68rem',
+                                          bgcolor: style.bg,
+                                          color: style.text,
+                                          border: `1px solid ${style.border}`,
+                                        }}
+                                      />
+                                    );
+                                  })}
+                              </Box>
+                            </Box>
+
+                            {tosData.topics && tosData.topics.length > 0 && (
+                              <Box sx={{ mt: 0.3 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 750, color: '#4c1d95', display: 'block', mb: 0.2 }}>
+                                  TOS Topics Detected ({tosData.topics.length}):
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: '#6b21a8', fontStyle: 'italic', display: 'block', lineHeight: 1.3 }}>
+                                  {tosData.topics.slice(0, 4).join(' • ')}{tosData.topics.length > 4 ? ` (+${tosData.topics.length - 4} more)` : ''}
+                                </Typography>
+                              </Box>
+                            )}
+
+                            <Alert severity="info" icon={<Lock fontSize="inherit" />} sx={{ py: 0.3, px: 1.2, borderRadius: 2, '& .MuiAlert-message': { fontSize: '0.72rem' } }}>
+                              Difficulty Strategy, Extra Pool, and Question Type Quantities below are locked. The AI will strictly follow your TOS cognitive levels, topics, and item placement sequence.
+                            </Alert>
+                          </Box>
+                        ) : tosParseError ? (
+                          <Alert severity="warning" sx={{ py: 0.5, px: 1.2, borderRadius: 2, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
+                            {tosParseError}
+                          </Alert>
+                        ) : null}
+                      </Card>
+                    )}
+
                     {/* Difficulty & Anti-Cheat */}
-                    <Grid container spacing={2}>
+                    <Grid container spacing={2} sx={{ opacity: isTosActive ? 0.6 : 1, transition: 'opacity 0.2s' }}>
                       <Grid item xs={12} sm={6}>
-                        <FormControl fullWidth size="small">
+                        <FormControl fullWidth size="small" disabled={isTosActive}>
                           <InputLabel>Difficulty Strategy</InputLabel>
                           <Select
-                            value={difficulty}
+                            value={isTosActive ? 'mixed' : difficulty}
                             onChange={(e) => setDifficulty(e.target.value)}
                             label="Difficulty Strategy"
                             sx={{ borderRadius: 2 }}
@@ -887,8 +1106,10 @@ export default function ExamGenerator() {
                           size="small"
                           label="Anti-Cheat Extra Items Pool"
                           type="number"
-                          value={extraCount}
+                          disabled={isTosActive}
+                          value={isTosActive ? 0 : extraCount}
                           onChange={(e) => setExtraCount(Math.max(0, Number(e.target.value)))}
+                          helperText={isTosActive ? 'Disabled: Fixed by TOS specifications' : undefined}
                           sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                         />
                       </Grid>
@@ -906,10 +1127,20 @@ export default function ExamGenerator() {
                     />
 
                     {/* Question Type Quantity Distribution */}
-                    <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2.5, border: '1px solid #e2e8f0' }}>
-                      <Typography variant="caption" sx={{ fontWeight: 750, color: 'text.secondary', display: 'block', mb: 1.5 }}>
-                        Question Type Quantities
-                      </Typography>
+                    <Box sx={{ p: 2, bgcolor: isTosActive ? '#f1f5f9' : '#f8fafc', borderRadius: 2.5, border: '1px solid #e2e8f0', opacity: isTosActive ? 0.65 : 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 750, color: 'text.secondary', display: 'block' }}>
+                          Question Type Quantities
+                        </Typography>
+                        {isTosActive && (
+                          <Chip
+                            icon={<Lock sx={{ fontSize: '0.75rem !important' }} />}
+                            label="Governed by TOS"
+                            size="small"
+                            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: '#e2e8f0', color: '#475569' }}
+                          />
+                        )}
+                      </Box>
                       <Grid container spacing={1.5}>
                         <Grid item xs={6} sm={3}>
                           <TextField
@@ -917,9 +1148,10 @@ export default function ExamGenerator() {
                             size="small"
                             label="Multiple Choice"
                             type="number"
+                            disabled={isTosActive}
                             value={mcCount}
                             onChange={(e) => setMcCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
                           />
                         </Grid>
                         <Grid item xs={6} sm={3}>
@@ -928,9 +1160,10 @@ export default function ExamGenerator() {
                             size="small"
                             label="True / False"
                             type="number"
+                            disabled={isTosActive}
                             value={tfCount}
                             onChange={(e) => setTfCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
                           />
                         </Grid>
                         <Grid item xs={6} sm={3}>
@@ -939,9 +1172,10 @@ export default function ExamGenerator() {
                             size="small"
                             label="Short Answer"
                             type="number"
+                            disabled={isTosActive}
                             value={saCount}
                             onChange={(e) => setSaCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
                           />
                         </Grid>
                         <Grid item xs={6} sm={3}>
@@ -950,9 +1184,10 @@ export default function ExamGenerator() {
                             size="small"
                             label="Essay"
                             type="number"
+                            disabled={isTosActive}
                             value={essayCount}
                             onChange={(e) => setEssayCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
                           />
                         </Grid>
                       </Grid>
@@ -962,7 +1197,7 @@ export default function ExamGenerator() {
                           Active: {activeQuestionCount} questions
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
-                          Total Pool: {totalGeneratedCount} items (+{extraCount} anti-cheat)
+                          {isTosActive ? `Total Items: ${activeQuestionCount} (from TOS)` : `Total Pool: ${totalGeneratedCount} items (+${extraCount} anti-cheat)`}
                         </Typography>
                       </Box>
                     </Box>
@@ -972,7 +1207,7 @@ export default function ExamGenerator() {
                       <Typography variant="caption" sx={{ fontWeight: 750, color: '#6b21a8', display: 'block', mb: 1 }}>
                         Attach Course Materials (Optional Alignment)
                       </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                         <Button
                           variant={syllabus ? 'contained' : 'outlined'}
                           color="secondary"
@@ -985,17 +1220,24 @@ export default function ExamGenerator() {
                           <input type="file" hidden accept=".pdf,.doc,.docx" onChange={(e) => handleFileUpload(e, 'syllabus')} />
                         </Button>
 
-                        <Button
-                          variant={tos ? 'contained' : 'outlined'}
-                          color="secondary"
-                          component="label"
-                          size="small"
-                          startIcon={<Upload />}
-                          sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.8rem' }}
-                        >
-                          {tos ? tos.name : 'Attach TOS'}
-                          <input type="file" hidden accept=".pdf,.doc,.docx,.xlsx" onChange={(e) => handleFileUpload(e, 'tos')} />
-                        </Button>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Button
+                            variant={tos ? 'contained' : 'outlined'}
+                            color="secondary"
+                            component="label"
+                            size="small"
+                            startIcon={<Upload />}
+                            sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.8rem' }}
+                          >
+                            {tos ? (tos.name.length > 18 ? `${tos.name.substring(0, 16)}...` : tos.name) : 'Attach TOS'}
+                            <input type="file" hidden accept=".pdf,.doc,.docx,.xlsx" onChange={(e) => handleFileUpload(e, 'tos')} />
+                          </Button>
+                          {tos && (
+                            <IconButton size="small" color="error" onClick={handleRemoveTos} title="Remove TOS" sx={{ p: 0.5 }}>
+                              <Close fontSize="small" />
+                            </IconButton>
+                          )}
+                        </Box>
 
                         <Button
                           variant={materials.length > 0 ? 'contained' : 'outlined'}
@@ -1173,36 +1415,78 @@ export default function ExamGenerator() {
 
                   <CardContent sx={{ p: 3.5, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <Box sx={{ width: '100%' }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.2, mb: 4 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Multiple Choice:</Typography>
-                          <Typography variant="body2" fontWeight="bold" color="#1e293b">{mcCount} items</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>True / False:</Typography>
-                          <Typography variant="body2" fontWeight="bold" color="#1e293b">{tfCount} items</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Short Answer:</Typography>
-                          <Typography variant="body2" fontWeight="bold" color="#1e293b">{saCount} items</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Essay:</Typography>
-                          <Typography variant="body2" fontWeight="bold" color="#1e293b">{essayCount} items</Typography>
-                        </Box>
-                        <Divider sx={{ my: 1 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary' }}>Active Selected (N):</Typography>
-                          <Typography variant="body2" fontWeight="black" color="primary.main">{activeQuestionCount} Questions</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Anti-Cheat Drawer (E):</Typography>
-                          <Typography variant="body2" fontWeight="bold" color="#1e293b">{extraCount} Questions</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.8, bgcolor: 'rgba(99, 102, 241, 0.05)', borderRadius: 3, border: '1px solid rgba(99,102,241,0.1)' }}>
-                          <Typography variant="subtitle2" fontWeight="bold" color="primary.dark">Total Pool Size:</Typography>
-                          <Typography variant="subtitle2" fontWeight="black" color="primary.dark">{totalGeneratedCount} Questions</Typography>
-                        </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
+                        {isTosActive && tosData ? (
+                          <>
+                            <Box sx={{ p: 1.5, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0', mb: 0.5 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 800, color: '#166534', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <AssignmentTurnedIn sx={{ fontSize: 16 }} /> TOS BLUEPRINT SPECIFICATION
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#15803d', display: 'block', mt: 0.3 }}>
+                                Strict Bloom cognitive levels and sequential item placement sequence active.
+                              </Typography>
+                            </Box>
+
+                            <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              Cognitive Level Breakdown
+                            </Typography>
+                            {Object.entries(tosData.cognitiveLevels || tosData.cognitiveBreakdown || {})
+                              .filter(([_, cnt]) => cnt > 0)
+                              .map(([lvl, cnt]) => {
+                                const style = getBloomBadgeColor(lvl);
+                                return (
+                                  <Box key={lvl} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: style.text }} />
+                                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>{lvl}:</Typography>
+                                    </Box>
+                                    <Typography variant="body2" fontWeight="bold" color="#1e293b">{cnt} items</Typography>
+                                  </Box>
+                                );
+                              })}
+                            <Divider sx={{ my: 0.5 }} />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary' }}>Total TOS Items:</Typography>
+                              <Typography variant="body2" fontWeight="black" color="primary.main">{activeQuestionCount} Questions</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Total Points:</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{tosData.totalPoints || activeQuestionCount} Points</Typography>
+                            </Box>
+                          </>
+                        ) : (
+                          <>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Multiple Choice:</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{mcCount} items</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>True / False:</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{tfCount} items</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Short Answer:</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{saCount} items</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Essay:</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{essayCount} items</Typography>
+                            </Box>
+                            <Divider sx={{ my: 1 }} />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary' }}>Active Selected (N):</Typography>
+                              <Typography variant="body2" fontWeight="black" color="primary.main">{activeQuestionCount} Questions</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Anti-Cheat Drawer (E):</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{extraCount} Questions</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.8, bgcolor: 'rgba(99, 102, 241, 0.05)', borderRadius: 3, border: '1px solid rgba(99,102,241,0.1)' }}>
+                              <Typography variant="subtitle2" fontWeight="bold" color="primary.dark">Total Pool Size:</Typography>
+                              <Typography variant="subtitle2" fontWeight="black" color="primary.dark">{totalGeneratedCount} Questions</Typography>
+                            </Box>
+                          </>
+                        )}
                       </Box>
                     </Box>
                   </CardContent>
@@ -1346,9 +1630,10 @@ export default function ExamGenerator() {
 
                 {/* Strictly Vertical Full-Width Questions Listing */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, width: '100%' }}>
-                  {generatedQuestions.map((q, qIdx) => {
-                    const isQExtra = q.isExtra || qIdx >= activeQuestionCount;
-                    const isQRegenerating = !!regeneratingMap[q.id];
+                  {generatedQuestions.filter(Boolean).map((q, qIdx) => {
+                    if (!q) return null;
+                    const isQExtra = Boolean(q?.isExtra || qIdx >= activeQuestionCount);
+                    const isQRegenerating = Boolean(q?.id && regeneratingMap[q.id]);
 
                     return (
                       <Card
@@ -1365,485 +1650,454 @@ export default function ExamGenerator() {
                           '&:hover': { boxShadow: '0 4px 18px rgba(0,0,0,0.04)' }
                         }}
                       >
-                          {/* Smart AI Regenerating Card Glass Overlay */}
-                          {isQRegenerating && (
-                            <Box sx={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              bgcolor: 'rgba(255, 255, 255, 0.85)',
-                              backdropFilter: 'blur(3px)',
-                              zIndex: 10,
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: 4.5
-                            }}>
-                              <CircularProgress size={44} thickness={4} sx={{ color: '#6366f1', mb: 2 }} />
-                              <Typography variant="subtitle2" fontWeight="bold" color="primary.dark">
-                                AI is drafting alternative variations...
+                        {/* Smart AI Regenerating Card Glass Overlay */}
+                        {isQRegenerating && (
+                          <Box sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            bgcolor: 'rgba(255, 255, 255, 0.85)',
+                            backdropFilter: 'blur(3px)',
+                            zIndex: 10,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 4.5
+                          }}>
+                            <CircularProgress size={44} thickness={4} sx={{ color: '#6366f1', mb: 2 }} />
+                            <Typography variant="subtitle2" fontWeight="bold" color="primary.dark">
+                              AI is drafting alternative variations...
+                            </Typography>
+                          </Box>
+                        )}
+
+                        <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
+                          {/* Unified Card Header: Tags on Left, Status + Delete on Right (No overlapping) */}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1.5, mb: 2.5, pb: 1.5, borderBottom: '1px solid #f1f5f9' }}>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                              <Typography variant="subtitle1" fontWeight={900} sx={{ color: 'primary.main', mr: 0.5 }}>
+                                #{q.itemPlacement || qIdx + 1}
                               </Typography>
-                            </Box>
-                          )}
-
-                          <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
-                            {/* Unified Card Header: Tags on Left, Status + Delete on Right (No overlapping) */}
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1.5, mb: 2.5, pb: 1.5, borderBottom: '1px solid #f1f5f9' }}>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                                <Typography variant="subtitle1" fontWeight={900} sx={{ color: 'primary.main', mr: 0.5 }}>
-                                  #{qIdx + 1}
-                                </Typography>
-                                <Chip label={q.type.toUpperCase()} size="small" sx={{ fontWeight: 800, fontSize: '0.65rem' }} />
-                                <Chip label={`${q.points} pts`} size="small" variant="outlined" sx={{ fontWeight: 700, fontSize: '0.65rem' }} />
-                                {q.topic && (
-                                  <Chip
-                                    label={q.topic}
-                                    size="small"
-                                    variant="outlined"
-                                    color="info"
-                                    sx={{ fontWeight: 600, fontSize: '0.65rem', maxWidth: { xs: 160, sm: 280 } }}
-                                  />
-                                )}
-                                {q.difficulty && (
-                                  <Chip
-                                    label={q.difficulty.toUpperCase()}
-                                    size="small"
-                                    sx={{
-                                      fontWeight: 800,
-                                      fontSize: '0.65rem',
-                                      ...(q.difficulty.toLowerCase() === 'hard'
-                                        ? { bgcolor: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }
-                                        : q.difficulty.toLowerCase() === 'medium'
-                                          ? { bgcolor: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }
-                                          : q.difficulty.toLowerCase() === 'easy'
-                                            ? { bgcolor: '#dcfce7', color: '#166534', border: '1px solid #86efac' }
-                                            : { bgcolor: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe' }),
-                                    }}
-                                  />
-                                )}
-                              </Box>
-
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                                {isQExtra ? (
-                                  <Chip label="EXTRA POOL ITEM" color="secondary" size="small" sx={{ fontWeight: 800, fontSize: '0.65rem' }} />
-                                ) : (
-                                  <Chip label="ACTIVE STUDENT ITEM" color="primary" size="small" sx={{ fontWeight: 800, fontSize: '0.65rem' }} />
-                                )}
-                                <IconButton color="error" onClick={() => handleDeleteQuestion(qIdx)} size="small" title="Delete Question">
-                                  <Delete fontSize="small" />
-                                </IconButton>
-                              </Box>
-                            </Box>
-
-                            {/* Preview Mode Rendering */}
-                            {isPreviewMode ? (
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <Typography variant="h6" fontWeight="bold" sx={{ color: 'text.primary', pr: 2 }}>
-                                  {q.question}
-                                </Typography>
-                                {q.image && (
-                                  <Box sx={{ my: 1, display: 'flex' }}>
-                                    <img src={q.image} alt="Question Asset" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
-                                  </Box>
-                                )}
-
-                                {/* MC choices */}
-                                {q.type === 'multiple-choice' && q.options && (
-                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pl: 1 }}>
-                                    {q.options.map((opt: string, optIdx: number) => (
-                                      <Box key={optIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                        <Radio checked={q.correctAnswer === optIdx} disabled size="small" />
-                                        <Typography variant="body2" sx={{ fontWeight: q.correctAnswer === optIdx ? 'bold' : 'normal' }}>
-                                          <strong>{String.fromCharCode(65 + optIdx)}.</strong> {opt}
-                                        </Typography>
-                                        {q.optionsImages?.[optIdx] && (
-                                          <img src={q.optionsImages[optIdx]} alt="Option Asset" style={{ width: '35px', height: '35px', objectFit: 'cover', borderRadius: '4px' }} />
-                                        )}
-                                        {q.correctAnswer === optIdx && (
-                                          <Chip label="Correct Answer Key" color="success" size="small" variant="outlined" sx={{ height: 20, fontWeight: 700, fontSize: '0.6rem' }} />
-                                        )}
-                                      </Box>
-                                    ))}
-                                  </Box>
-                                )}
-
-                                {/* True / False */}
-                                {q.type === 'true-false' && (
-                                  <Box sx={{ display: 'flex', gap: 2, pl: 1, alignItems: 'center' }}>
-                                    <Chip
-                                      label={`Answer Key: ${String(q.correctAnswer).toUpperCase()}`}
-                                      color={String(q.correctAnswer).toLowerCase() === 'true' ? 'success' : 'error'}
-                                      variant="outlined"
-                                      sx={{ fontWeight: 'bold' }}
-                                    />
-                                  </Box>
-                                )}
-
-                                {/* Short Answer */}
-                                {q.type === 'short-answer' && (
-                                  <Box sx={{ pl: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
-                                      Expected Correct Answer Key:
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#16a34a' }}>
-                                      {q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : 'Specific technical keyword or concise statement'}
-                                    </Typography>
-                                  </Box>
-                                )}
-
-                                {/* Essay */}
-                                {q.type === 'essay' && (
-                                  <Box sx={{ pl: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
-                                    <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
-                                      Evaluation Rubric / Key Criteria:
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: '#475569', fontStyle: q.correctAnswer ? 'normal' : 'italic' }}>
-                                      {q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : 'Instructor will evaluate student synthesis and comprehensive analysis.'}
-                                    </Typography>
-                                  </Box>
-                                )}
-                              </Box>
-                            ) : (
-                              /* STACKED VERTICAL EDITOR MODE */
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-
-                                {/* Question Text (Smooth auto-expand, no fractional scrollbar) */}
-                                <TextField
-                                  fullWidth
-                                  label="Question Text"
-                                  value={q.question}
-                                  onChange={(e) => handleUpdateQuestionText(qIdx, e.target.value)}
-                                  multiline
-                                  minRows={2}
-                                  maxRows={6}
-                                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                              <Chip label={q.type.toUpperCase()} size="small" sx={{ fontWeight: 800, fontSize: '0.65rem' }} />
+                              <Chip label={`${q.points} pts`} size="small" variant="outlined" sx={{ fontWeight: 700, fontSize: '0.65rem' }} />
+                              {q.cognitiveLevel && (
+                                <Chip
+                                  icon={<Psychology sx={{ fontSize: '0.85rem !important' }} />}
+                                  label={q.cognitiveLevel.toUpperCase()}
+                                  size="small"
+                                  sx={{
+                                    fontWeight: 800,
+                                    fontSize: '0.65rem',
+                                    bgcolor: getBloomBadgeColor(q.cognitiveLevel).bg,
+                                    color: getBloomBadgeColor(q.cognitiveLevel).text,
+                                    border: `1px solid ${getBloomBadgeColor(q.cognitiveLevel).border}`,
+                                  }}
                                 />
+                              )}
+                              {q.topic && (
+                                <Chip
+                                  label={q.topic}
+                                  size="small"
+                                  variant="outlined"
+                                  color="info"
+                                  sx={{ fontWeight: 600, fontSize: '0.65rem', maxWidth: { xs: 160, sm: 280 } }}
+                                />
+                              )}
+                              {q.difficulty && (
+                                <Chip
+                                  label={q.difficulty.toUpperCase()}
+                                  size="small"
+                                  sx={{
+                                    fontWeight: 800,
+                                    fontSize: '0.65rem',
+                                    ...(q.difficulty.toLowerCase() === 'hard'
+                                      ? { bgcolor: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }
+                                      : q.difficulty.toLowerCase() === 'medium'
+                                        ? { bgcolor: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }
+                                        : q.difficulty.toLowerCase() === 'easy'
+                                          ? { bgcolor: '#dcfce7', color: '#166534', border: '1px solid #86efac' }
+                                          : { bgcolor: '#e0e7ff', color: '#3730a3', border: '1px solid #c7d2fe' }),
+                                  }}
+                                />
+                              )}
+                            </Box>
 
-                                {/* Question Image Attachment */}
-                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5 }}>
-                                  <Button
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                              {isQExtra ? (
+                                <Chip label="EXTRA POOL ITEM" color="secondary" size="small" sx={{ fontWeight: 800, fontSize: '0.65rem' }} />
+                              ) : (
+                                <Chip label="ACTIVE STUDENT ITEM" color="primary" size="small" sx={{ fontWeight: 800, fontSize: '0.65rem' }} />
+                              )}
+                              <IconButton color="error" onClick={() => handleDeleteQuestion(qIdx)} size="small" title="Delete Question">
+                                <Delete fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          </Box>
+
+                          {/* Preview Mode Rendering */}
+                          {isPreviewMode ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <Typography variant="h6" fontWeight="bold" sx={{ color: 'text.primary', pr: 2 }}>
+                                {q.question}
+                              </Typography>
+                              {q.image && (
+                                <Box sx={{ my: 1, display: 'flex' }}>
+                                  <img src={q.image} alt="Question Asset" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
+                                </Box>
+                              )}
+
+                              {/* MC choices */}
+                              {q.type === 'multiple-choice' && q.options && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pl: 1 }}>
+                                  {q.options.map((opt: string, optIdx: number) => (
+                                    <Box key={optIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                      <Radio checked={q.correctAnswer === optIdx} disabled size="small" />
+                                      <Typography variant="body2" sx={{ fontWeight: q.correctAnswer === optIdx ? 'bold' : 'normal' }}>
+                                        <strong>{String.fromCharCode(65 + optIdx)}.</strong> {opt}
+                                      </Typography>
+                                      {q.optionsImages?.[optIdx] && (
+                                        <img src={q.optionsImages[optIdx]} alt="Option Asset" style={{ width: '35px', height: '35px', objectFit: 'cover', borderRadius: '4px' }} />
+                                      )}
+                                      {q.correctAnswer === optIdx && (
+                                        <Chip label="Correct Answer Key" color="success" size="small" variant="outlined" sx={{ height: 20, fontWeight: 700, fontSize: '0.6rem' }} />
+                                      )}
+                                    </Box>
+                                  ))}
+                                </Box>
+                              )}
+
+                              {/* True / False */}
+                              {q.type === 'true-false' && (
+                                <Box sx={{ display: 'flex', gap: 2, pl: 1, alignItems: 'center' }}>
+                                  <Chip
+                                    label={`Answer Key: ${String(q.correctAnswer).toUpperCase()}`}
+                                    color={String(q.correctAnswer).toLowerCase() === 'true' ? 'success' : 'error'}
                                     variant="outlined"
-                                    size="small"
-                                    startIcon={<ImageIcon />}
-                                    onClick={() => handleAttachMockImage(qIdx)}
-                                    sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.8rem' }}
-                                  >
-                                    Attach Question Image asset
-                                  </Button>
-                                  {q.image && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, border: '1px solid #e2e8f0', borderRadius: 2 }}>
-                                      <img src={q.image} alt="Thumbnail" style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '4px' }} />
-                                      <Typography variant="caption" color="text.secondary">Question Asset Active</Typography>
-                                      <IconButton size="small" color="error" onClick={() => handleRemoveImage(qIdx)}>
-                                        <Delete fontSize="small" />
-                                      </IconButton>
-                                    </Box>
-                                  )}
+                                    sx={{ fontWeight: 'bold' }}
+                                  />
                                 </Box>
+                              )}
 
-                                {/* Multiple choice editor */}
-                                {q.type === 'multiple-choice' && q.options && (
-                                  <Box sx={{ pl: { xs: 1.5, md: 3 }, borderLeft: '4px solid #6366f1', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
-                                      Configure Multiple Choice Keys and Options
-                                    </Typography>
-
-                                    {q.options.map((opt: string, optIdx: number) => {
-                                      const isCorrectOpt = q.correctAnswer === optIdx;
-                                      return (
-                                        <Box key={optIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Radio
-                                              checked={isCorrectOpt}
-                                              value={optIdx}
-                                              onChange={() => handleUpdateCorrectAnswer(qIdx, optIdx)}
-                                              size="small"
-                                            />
-                                            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isCorrectOpt ? 'success.main' : 'text.secondary' }}>
-                                              Option {String.fromCharCode(65 + optIdx)} {isCorrectOpt && '(Marked as Correct Answer Key)'}
-                                            </Typography>
-                                          </Box>
-
-                                          <TextField
-                                            fullWidth
-                                            size="small"
-                                            value={opt}
-                                            onChange={(e) => handleUpdateQuestionOption(qIdx, optIdx, e.target.value)}
-                                            placeholder={`Enter content statement for Option ${String.fromCharCode(65 + optIdx)}`}
-                                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                                          />
-
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
-                                            <Button
-                                              variant="text"
-                                              size="small"
-                                              startIcon={<ImageIcon />}
-                                              onClick={() => handleAttachMockImage(qIdx, optIdx)}
-                                              sx={{ fontSize: '0.75rem', py: 0.5 }}
-                                            >
-                                              Attach Option Image
-                                            </Button>
-                                            {q.optionsImages?.[optIdx] && (
-                                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 0.5, border: '1px solid #f1f5f9', borderRadius: 1.5 }}>
-                                                <img src={q.optionsImages[optIdx]} alt="Opt Thumbnail" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
-                                                <IconButton size="small" color="error" onClick={() => handleRemoveImage(qIdx, optIdx)}>
-                                                  <Delete fontSize="small" />
-                                                </IconButton>
-                                              </Box>
-                                            )}
-                                          </Box>
-                                        </Box>
-                                      );
-                                    })}
-                                  </Box>
-                                )}
-
-                                {/* True / False Editor */}
-                                {q.type === 'true-false' && (
-                                  <Box sx={{ pl: 3, borderLeft: '4px solid #10b981', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
-                                      Configure True/False Correct Key
-                                    </Typography>
-                                    <RadioGroup
-                                      value={String(q.correctAnswer)}
-                                      onChange={(e) => handleUpdateCorrectAnswer(qIdx, e.target.value)}
-                                      sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}
-                                    >
-                                      <FormControlLabel value="true" control={<Radio />} label="True (Statement is factual)" />
-                                      <FormControlLabel value="false" control={<Radio />} label="False (Statement is incorrect)" />
-                                    </RadioGroup>
-                                  </Box>
-                                )}
-
-                                {/* Short Answer Editor with Dedicated Regenerate Answer Key Button */}
-                                {q.type === 'short-answer' && (
-                                  <Box sx={{ pl: 3, borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
-                                        Short Answer Key
-                                      </Typography>
-                                      <Button
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={<AutoAwesome sx={{ fontSize: 13 }} />}
-                                        disabled={isQRegenerating}
-                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
-                                        sx={{
-                                          textTransform: 'none',
-                                          borderRadius: 2,
-                                          fontWeight: 700,
-                                          fontSize: '0.75rem',
-                                          py: 0.3,
-                                          px: 1.5,
-                                          bgcolor: '#fffbeb',
-                                          borderColor: '#fde68a',
-                                          color: '#b45309',
-                                          '&:hover': { bgcolor: '#fef3c7', borderColor: '#f59e0b' }
-                                        }}
-                                      >
-                                        {isQRegenerating ? 'Regenerating Key...' : 'Regenerate Answer Key'}
-                                      </Button>
-                                    </Box>
-                                    <TextField
-                                      fullWidth
-                                      label="Expected Correct Answer Statement / Key Term"
-                                      size="small"
-                                      value={q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : ''}
-                                      placeholder="e.g. Spanish mercantilism, forced labor (polo y servicios), etc."
-                                      onChange={(e) => handleUpdateCorrectAnswer(qIdx, e.target.value)}
-                                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                                    />
-                                  </Box>
-                                )}
-
-                                {/* Essay Editor with Dedicated Regenerate Rubric Button */}
-                                {q.type === 'essay' && (
-                                  <Box sx={{ pl: 3, borderLeft: '4px solid #8b5cf6', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                                      <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
-                                        Essay Grading Rubric & Criteria
-                                      </Typography>
-                                      <Button
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={<AutoAwesome sx={{ fontSize: 13 }} />}
-                                        disabled={isQRegenerating}
-                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
-                                        sx={{
-                                          textTransform: 'none',
-                                          borderRadius: 2,
-                                          fontWeight: 700,
-                                          fontSize: '0.75rem',
-                                          py: 0.3,
-                                          px: 1.5,
-                                          bgcolor: '#fbf7ff',
-                                          borderColor: '#ddd6fe',
-                                          color: '#6d28d9',
-                                          '&:hover': { bgcolor: '#ede9fe', borderColor: '#8b5cf6' }
-                                        }}
-                                      >
-                                        {isQRegenerating ? 'Regenerating Rubric...' : 'Regenerate Rubric / Answer Key'}
-                                      </Button>
-                                    </Box>
-                                    <TextField
-                                      fullWidth
-                                      multiline
-                                      minRows={2}
-                                      maxRows={4}
-                                      label="Expected Analytical Points / Rubric Criteria"
-                                      size="small"
-                                      value={q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : ''}
-                                      placeholder="Provide key points expected in students' responses..."
-                                      onChange={(e) => handleUpdateCorrectAnswer(qIdx, e.target.value)}
-                                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                                    />
-                                  </Box>
-                                )}
-
-                                {/* Item Point & Difficulty Setting */}
-                                <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2.5, border: '1px solid #e2e8f0' }}>
-                                  <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', mb: 1.5 }}>
-                                    Item Settings & Weight
+                              {/* Short Answer */}
+                              {q.type === 'short-answer' && (
+                                <Box sx={{ pl: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                                    Expected Correct Answer Key:
                                   </Typography>
-                                  <Grid container spacing={2}>
-                                    <Grid item xs={6}>
-                                      <TextField
-                                        fullWidth
-                                        label="Points"
-                                        type="number"
-                                        size="small"
-                                        value={q.points}
-                                        onChange={(e) => handleUpdatePoints(qIdx, Number(e.target.value))}
-                                        sx={{ bgcolor: 'white', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                                      />
-                                    </Grid>
-                                    <Grid item xs={6}>
-                                      <FormControl fullWidth size="small" sx={{ bgcolor: 'white' }}>
-                                        <InputLabel>Difficulty</InputLabel>
-                                        <Select
-                                          value={q.difficulty || 'medium'}
-                                          label="Difficulty"
-                                          onChange={(e) => {
-                                            const updated = [...generatedQuestions];
-                                            updated[qIdx].difficulty = e.target.value;
-                                            setGeneratedQuestions(updated);
-                                          }}
-                                          sx={{ borderRadius: 2 }}
-                                        >
-                                          <MenuItem value="easy">Easy (Knowledge)</MenuItem>
-                                          <MenuItem value="medium">Medium (Application)</MenuItem>
-                                          <MenuItem value="hard">Hard (Synthesis)</MenuItem>
-                                        </Select>
-                                      </FormControl>
-                                    </Grid>
-                                  </Grid>
+                                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#16a34a' }}>
+                                    {q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : 'Specific technical keyword or concise statement'}
+                                  </Typography>
                                 </Box>
+                              )}
 
-                                {/* Clean, Full-Featured AI Revision Action Bar */}
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, pt: 1.5, borderTop: '1px solid #f1f5f9' }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <AutoAwesome sx={{ color: '#6366f1', fontSize: 18 }} />
-                                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
-                                      AI Revision:
-                                    </Typography>
+                              {/* Essay */}
+                              {q.type === 'essay' && (
+                                <Box sx={{ pl: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
+                                    Evaluation Rubric / Key Criteria:
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: '#475569', fontStyle: q.correctAnswer ? 'normal' : 'italic' }}>
+                                    {q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : 'Instructor will evaluate student synthesis and comprehensive analysis.'}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          ) : (
+                            /* STACKED VERTICAL EDITOR MODE */
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+                              {/* Question Text (Smooth auto-expand, no fractional scrollbar) */}
+                              <TextField
+                                fullWidth
+                                label="Question Text"
+                                value={q.question}
+                                onChange={(e) => handleUpdateQuestionText(qIdx, e.target.value)}
+                                multiline
+                                minRows={2}
+                                maxRows={6}
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                              />
+
+                              {/* Question Image Attachment */}
+                              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5 }}>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  startIcon={<ImageIcon />}
+                                  onClick={() => handleAttachMockImage(qIdx)}
+                                  sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.8rem' }}
+                                >
+                                  Attach Question Image asset
+                                </Button>
+                                {q.image && (
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, border: '1px solid #e2e8f0', borderRadius: 2 }}>
+                                    <img src={q.image} alt="Thumbnail" style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '4px' }} />
+                                    <Typography variant="caption" color="text.secondary">Question Asset Active</Typography>
+                                    <IconButton size="small" color="error" onClick={() => handleRemoveImage(qIdx)}>
+                                      <Delete fontSize="small" />
+                                    </IconButton>
                                   </Box>
+                                )}
+                              </Box>
 
-                                  <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                              {/* Multiple choice editor */}
+                              {q.type === 'multiple-choice' && q.options && (
+                                <Box sx={{ pl: { xs: 1.5, md: 3 }, borderLeft: '4px solid #6366f1', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                    Configure Multiple Choice Keys and Options
+                                  </Typography>
+
+                                  {q.options.map((opt: string, optIdx: number) => {
+                                    const isCorrectOpt = q.correctAnswer === optIdx;
+                                    return (
+                                      <Box key={optIdx} sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <Radio
+                                            checked={isCorrectOpt}
+                                            value={optIdx}
+                                            onChange={() => handleUpdateCorrectAnswer(qIdx, optIdx)}
+                                            size="small"
+                                          />
+                                          <Typography variant="subtitle2" sx={{ fontWeight: 800, color: isCorrectOpt ? 'success.main' : 'text.secondary' }}>
+                                            Option {String.fromCharCode(65 + optIdx)} {isCorrectOpt && '(Marked as Correct Answer Key)'}
+                                          </Typography>
+                                        </Box>
+
+                                        <TextField
+                                          fullWidth
+                                          size="small"
+                                          value={opt}
+                                          onChange={(e) => handleUpdateQuestionOption(qIdx, optIdx, e.target.value)}
+                                          placeholder={`Enter content statement for Option ${String.fromCharCode(65 + optIdx)}`}
+                                          sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                                        />
+
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
+                                          <Button
+                                            variant="text"
+                                            size="small"
+                                            startIcon={<ImageIcon />}
+                                            onClick={() => handleAttachMockImage(qIdx, optIdx)}
+                                            sx={{ fontSize: '0.75rem', py: 0.5 }}
+                                          >
+                                            Attach Option Image
+                                          </Button>
+                                          {q.optionsImages?.[optIdx] && (
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 0.5, border: '1px solid #f1f5f9', borderRadius: 1.5 }}>
+                                              <img src={q.optionsImages[optIdx]} alt="Opt Thumbnail" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
+                                              <IconButton size="small" color="error" onClick={() => handleRemoveImage(qIdx, optIdx)}>
+                                                <Delete fontSize="small" />
+                                              </IconButton>
+                                            </Box>
+                                          )}
+                                        </Box>
+                                      </Box>
+                                    );
+                                  })}
+                                </Box>
+                              )}
+
+                              {/* True / False Editor */}
+                              {q.type === 'true-false' && (
+                                <Box sx={{ pl: 3, borderLeft: '4px solid #10b981', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                    Configure True/False Correct Key
+                                  </Typography>
+                                  <RadioGroup
+                                    value={String(q.correctAnswer)}
+                                    onChange={(e) => handleUpdateCorrectAnswer(qIdx, e.target.value)}
+                                    sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}
+                                  >
+                                    <FormControlLabel value="true" control={<Radio />} label="True (Statement is factual)" />
+                                    <FormControlLabel value="false" control={<Radio />} label="False (Statement is incorrect)" />
+                                  </RadioGroup>
+                                </Box>
+                              )}
+
+                              {/* Short Answer Editor with Dedicated Regenerate Answer Key Button */}
+                              {q.type === 'short-answer' && (
+                                <Box sx={{ pl: 3, borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                      Short Answer Key
+                                    </Typography>
                                     <Button
                                       variant="outlined"
                                       size="small"
-                                      startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                      startIcon={<AutoAwesome sx={{ fontSize: 13 }} />}
                                       disabled={isQRegenerating}
-                                      onClick={() => handleRegenerateItem(qIdx, 'full')}
+                                      onClick={() => handleRegenerateItem(qIdx, 'answer')}
                                       sx={{
                                         textTransform: 'none',
                                         borderRadius: 2,
                                         fontWeight: 700,
-                                        fontSize: '0.8rem',
-                                        color: '#4338ca',
-                                        borderColor: '#c7d2fe',
-                                        bgcolor: '#eef2ff',
-                                        '&:hover': { bgcolor: '#e0e7ff', borderColor: '#a5b4fc' }
+                                        fontSize: '0.75rem',
+                                        py: 0.3,
+                                        px: 1.5,
+                                        bgcolor: '#fffbeb',
+                                        borderColor: '#fde68a',
+                                        color: '#b45309',
+                                        '&:hover': { bgcolor: '#fef3c7', borderColor: '#f59e0b' }
                                       }}
                                     >
-                                      Re-generate with AI
+                                      {isQRegenerating ? 'Regenerating Key...' : 'Regenerate Answer Key'}
                                     </Button>
+                                  </Box>
+                                  <TextField
+                                    fullWidth
+                                    label="Expected Correct Answer Statement / Key Term"
+                                    size="small"
+                                    value={q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : ''}
+                                    placeholder="e.g. Spanish mercantilism, forced labor (polo y servicios), etc."
+                                    onChange={(e) => handleUpdateCorrectAnswer(qIdx, e.target.value)}
+                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                                  />
+                                </Box>
+                              )}
 
-                                    {q.type === 'multiple-choice' && (
-                                      <>
-                                        <Button
-                                          variant="outlined"
-                                          size="small"
-                                          startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
-                                          disabled={isQRegenerating}
-                                          onClick={() => handleRegenerateItem(qIdx, 'options')}
-                                          sx={{
-                                            textTransform: 'none',
-                                            borderRadius: 2,
-                                            fontWeight: 700,
-                                            fontSize: '0.8rem',
-                                            color: '#6d28d9',
-                                            borderColor: '#ddd6fe',
-                                            bgcolor: '#f5f3ff',
-                                            '&:hover': { bgcolor: '#ede9fe', borderColor: '#c4b5fd' }
-                                          }}
-                                        >
-                                          Shuffle Choices
-                                        </Button>
-                                        <Button
-                                          variant="outlined"
-                                          size="small"
-                                          startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
-                                          disabled={isQRegenerating}
-                                          onClick={() => handleRegenerateItem(qIdx, 'answer')}
-                                          sx={{
-                                            textTransform: 'none',
-                                            borderRadius: 2,
-                                            fontWeight: 700,
-                                            fontSize: '0.8rem',
-                                            color: '#15803d',
-                                            borderColor: '#bbf7d0',
-                                            bgcolor: '#f0fdf4',
-                                            '&:hover': { bgcolor: '#dcfce7', borderColor: '#86efac' }
-                                          }}
-                                        >
-                                          Regenerate Key
-                                        </Button>
-                                      </>
-                                    )}
+                              {/* Essay Editor with Dedicated Regenerate Rubric Button */}
+                              {q.type === 'essay' && (
+                                <Box sx={{ pl: 3, borderLeft: '4px solid #8b5cf6', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                      Essay Grading Rubric & Criteria
+                                    </Typography>
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      startIcon={<AutoAwesome sx={{ fontSize: 13 }} />}
+                                      disabled={isQRegenerating}
+                                      onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                      sx={{
+                                        textTransform: 'none',
+                                        borderRadius: 2,
+                                        fontWeight: 700,
+                                        fontSize: '0.75rem',
+                                        py: 0.3,
+                                        px: 1.5,
+                                        bgcolor: '#fbf7ff',
+                                        borderColor: '#ddd6fe',
+                                        color: '#6d28d9',
+                                        '&:hover': { bgcolor: '#ede9fe', borderColor: '#8b5cf6' }
+                                      }}
+                                    >
+                                      {isQRegenerating ? 'Regenerating Rubric...' : 'Regenerate Rubric / Answer Key'}
+                                    </Button>
+                                  </Box>
+                                  <TextField
+                                    fullWidth
+                                    multiline
+                                    minRows={2}
+                                    maxRows={4}
+                                    label="Expected Analytical Points / Rubric Criteria"
+                                    size="small"
+                                    value={q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : ''}
+                                    placeholder="Provide key points expected in students' responses..."
+                                    onChange={(e) => handleUpdateCorrectAnswer(qIdx, e.target.value)}
+                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                                  />
+                                </Box>
+                              )}
 
-                                    {q.type === 'short-answer' && (
-                                      <Button
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
-                                        disabled={isQRegenerating}
-                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
-                                        sx={{
-                                          textTransform: 'none',
-                                          borderRadius: 2,
-                                          fontWeight: 700,
-                                          fontSize: '0.8rem',
-                                          color: '#b45309',
-                                          borderColor: '#fde68a',
-                                          bgcolor: '#fffbeb',
-                                          '&:hover': { bgcolor: '#fef3c7', borderColor: '#f59e0b' }
+                              {/* Item Point & Difficulty Setting */}
+                              <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2.5, border: '1px solid #e2e8f0' }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', mb: 1.5 }}>
+                                  Item Settings & Weight
+                                </Typography>
+                                <Grid container spacing={2}>
+                                  <Grid item xs={12} sm={4}>
+                                    <TextField
+                                      fullWidth
+                                      label="Points"
+                                      type="number"
+                                      size="small"
+                                      value={q.points}
+                                      onChange={(e) => handleUpdatePoints(qIdx, Number(e.target.value))}
+                                      sx={{ bgcolor: 'white', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                                    />
+                                  </Grid>
+                                  <Grid item xs={12} sm={4}>
+                                    <FormControl fullWidth size="small" sx={{ bgcolor: 'white' }}>
+                                      <InputLabel>Difficulty</InputLabel>
+                                      <Select
+                                        value={q.difficulty || 'medium'}
+                                        label="Difficulty"
+                                        onChange={(e) => {
+                                          const updated = [...generatedQuestions];
+                                          updated[qIdx].difficulty = e.target.value;
+                                          setGeneratedQuestions(updated);
                                         }}
+                                        sx={{ borderRadius: 2 }}
                                       >
-                                        Regenerate Answer Key
-                                      </Button>
-                                    )}
+                                        <MenuItem value="easy">Easy (Knowledge)</MenuItem>
+                                        <MenuItem value="medium">Medium (Application)</MenuItem>
+                                        <MenuItem value="hard">Hard (Synthesis)</MenuItem>
+                                      </Select>
+                                    </FormControl>
+                                  </Grid>
+                                  <Grid item xs={12} sm={4}>
+                                    <FormControl fullWidth size="small" sx={{ bgcolor: 'white' }}>
+                                      <InputLabel>Cognitive Level</InputLabel>
+                                      <Select
+                                        value={q.cognitiveLevel || 'Applying'}
+                                        label="Cognitive Level"
+                                        onChange={(e) => {
+                                          const updated = [...generatedQuestions];
+                                          updated[qIdx].cognitiveLevel = e.target.value;
+                                          setGeneratedQuestions(updated);
+                                        }}
+                                        sx={{ borderRadius: 2 }}
+                                      >
+                                        {BLOOM_LEVELS.map((lvl) => (
+                                          <MenuItem key={lvl} value={lvl}>{lvl}</MenuItem>
+                                        ))}
+                                      </Select>
+                                    </FormControl>
+                                  </Grid>
+                                </Grid>
+                              </Box>
 
-                                    {q.type === 'essay' && (
+                              {/* Clean, Full-Featured AI Revision Action Bar */}
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, pt: 1.5, borderTop: '1px solid #f1f5f9' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <AutoAwesome sx={{ color: '#6366f1', fontSize: 18 }} />
+                                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
+                                    AI Revision:
+                                  </Typography>
+                                </Box>
+
+                                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                    disabled={isQRegenerating}
+                                    onClick={() => handleRegenerateItem(qIdx, 'full')}
+                                    sx={{
+                                      textTransform: 'none',
+                                      borderRadius: 2,
+                                      fontWeight: 700,
+                                      fontSize: '0.8rem',
+                                      color: '#4338ca',
+                                      borderColor: '#c7d2fe',
+                                      bgcolor: '#eef2ff',
+                                      '&:hover': { bgcolor: '#e0e7ff', borderColor: '#a5b4fc' }
+                                    }}
+                                  >
+                                    Re-generate with AI
+                                  </Button>
+
+                                  {q.type === 'multiple-choice' && (
+                                    <>
                                       <Button
                                         variant="outlined"
                                         size="small"
                                         startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
                                         disabled={isQRegenerating}
-                                        onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                        onClick={() => handleRegenerateItem(qIdx, 'options')}
                                         sx={{
                                           textTransform: 'none',
                                           borderRadius: 2,
@@ -1855,11 +2109,8 @@ export default function ExamGenerator() {
                                           '&:hover': { bgcolor: '#ede9fe', borderColor: '#c4b5fd' }
                                         }}
                                       >
-                                        Regenerate Rubric / Answer Key
+                                        Shuffle Choices
                                       </Button>
-                                    )}
-
-                                    {q.type === 'true-false' && (
                                       <Button
                                         variant="outlined"
                                         size="small"
@@ -1871,21 +2122,88 @@ export default function ExamGenerator() {
                                           borderRadius: 2,
                                           fontWeight: 700,
                                           fontSize: '0.8rem',
-                                          color: '#0369a1',
-                                          borderColor: '#bae6fd',
-                                          bgcolor: '#f0f9ff',
-                                          '&:hover': { bgcolor: '#e0f2fe', borderColor: '#7dd3fc' }
+                                          color: '#15803d',
+                                          borderColor: '#bbf7d0',
+                                          bgcolor: '#f0fdf4',
+                                          '&:hover': { bgcolor: '#dcfce7', borderColor: '#86efac' }
                                         }}
                                       >
-                                        Toggle Correct Key
+                                        Regenerate Key
                                       </Button>
-                                    )}
-                                  </Box>
+                                    </>
+                                  )}
+
+                                  {q.type === 'short-answer' && (
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                      disabled={isQRegenerating}
+                                      onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                      sx={{
+                                        textTransform: 'none',
+                                        borderRadius: 2,
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        color: '#b45309',
+                                        borderColor: '#fde68a',
+                                        bgcolor: '#fffbeb',
+                                        '&:hover': { bgcolor: '#fef3c7', borderColor: '#f59e0b' }
+                                      }}
+                                    >
+                                      Regenerate Answer Key
+                                    </Button>
+                                  )}
+
+                                  {q.type === 'essay' && (
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                      disabled={isQRegenerating}
+                                      onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                      sx={{
+                                        textTransform: 'none',
+                                        borderRadius: 2,
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        color: '#6d28d9',
+                                        borderColor: '#ddd6fe',
+                                        bgcolor: '#f5f3ff',
+                                        '&:hover': { bgcolor: '#ede9fe', borderColor: '#c4b5fd' }
+                                      }}
+                                    >
+                                      Regenerate Rubric / Answer Key
+                                    </Button>
+                                  )}
+
+                                  {q.type === 'true-false' && (
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                                      disabled={isQRegenerating}
+                                      onClick={() => handleRegenerateItem(qIdx, 'answer')}
+                                      sx={{
+                                        textTransform: 'none',
+                                        borderRadius: 2,
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        color: '#0369a1',
+                                        borderColor: '#bae6fd',
+                                        bgcolor: '#f0f9ff',
+                                        '&:hover': { bgcolor: '#e0f2fe', borderColor: '#7dd3fc' }
+                                      }}
+                                    >
+                                      Toggle Correct Key
+                                    </Button>
+                                  )}
                                 </Box>
                               </Box>
-                            )}
-                          </CardContent>
-                        </Card>
+                            </Box>
+                          )}
+                        </CardContent>
+                      </Card>
                     );
                   })}
                 </Box>
