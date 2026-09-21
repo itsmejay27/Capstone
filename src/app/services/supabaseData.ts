@@ -1,36 +1,11 @@
 import { supabase } from '../config/supabaseClient';
 
-// Bridge between the app's client-generated IDs (e.g. "class-172...") and Supabase's uuid
-// primary keys. Local state always keeps the original id so every page keeps working
-// unchanged; this only translates the id used when mirroring to Supabase.
-//
-// The mapping must be deterministic: a random uuid per session would give the same
-// "user-1" a different id on every page load and on every device, so foreign keys
-// between rows written at different times could never line up.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function hash32(input: string, seed: number): number {
-  let h = seed >>> 0;
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return h >>> 0;
-}
-
+// IDs in Supabase are configured as TEXT DEFAULT gen_random_uuid()::text.
+// This allows deterministic IDs ('user-1', 'class-1', or UUIDs) to stay consistent
+// across browser page reloads without foreign key mismatches.
 export function toDbId(id: string): string {
-  if (UUID_RE.test(id)) return id;
-  const hex = [0x811c9dc5, 0x9e3779b9, 0x85ebca6b, 0xc2b2ae35]
-    .map((seed) => hash32(id, seed).toString(16).padStart(8, '0'))
-    .join('');
-  // Force the RFC-4122 version/variant nibbles so the result is a well-formed uuid.
-  const v =
-    hex.slice(0, 12) +
-    '4' +
-    hex.slice(13, 16) +
-    (((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16)) +
-    hex.slice(17, 32);
-  return `${v.slice(0, 8)}-${v.slice(8, 12)}-${v.slice(12, 16)}-${v.slice(16, 20)}-${v.slice(20, 32)}`;
+  if (!id) return crypto.randomUUID();
+  return id;
 }
 
 function warn(op: string, error: unknown) {
@@ -48,14 +23,14 @@ export async function fetchUsers() {
   return (data || []).map((u: any) => ({
     id: u.id,
     email: u.email,
-    password: '',
+    password: u.password || '',
     name: u.name,
     role: u.role,
     avatar: u.avatar || undefined,
   }));
 }
 
-export async function upsertUser(user: { id: string; email: string; name: string; role: string; avatar?: string }) {
+export async function upsertUser(user: { id: string; email: string; password?: string; name: string; role: string; avatar?: string }) {
   if (!supabase) return;
   try {
     const { error } = await supabase
@@ -64,6 +39,7 @@ export async function upsertUser(user: { id: string; email: string; name: string
         {
           id: toDbId(user.id),
           email: user.email,
+          password: user.password || null,
           name: user.name,
           role: user.role,
           avatar: user.avatar || null,
@@ -402,3 +378,38 @@ export async function fetchQuestionBank() {
     subject: q.subject || undefined,
   }));
 }
+
+export async function upsertQuestionBankItem(item: any) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('question_bank').upsert({
+      id: toDbId(item.id),
+      type: item.type,
+      question: item.question,
+      options: item.options || null,
+      correct_answer: item.correctAnswer != null ? String(item.correctAnswer) : null,
+      points: item.points || 1,
+      difficulty: item.difficulty || 'easy',
+      topic: item.topic || null,
+      cognitive_level: item.cognitiveLevel || null,
+      item_placement: item.itemPlacement || null,
+      tags: item.tags || [],
+      subject: item.subject || null,
+      created_by: item.createdBy ? toDbId(item.createdBy) : null,
+    });
+    if (error) warn('upsertQuestionBankItem', error);
+  } catch (e) {
+    warn('upsertQuestionBankItem', e);
+  }
+}
+
+export async function deleteQuestionBankItemDb(itemId: string) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('question_bank').delete().eq('id', toDbId(itemId));
+    if (error) warn('deleteQuestionBankItemDb', error);
+  } catch (e) {
+    warn('deleteQuestionBankItemDb', e);
+  }
+}
+
