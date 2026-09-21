@@ -322,28 +322,66 @@ export async function extractFileText(file: File): Promise<string> {
  * Parses item range strings like "1-5", "1 - 5", "1,2,3", "1, 2, 3", "1 to 5", "10"
  * Returns list of discrete integer item numbers.
  */
+/**
+ * Expand a TOS "Item Placement" cell into the individual item numbers it denotes.
+ *
+ * Real TOS documents write placements as "(1-2)", "(3-9)", "19–28", "35", "1 to 5",
+ * "2 (1-2)" (count and placement in one cell), "1-3, 7; 9". The previous implementation
+ * anchored its range regex as /^(\d+)-(\d+)$/, so ANY bracketed or decorated token failed to
+ * match and fell through to a digit-strip — turning "(1-2)" into the single item 12,
+ * "(3-9)" into 39 and "(19-28)" into 1928. Each cognitive cell then yielded exactly one
+ * item, collapsing a 60-item blueprint to about 12 specs.
+ *
+ * This version scans for range and singleton patterns ANYWHERE in the cell, which is robust
+ * to brackets, dashes of every flavour, and a leading count.
+ */
 function parseItemPlacementNumbers(placementStr: string): number[] {
   if (!placementStr) return [];
-  const clean = placementStr.trim().replace(/\s*to\s*/i, '-');
-  const items: number[] = [];
 
-  const parts = clean.split(/[;,]/);
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    const rangeMatch = trimmed.match(/^(\d+)\s*[-–—]\s*(\d+)$/);
-    if (rangeMatch) {
-      const start = parseInt(rangeMatch[1], 10);
-      const end = parseInt(rangeMatch[2], 10);
-      if (!isNaN(start) && !isNaN(end) && start <= end && end - start <= 100) {
-        for (let i = start; i <= end; i++) items.push(i);
-      }
-    } else {
-      const single = parseInt(trimmed.replace(/[^0-9]/g, ''), 10);
-      if (!isNaN(single) && single > 0) items.push(single);
+  const clean = String(placementStr)
+    .replace(/ /g, ' ')            // non-breaking space
+    .replace(/[‐-―−]/g, '-') // figure dash, en/em dash, minus -> hyphen
+    .replace(/\s*\bto\b\s*/gi, '-')     // "1 to 5" -> "1-5"; global, not just the first
+    .replace(/\s*\bthru\b\s*|\s*\bthrough\b\s*/gi, '-')
+    .trim();
+
+  const seen = new Set<number>();
+  const items: number[] = [];
+  const push = (n: number) => {
+    if (Number.isFinite(n) && n > 0 && n <= 1000 && !seen.has(n)) {
+      seen.add(n);
+      items.push(n);
+    }
+  };
+
+  // Pass 1: ranges anywhere in the string, e.g. "(19-28)" or "items 3 - 9".
+  const rangeRe = /(\d+)\s*-\s*(\d+)/g;
+  const consumed: Array<[number, number]> = [];
+  let m: RegExpExecArray | null;
+  while ((m = rangeRe.exec(clean)) !== null) {
+    const start = parseInt(m[1], 10);
+    const end = parseInt(m[2], 10);
+    if (!isNaN(start) && !isNaN(end) && start <= end && end - start <= 200) {
+      for (let i = start; i <= end; i++) push(i);
+      consumed.push([m.index, m.index + m[0].length]);
     }
   }
-  return items;
+
+  // Pass 2: standalone numbers not already inside a matched range, e.g. the bare "35",
+  // or the "7" in "1-3, 7". A leading count such as the "2" in "2 (1-2)" is NOT treated as
+  // a placement, because the bracketed range it labels has already been consumed and a
+  // count always precedes its own range.
+  const singleRe = /\d+/g;
+  while ((m = singleRe.exec(clean)) !== null) {
+    const at = m.index;
+    if (consumed.some(([s, e]) => at >= s && at < e)) continue;
+    // Skip a number immediately followed by an already-consumed range — that is its count.
+    const trailing = clean.slice(at + m[0].length);
+    if (/^\s*[(\[]?\s*\d+\s*-\s*\d+/.test(trailing)) continue;
+    push(parseInt(m[0], 10));
+  }
+
+  return items.sort((a, b) => a - b);
 }
 
 function detectQuestionType(str: string): string | undefined {

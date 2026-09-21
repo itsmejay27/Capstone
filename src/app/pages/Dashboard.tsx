@@ -182,13 +182,16 @@ export default function Dashboard() {
   const initials = currentUser?.name?.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() || 'U';
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f8fafc', py: 4, px: { xs: 2, sm: 4, md: 6 } }}>
-      <Container maxWidth="xl">
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f8fafc', py: { xs: 2.5, md: 4 }, px: { xs: 2, sm: 4, md: 6 } }}>
+      {/* disableGutters: the wrapping Box already applies the page gutter. The Container's
+          own default gutter stacked on top of it, costing 32px of a 390px viewport and
+          pushing several flex rows into horizontal overflow. */}
+      <Container maxWidth="xl" disableGutters>
         {/* ── Top Header Banner ── */}
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 3, md: 4 },
+            p: { xs: 2.25, sm: 3, md: 4 },
             borderRadius: 4,
             bgcolor: '#ffffff',
             border: '1px solid #e2e8f0',
@@ -201,12 +204,15 @@ export default function Dashboard() {
             gap: 3,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, minWidth: 0, maxWidth: '100%' }}>
             <Avatar
               src={currentUser?.avatar}
               sx={{
-                width: 64,
-                height: 64,
+                // flexShrink: 0 stops the avatar distorting into an ellipse when the
+                // greeting beside it is long on a narrow viewport.
+                flexShrink: 0,
+                width: { xs: 52, sm: 64 },
+                height: { xs: 52, sm: 64 },
                 fontSize: '1.4rem',
                 fontWeight: 800,
                 bgcolor: isInstructor ? '#7c3aed' : '#2563eb',
@@ -559,12 +565,12 @@ export default function Dashboard() {
                         <Typography
                           variant="h6"
                           fontWeight={800}
+                          noWrap
                           sx={{
                             color: 'white',
                             lineHeight: 1.25,
-                            fontSize: '1.15rem',
+                            fontSize: { xs: '1.02rem', sm: '1.15rem' },
                             mb: 0.5,
-                            noWrap: true,
                           }}
                         >
                           {classroom.name}
@@ -729,7 +735,10 @@ export default function Dashboard() {
             autoFocus margin="dense" label="Class Name" fullWidth variant="outlined" placeholder="e.g. Web Development 101"
             sx={{ mb: 2, '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }} value={className} onChange={(e) => setClassName(e.target.value)} required
           />
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2, mb: 2 }}>
+          {/* Stacks below sm: two 1fr tracks each hold an OutlinedInput whose intrinsic width
+              (~180px) exceeded half of the dialog's ~262px content box at 390px, overflowing
+              the dialog horizontally. */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2, mb: 2 }}>
             <TextField margin="dense" label="Subject Code" fullWidth variant="outlined" placeholder="e.g. ITE301"
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }} value={subject} onChange={(e) => setSubject(e.target.value)} required />
             <TextField margin="dense" label="Section" fullWidth variant="outlined" placeholder="e.g. BSIT 3A"

@@ -16,6 +16,7 @@ import {
   CssBaseline,
   Drawer,
   List,
+  Collapse,
   ListItem,
   ListItemButton,
   ListItemIcon,
@@ -32,8 +33,11 @@ import {
   LibraryBooks,
   AutoAwesome,
   School,
+  ExpandLess,
+  ExpandMore,
 } from '@mui/icons-material';
 import { useState } from 'react';
+import { visibleTabSlugs, CLASSROOM_TAB_LABELS } from '../constants/classroomTabs';
 
 const theme = createTheme({
   typography: {
@@ -102,6 +106,7 @@ export default function RootLayout() {
   const location = useLocation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [expandedClassroom, setExpandedClassroom] = useState<string | null>(null);
 
   const isInstructor = currentUser?.role === 'instructor';
   const userClassrooms = classrooms ? classrooms.filter((classroom: any) =>
@@ -514,31 +519,66 @@ export default function RootLayout() {
                   const isActive = location.pathname === `/classroom/${cls.id}`;
                   const activeColor = isInstructor ? 'primary.main' : 'secondary.main';
                   const activeBg = isInstructor ? 'rgba(21,101,192,0.06)' : 'rgba(124,58,237,0.06)';
+                  const isExpanded = expandedClassroom === cls.id;
                   return (
-                    <ListItem disablePadding key={cls.id} sx={{ mb: 0.5 }}>
-                      <ListItemButton
-                        onClick={() => { navigate(`/classroom/${cls.id}`); setDrawerOpen(false); }}
-                        selected={isActive}
-                        sx={{
-                          borderRadius: 2,
-                          py: 0.75,
-                          px: 2,
-                          color: isActive ? activeColor : 'text.primary',
-                          bgcolor: isActive ? activeBg : 'transparent',
-                          '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' },
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 36, color: isActive ? activeColor : 'text.secondary' }}>
-                          <School fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={cls.name}
-                          secondary={cls.subject}
-                          primaryTypographyProps={{ fontWeight: 600, fontSize: '0.825rem', noWrap: true }}
-                          secondaryTypographyProps={{ fontSize: '0.65rem', noWrap: true }}
-                        />
-                      </ListItemButton>
-                    </ListItem>
+                    <Box key={cls.id} sx={{ mb: 0.5 }}>
+                      <ListItem disablePadding>
+                        <ListItemButton
+                          onClick={() => { navigate(`/classroom/${cls.id}`); setDrawerOpen(false); }}
+                          selected={isActive}
+                          sx={{
+                            borderRadius: 2,
+                            py: 0.75,
+                            px: 2,
+                            color: isActive ? activeColor : 'text.primary',
+                            bgcolor: isActive ? activeBg : 'transparent',
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' },
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 36, color: isActive ? activeColor : 'text.secondary' }}>
+                            <School fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={cls.name}
+                            secondary={cls.subject}
+                            primaryTypographyProps={{ fontWeight: 600, fontSize: '0.825rem', noWrap: true }}
+                            secondaryTypographyProps={{ fontSize: '0.65rem', noWrap: true }}
+                          />
+                        </ListItemButton>
+                        {/* Expands to the classroom's sections. Gradebook, Course Materials and
+                            People & Roster are TABS inside ClassroomDetail rather than routes,
+                            so they are unreachable from a drawer that can only link to the
+                            classroom root — these entries deep-link via ?tab=<slug>. */}
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); setExpandedClassroom(isExpanded ? null : cls.id); }}
+                          aria-label={isExpanded ? `Collapse ${cls.name} sections` : `Expand ${cls.name} sections`}
+                          sx={{ mr: 0.5 }}
+                        >
+                          {isExpanded ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
+                        </IconButton>
+                      </ListItem>
+                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                        <List disablePadding sx={{ pl: 3.5 }}>
+                          {visibleTabSlugs(isInstructor).map((slug) => (
+                            <ListItem disablePadding key={slug}>
+                              <ListItemButton
+                                onClick={() => {
+                                  navigate(`/classroom/${cls.id}?tab=${slug}`);
+                                  setDrawerOpen(false);
+                                }}
+                                sx={{ borderRadius: 2, py: 0.4, px: 1.5, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' } }}
+                              >
+                                <ListItemText
+                                  primary={CLASSROOM_TAB_LABELS[slug]}
+                                  primaryTypographyProps={{ fontSize: '0.75rem', fontWeight: 600, noWrap: true, color: 'text.secondary' }}
+                                />
+                              </ListItemButton>
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Collapse>
+                    </Box>
                   );
                 })}
               </>

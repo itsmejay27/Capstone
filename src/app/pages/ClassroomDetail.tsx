@@ -1,5 +1,11 @@
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { useIsMobile } from '../hooks/useResponsive';
+import { tabSlugToIndex, tabIndexToSlug } from '../constants/classroomTabs';
+import { uploadClassroomFile, formatBytes, fileExtension } from '../services/fileStorage';
+import { extractFileText } from '../services/tosParser';
+import AnnouncementFeed from '../components/AnnouncementFeed';
+import ItemAnalysisPanel from '../components/ItemAnalysisPanel';
 import {
   Container,
   Paper,
@@ -49,6 +55,8 @@ import {
   ContentCopy,
   Code,
   FolderOpen,
+  Campaign,
+  Download,
 } from '@mui/icons-material';
 import { useState } from 'react';
 
@@ -112,13 +120,19 @@ export default function ClassroomDetail() {
     classroomMaterials,
     addClassroomMaterial,
     deleteClassroomMaterial,
+    announcements,
+    saveAnnouncement,
+    deleteAnnouncement,
   } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState(0);
   const [viewMaterial, setViewMaterial] = useState<any | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadToast, setUploadToast] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
 
   const classroom = classrooms.find((c) => c.id === classroomId);
   const instructor = users.find((u) => u.id === classroom?.instructorId);
@@ -126,6 +140,16 @@ export default function ClassroomDetail() {
 
   const isInstructor = currentUser?.role === 'instructor';
   const materials = classroomMaterials[classroomId || ''] || [];
+  const classAnnouncements = announcements[classroomId || ''] || [];
+
+  // Tab selection lives in the URL (?tab=gradebook) so the hamburger drawer can deep-link
+  // straight to a tab, and so a tab is bookmarkable and survives the browser back button.
+  const activeTab = tabSlugToIndex(searchParams.get('tab'), isInstructor);
+  const setActiveTab = (index: number) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tabIndexToSlug(index, isInstructor));
+    setSearchParams(next, { replace: true });
+  };
 
   if (!classroom) {
     return (
@@ -162,26 +186,69 @@ export default function ClassroomDetail() {
     return 'not-started';
   };
 
-  const handleMaterialUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /**
+   * Upload a course material.
+   *
+   * Previously this built a metadata-only object: the File's bytes were never read, fileUrl
+   * was never set, and `content` was a hard-coded sentence — so the document could not be
+   * viewed or downloaded, and after a reload it rendered as "1.2 MB • Invalid Date" with an
+   * empty preview. Now the file is stored (Supabase Storage, or an inline data URL offline),
+   * its text is extracted for the AI pipeline and the preview, and failures reach the user.
+   */
+  const handleMaterialUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !classroomId) return;
-    const material = {
-      id: `mat-${Date.now()}`,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      uploadedAt: new Date().toISOString(),
-      uploadedBy: currentUser?.name || 'Instructor',
-      content: `Study document "${file.name}" uploaded by the instructor for course study and exam preparation.`,
-    };
-    addClassroomMaterial(classroomId, material);
     e.target.value = '';
+    if (!file || !classroomId) return;
+
+    setUploading(true);
+    try {
+      const stored = await uploadClassroomFile(classroomId, file);
+
+      // Best-effort text extraction: it powers the preview dialog and the exam generator.
+      // A failure here must not fail the upload — the file itself is already safe.
+      let content: string | undefined;
+      try {
+        const text = await extractFileText(file);
+        if (text && text.trim()) content = text.slice(0, 20000);
+      } catch (err) {
+        console.warn('[materials] text extraction failed; storing the file without extracted text:', err);
+      }
+
+      const material = {
+        id: crypto.randomUUID(),
+        classroomId,
+        name: file.name,
+        size: stored.size,
+        type: stored.mimeType,
+        fileType: fileExtension(file.name),
+        fileUrl: stored.url,
+        storagePath: stored.storagePath,
+        isDataUrl: stored.isDataUrl,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: currentUser?.name || 'Instructor',
+        uploadedById: currentUser?.id,
+        content,
+      };
+
+      const result = await addClassroomMaterial(classroomId, material);
+      setUploadToast(
+        result.ok
+          ? { severity: 'success', message: `"${file.name}" uploaded.` }
+          : { severity: 'error', message: result.error || 'Upload failed.' }
+      );
+    } catch (err: any) {
+      setUploadToast({ severity: 'error', message: err?.message || `Could not upload "${file.name}".` });
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleDeleteMaterial = (materialId: string) => {
-    if (classroomId) {
-      deleteClassroomMaterial(classroomId, materialId);
-      setDeleteConfirm(null);
+  const handleDeleteMaterial = async (materialId: string) => {
+    if (!classroomId) return;
+    setDeleteConfirm(null);
+    const result = await deleteClassroomMaterial(classroomId, materialId);
+    if (!result.ok) {
+      setUploadToast({ severity: 'error', message: result.error || 'Could not remove the document.' });
     }
   };
 
@@ -190,12 +257,9 @@ export default function ClassroomDetail() {
     setCopyToast(true);
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (!bytes) return '1.2 MB';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  // Delegates to the shared formatter, which returns an em dash for an unknown size rather
+  // than the fabricated "1.2 MB" this used to print for every file whose size was lost.
+  const formatFileSize = (bytes?: number) => formatBytes(bytes);
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f8fafc', py: 3, px: { xs: 2, sm: 3, md: 5, lg: 6 } }}>
@@ -322,17 +386,21 @@ export default function ClassroomDetail() {
             onChange={(_, val) => setActiveTab(val)}
             variant="scrollable"
             scrollButtons="auto"
+            // Without allowScrollButtonsMobile, MUI hides the scroll arrows on touch/small
+            // viewports, leaving the tabs as an undiscoverable horizontal scroll strip.
+            allowScrollButtonsMobile
             sx={{
               bgcolor: '#0f172a',
               borderTop: '1px solid #334155',
-              px: 2,
+              px: { xs: 0.5, sm: 2 },
               '& .MuiTab-root': {
                 color: '#94a3b8',
                 fontWeight: 700,
-                fontSize: '0.85rem',
+                fontSize: { xs: '0.78rem', sm: '0.85rem' },
                 textTransform: 'none',
                 minHeight: 50,
-                px: 3,
+                px: { xs: 1.5, sm: 3 },
+                minWidth: 'auto',
               },
               '& .Mui-selected': {
                 color: '#ffffff !important',
@@ -343,6 +411,7 @@ export default function ClassroomDetail() {
               },
             }}
           >
+            <Tab label="Stream" icon={<Campaign />} iconPosition="start" />
             <Tab label="Classwork & Assessments" icon={<Assignment />} iconPosition="start" />
             <Tab label="Course Materials" icon={<MenuBook />} iconPosition="start" />
             <Tab label="People & Roster" icon={<People />} iconPosition="start" />
@@ -352,8 +421,21 @@ export default function ClassroomDetail() {
           </Tabs>
         </Paper>
 
-        {/* ── TAB 0: CLASSWORK & ASSESSMENTS ── */}
+        {/* ── TAB 0: STREAM (ANNOUNCEMENTS) ── */}
         {activeTab === 0 && (
+          <AnnouncementFeed
+            classroomId={classroomId || ''}
+            announcements={classAnnouncements}
+            isInstructor={isInstructor}
+            currentUserId={currentUser?.id || ''}
+            currentUserName={currentUser?.name || 'Instructor'}
+            onSave={saveAnnouncement}
+            onDelete={(id) => deleteAnnouncement(classroomId || '', id)}
+          />
+        )}
+
+        {/* ── TAB 1: CLASSWORK & ASSESSMENTS ── */}
+        {activeTab === 1 && (
           <Box>
             {classExams.length === 0 ? (
               <Paper elevation={0} sx={{ p: 6, textAlign: 'center', borderRadius: 3.5, border: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
@@ -415,7 +497,7 @@ export default function ClassroomDetail() {
                             {exam.title}
                           </Typography>
                           {exam.description && (
-                            <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.82rem', mb: 1, noWrap: true }}>
+                            <Typography variant="body2" noWrap sx={{ color: '#64748b', fontSize: '0.82rem', mb: 1 }}>
                               {exam.description}
                             </Typography>
                           )}
@@ -474,7 +556,7 @@ export default function ClassroomDetail() {
                             <Button
                               size="small"
                               variant="outlined"
-                              onClick={() => setActiveTab(3)}
+                              onClick={() => setActiveTab(4)}
                               sx={{ fontWeight: 700, textTransform: 'none' }}
                             >
                               View Scores
@@ -499,7 +581,7 @@ export default function ClassroomDetail() {
         )}
 
         {/* ── TAB 1: COURSE MATERIALS ── */}
-        {activeTab === 1 && (
+        {activeTab === 2 && (
           <Box>
             {isInstructor && (
               <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
@@ -509,8 +591,8 @@ export default function ClassroomDetail() {
                   startIcon={<Upload />}
                   sx={{ bgcolor: '#2563eb', fontWeight: 800, textTransform: 'none', borderRadius: 2.5 }}
                 >
-                  Upload Study Material
-                  <input type="file" hidden onChange={handleMaterialUpload} accept=".pdf,.doc,.docx,.txt" />
+                  {uploading ? 'Uploading…' : 'Upload Study Material'}
+                  <input type="file" hidden disabled={uploading} onChange={handleMaterialUpload} accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.xlsx,.csv" />
                 </Button>
               </Box>
             )}
@@ -540,23 +622,31 @@ export default function ClassroomDetail() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 2,
+                      flexWrap: 'wrap',
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, flex: '1 1 200px' }}>
                       <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {getMaterialIcon(mat.name)}
                       </Box>
                       <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#0f172a', noWrap: true }}>
+                        {/* `noWrap` is a Typography PROP, not a CSS property — inside sx it was
+                            emitted as an invalid declaration and dropped, so long filenames
+                            never truncated. */}
+                        <Typography variant="subtitle2" fontWeight={800} noWrap sx={{ color: '#0f172a' }} title={mat.name}>
                           {mat.name}
                         </Typography>
                         <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
-                          {formatFileSize(mat.size)} &bull; Uploaded {new Date(mat.uploadedAt).toLocaleDateString()}
+                          {formatFileSize(mat.size)}
+                          {mat.uploadedAt && !Number.isNaN(new Date(mat.uploadedAt).getTime())
+                            ? ` • Uploaded ${new Date(mat.uploadedAt).toLocaleDateString()}`
+                            : ''}
+                          {mat.uploadedBy ? ` • ${mat.uploadedBy}` : ''}
                         </Typography>
                       </Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                       <Button
                         size="small"
                         variant="outlined"
@@ -566,6 +656,13 @@ export default function ClassroomDetail() {
                       >
                         Preview
                       </Button>
+                      {mat.fileUrl && (
+                        <Tooltip title="Open the original file in a new tab">
+                          <IconButton size="small" component="a" href={mat.fileUrl} target="_blank" rel="noopener noreferrer">
+                            <Download fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                       {isInstructor && (
                         <IconButton size="small" color="error" onClick={() => setDeleteConfirm(mat.id)}>
                           <Delete fontSize="small" />
@@ -580,7 +677,7 @@ export default function ClassroomDetail() {
         )}
 
         {/* ── TAB 2: PEOPLE & ROSTER ── */}
-        {activeTab === 2 && (
+        {activeTab === 3 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Teacher Card */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
@@ -643,9 +740,10 @@ export default function ClassroomDetail() {
         )}
 
         {/* ── TAB 3: GRADEBOOK (INSTRUCTOR ONLY) ── */}
-        {activeTab === 3 && isInstructor && (
-          <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff', overflow: 'hidden' }}>
-            <Box sx={{ p: 3, borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        {activeTab === 4 && isInstructor && (
+          <>
+          <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff', overflow: 'hidden', mb: 3 }}>
+            <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
               <Box>
                 <Typography variant="h6" fontWeight={900} sx={{ color: '#0f172a' }}>Academic Gradebook</Typography>
                 <Typography variant="caption" sx={{ color: '#64748b' }}>
@@ -709,19 +807,77 @@ export default function ClassroomDetail() {
               </Table>
             </TableContainer>
           </Paper>
+
+          {/* ── Item analysis ── */}
+          <Box sx={{ mb: 1.5 }}>
+            <Typography variant="h6" fontWeight={900} sx={{ color: '#0f172a' }}>Item Analysis</Typography>
+            <Typography variant="caption" sx={{ color: '#64748b' }}>
+              Difficulty index, most-missed questions, distractor analysis and time to completion.
+            </Typography>
+          </Box>
+          <ItemAnalysisPanel exams={rawClassExams} attempts={examAttempts} />
+          </>
         )}
 
         {/* Preview Document Dialog */}
-        <Dialog open={Boolean(viewMaterial)} onClose={() => setViewMaterial(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
-          <DialogTitle sx={{ fontWeight: 800, color: '#0f172a' }}>
+        <Dialog
+          open={Boolean(viewMaterial)}
+          onClose={() => setViewMaterial(null)}
+          maxWidth="md"
+          fullWidth
+          fullScreen={isMobile}
+          PaperProps={{ sx: { borderRadius: { xs: 0, sm: 3 }, p: 1 } }}
+        >
+          <DialogTitle sx={{ fontWeight: 800, color: '#0f172a', wordBreak: 'break-word' }}>
             {viewMaterial?.name}
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.6 }}>
-              {viewMaterial?.content}
+            <Typography variant="caption" sx={{ display: 'block', color: '#64748b', fontWeight: 500 }}>
+              {formatFileSize(viewMaterial?.size)}
+              {viewMaterial?.uploadedBy ? ` • ${viewMaterial.uploadedBy}` : ''}
             </Typography>
+          </DialogTitle>
+          <DialogContent dividers>
+            {/* PDFs and images render inline; everything else falls back to the extracted
+                text. Previously this rendered only `content`, which was a placeholder
+                sentence before a reload and undefined after one — i.e. always blank. */}
+            {viewMaterial?.fileUrl && /pdf$/i.test(viewMaterial?.fileType || viewMaterial?.name || '') ? (
+              <Box
+                component="iframe"
+                src={viewMaterial.fileUrl}
+                title={viewMaterial.name}
+                sx={{ width: '100%', height: { xs: '60vh', sm: 520 }, border: '1px solid #e2e8f0', borderRadius: 2 }}
+              />
+            ) : viewMaterial?.fileUrl && /^(png|jpe?g|gif|webp|svg)$/i.test(viewMaterial?.fileType || '') ? (
+              <Box component="img" src={viewMaterial.fileUrl} alt={viewMaterial.name} sx={{ maxWidth: '100%', borderRadius: 2 }} />
+            ) : viewMaterial?.content ? (
+              <Typography
+                variant="body2"
+                sx={{ color: '#475569', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+              >
+                {viewMaterial.content}
+              </Typography>
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <InsertDriveFile sx={{ fontSize: 44, color: '#94a3b8', mb: 1 }} />
+                <Typography variant="body2" sx={{ color: '#64748b' }}>
+                  No inline preview is available for this file type.
+                  {viewMaterial?.fileUrl ? ' Use Open to view the original.' : ''}
+                </Typography>
+              </Box>
+            )}
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2 }}>
+          <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
+            {viewMaterial?.fileUrl && (
+              <Button
+                component="a"
+                href={viewMaterial.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                startIcon={<Download />}
+                sx={{ fontWeight: 700, textTransform: 'none' }}
+              >
+                Open original
+              </Button>
+            )}
             <Button onClick={() => setViewMaterial(null)} sx={{ fontWeight: 700 }}>Close</Button>
           </DialogActions>
         </Dialog>
@@ -746,6 +902,18 @@ export default function ClassroomDetail() {
         <Snackbar open={copyToast} autoHideDuration={3000} onClose={() => setCopyToast(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
           <Alert severity="success" onClose={() => setCopyToast(false)} sx={{ fontWeight: 700, borderRadius: 2.5 }}>
             Class Code <strong>{classroom.classCode}</strong> copied to clipboard!
+          </Alert>
+        </Snackbar>
+
+        {/* Upload / delete outcome. Errors linger longer because they need reading. */}
+        <Snackbar
+          open={Boolean(uploadToast)}
+          autoHideDuration={uploadToast?.severity === 'error' ? 9000 : 3500}
+          onClose={() => setUploadToast(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert severity={uploadToast?.severity} onClose={() => setUploadToast(null)} sx={{ fontWeight: 600, borderRadius: 2.5 }}>
+            {uploadToast?.message}
           </Alert>
         </Snackbar>
       </Container>

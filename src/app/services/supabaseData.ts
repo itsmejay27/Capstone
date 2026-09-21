@@ -106,9 +106,16 @@ export async function addClassroomStudent(classroomId: string, studentId: string
 }
 
 // ---- classroom materials ----
+// The previous version persisted only {id, classroom_id, name, file_url, file_type} and read
+// back only {id, name, fileUrl, fileType}. Since the uploader never set fileUrl, file_url was
+// always NULL, and size/type/uploadedAt/uploadedBy/content were dropped entirely — which is
+// why a reloaded material rendered as "1.2 MB • Invalid Date" with a blank preview.
 export async function fetchClassroomMaterials(): Promise<Record<string, any[]>> {
   if (!supabase) return {};
-  const { data, error } = await supabase.from('classroom_materials').select('*');
+  const { data, error } = await supabase
+    .from('classroom_materials')
+    .select('*')
+    .order('created_at', { ascending: false });
   if (error) {
     warn('fetchClassroomMaterials', error);
     return {};
@@ -117,24 +124,51 @@ export async function fetchClassroomMaterials(): Promise<Record<string, any[]>> 
   for (const m of data || []) {
     const key = m.classroom_id;
     if (!grouped[key]) grouped[key] = [];
-    grouped[key].push({ id: m.id, name: m.name, fileUrl: m.file_url, fileType: m.file_type });
+    grouped[key].push({
+      id: m.id,
+      classroomId: m.classroom_id,
+      name: m.name,
+      fileUrl: m.file_url || undefined,
+      storagePath: m.storage_path || null,
+      isDataUrl: false, // data URLs are never written to Postgres
+      fileType: m.file_type || undefined,
+      type: m.mime_type || undefined,
+      size: m.file_size ?? undefined,
+      uploadedBy: m.uploaded_by || undefined,
+      uploadedById: m.uploaded_by_id || undefined,
+      content: m.content || undefined,
+      uploadedAt: m.created_at || undefined,
+    });
   }
   return grouped;
 }
 
 export async function insertClassroomMaterial(classroomId: string, material: any) {
   if (!supabase) return;
+  // A base64 data URL is a local-only fallback; pushing megabytes of base64 into a TEXT
+  // column would bloat every subsequent fetch, so the row is stored without the payload.
+  const isInline = Boolean(material.isDataUrl);
   try {
-    const { error } = await supabase.from('classroom_materials').insert({
+    const { error } = await supabase.from('classroom_materials').upsert({
       id: toDbId(material.id),
       classroom_id: toDbId(classroomId),
       name: material.name,
-      file_url: material.fileUrl || null,
-      file_type: material.fileType || material.type || null,
+      file_url: isInline ? null : material.fileUrl || null,
+      file_type: material.fileType || null,
+      storage_path: material.storagePath || null,
+      mime_type: material.type || material.mimeType || null,
+      file_size: Number.isFinite(material.size) ? material.size : null,
+      uploaded_by: material.uploadedBy || null,
+      uploaded_by_id: material.uploadedById ? toDbId(material.uploadedById) : null,
+      content: material.content ? String(material.content).slice(0, 20000) : null,
     });
-    if (error) warn('insertClassroomMaterial', error);
+    if (error) {
+      warn('insertClassroomMaterial', error);
+      throw error;
+    }
   } catch (e) {
     warn('insertClassroomMaterial', e);
+    throw e;
   }
 }
 
@@ -142,9 +176,83 @@ export async function deleteClassroomMaterialDb(materialId: string) {
   if (!supabase) return;
   try {
     const { error } = await supabase.from('classroom_materials').delete().eq('id', toDbId(materialId));
-    if (error) warn('deleteClassroomMaterialDb', error);
+    if (error) {
+      warn('deleteClassroomMaterialDb', error);
+      throw error;
+    }
   } catch (e) {
     warn('deleteClassroomMaterialDb', e);
+    throw e;
+  }
+}
+
+// ---- announcements (classroom stream) ----
+export async function fetchAnnouncements(): Promise<Record<string, any[]>> {
+  if (!supabase) return {};
+  const { data, error } = await supabase
+    .from('announcements')
+    .select('*')
+    .order('is_pinned', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) {
+    warn('fetchAnnouncements', error);
+    return {};
+  }
+  const grouped: Record<string, any[]> = {};
+  for (const a of data || []) {
+    const key = a.classroom_id;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push({
+      id: a.id,
+      classroomId: a.classroom_id,
+      authorId: a.author_id,
+      authorName: a.author_name || 'Instructor',
+      bodyHtml: a.body_html || '',
+      attachments: Array.isArray(a.attachments) ? a.attachments : [],
+      isPinned: !!a.is_pinned,
+      createdAt: a.created_at,
+      updatedAt: a.updated_at || undefined,
+    });
+  }
+  return grouped;
+}
+
+export async function upsertAnnouncement(announcement: any) {
+  if (!supabase) return;
+  try {
+    // Inline data-URL attachments stay local; only Storage-backed ones are durable.
+    const attachments = (announcement.attachments || []).filter((att: any) => !att?.isDataUrl);
+    const { error } = await supabase.from('announcements').upsert({
+      id: toDbId(announcement.id),
+      classroom_id: toDbId(announcement.classroomId),
+      author_id: announcement.authorId ? toDbId(announcement.authorId) : null,
+      author_name: announcement.authorName || null,
+      body_html: announcement.bodyHtml || '',
+      attachments,
+      is_pinned: !!announcement.isPinned,
+      updated_at: announcement.updatedAt || null,
+    });
+    if (error) {
+      warn('upsertAnnouncement', error);
+      throw error;
+    }
+  } catch (e) {
+    warn('upsertAnnouncement', e);
+    throw e;
+  }
+}
+
+export async function deleteAnnouncementDb(announcementId: string) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('announcements').delete().eq('id', toDbId(announcementId));
+    if (error) {
+      warn('deleteAnnouncementDb', error);
+      throw error;
+    }
+  } catch (e) {
+    warn('deleteAnnouncementDb', e);
+    throw e;
   }
 }
 
@@ -269,6 +377,10 @@ export async function fetchExamAttempts() {
     examId: a.exam_id,
     studentId: a.student_id,
     answers: a.answers || {},
+    // The per-attempt shuffled question/option snapshot. Item and distractor analysis are
+    // impossible without it, because a stored multiple-choice answer is an index into the
+    // order THIS student saw, not into the master question's option order.
+    questions: Array.isArray(a.questions) ? a.questions : [],
     score: a.score ?? undefined,
     startedAt: a.started_at,
     submittedAt: a.submitted_at || undefined,
@@ -283,6 +395,7 @@ export async function upsertExamAttempt(attempt: any) {
       exam_id: toDbId(attempt.examId),
       student_id: toDbId(attempt.studentId),
       answers: attempt.answers || {},
+      questions: Array.isArray(attempt.questions) ? attempt.questions : [],
       score: attempt.score ?? null,
       started_at: attempt.startedAt,
       submitted_at: attempt.submittedAt || null,

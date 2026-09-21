@@ -346,7 +346,7 @@ export default function ReviewerGenerator() {
               </Typography>
               <Grid container spacing={1.5}>
                 {availableMaterials.map((mat) => (
-                  <Grid item xs={12} key={mat.id}>
+                  <Grid size={12} key={mat.id}>
                     <Paper
                       onClick={() => setSelectedMaterialId(mat.id === selectedMaterialId ? '' : mat.id)}
                       elevation={0}
@@ -455,11 +455,11 @@ export default function ReviewerGenerator() {
               value={title} onChange={(e) => setTitle(e.target.value)} required />
 
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField fullWidth label="Subject / Specific Topic" placeholder="e.g. Database Normalization"
                   value={subject} onChange={(e) => setSubject(e.target.value)} required />
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <FormControl fullWidth required>
                   <InputLabel>Difficulty Level</InputLabel>
                   <Select value={difficulty} onChange={(e) => setDifficulty(e.target.value as any)} label="Difficulty Level">

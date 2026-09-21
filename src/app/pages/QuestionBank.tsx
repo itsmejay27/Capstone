@@ -108,7 +108,7 @@ export default function QuestionBank() {
         </Box>
 
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth
               placeholder="Search questions..."
@@ -119,7 +119,7 @@ export default function QuestionBank() {
               }}
             />
           </Grid>
-          <Grid item xs={12} md={2}>
+          <Grid size={{ xs: 12, md: 2 }}>
             <FormControl fullWidth>
               <InputLabel>Type</InputLabel>
               <Select
@@ -135,7 +135,7 @@ export default function QuestionBank() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={2}>
+          <Grid size={{ xs: 12, md: 2 }}>
             <FormControl fullWidth>
               <InputLabel>Difficulty</InputLabel>
               <Select
@@ -150,7 +150,7 @@ export default function QuestionBank() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={2}>
+          <Grid size={{ xs: 12, md: 2 }}>
             <FormControl fullWidth>
               <InputLabel>Subject</InputLabel>
               <Select
@@ -167,7 +167,7 @@ export default function QuestionBank() {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={2}>
+          <Grid size={{ xs: 12, md: 2 }}>
             <Button
               fullWidth
               variant="outlined"
@@ -191,7 +191,7 @@ export default function QuestionBank() {
 
         <Grid container spacing={2}>
           {filteredQuestions.map((question) => (
-            <Grid item xs={12} key={question.id}>
+            <Grid size={12} key={question.id}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
@@ -287,7 +287,7 @@ export default function QuestionBank() {
             sx={{ mb: 2 }}
           />
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <FormControl fullWidth>
                 <InputLabel>Question Type</InputLabel>
                 <Select label="Question Type">
@@ -298,7 +298,7 @@ export default function QuestionBank() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <FormControl fullWidth>
                 <InputLabel>Difficulty</InputLabel>
                 <Select label="Difficulty">
@@ -308,10 +308,10 @@ export default function QuestionBank() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Points" type="number" />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField fullWidth label="Topic" />
             </Grid>
           </Grid>

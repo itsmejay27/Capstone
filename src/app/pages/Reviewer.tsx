@@ -460,7 +460,7 @@ export default function Reviewer() {
             const isPassed = m.status === 'passed';
 
             return (
-              <Grid item xs={12} key={m.id}>
+              <Grid size={12} key={m.id}>
                 <Card
                   variant="outlined"
                   sx={{
@@ -572,7 +572,7 @@ export default function Reviewer() {
       <Grid container spacing={3.5}>
 
         {/* Left Side: Strictly Vertical Modules Navigation Sidebar */}
-        <Grid item xs={12} md={3.5}>
+        <Grid size={{ xs: 12, md: 3.5 }}>
           <Paper sx={{ p: 2.5, borderRadius: 4, border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.02)', position: 'sticky', top: 24 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary', mb: 2, letterSpacing: '0.05em' }}>
               MODULES PROGRESSION
@@ -639,7 +639,7 @@ export default function Reviewer() {
         </Grid>
 
         {/* Right Side: Phase Workspaces Panel */}
-        <Grid item xs={12} md={8.5}>
+        <Grid size={{ xs: 12, md: 8.5 }}>
 
           {/* LESSON PHASE WORKSPACE */}
           {phase === 'lesson' && currentModule && (
@@ -689,7 +689,7 @@ export default function Reviewer() {
                 <Grid container spacing={2}>
 
                   {/* Option 1: Study Flashcards */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', transition: 'all 0.2s', '&:hover': { borderColor: '#6366f1', bgcolor: 'rgba(99,102,241,0.02)' } }}>
                       <CardActionArea sx={{ p: 2.5 }} onClick={() => { setPhase('flashcards'); setFlashcardIdx(0); setIsFlipped(false); }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
@@ -706,7 +706,7 @@ export default function Reviewer() {
                   </Grid>
 
                   {/* Option 2: Take Quiz */}
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', transition: 'all 0.2s', '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16,185,129,0.02)' } }}>
                       <CardActionArea sx={{ p: 2.5 }} onClick={startQuiz}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>

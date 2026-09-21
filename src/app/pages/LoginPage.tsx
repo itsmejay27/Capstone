@@ -780,7 +780,7 @@ export default function LoginPage() {
                       {u.name.charAt(0)}
                     </Avatar>
                     <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 800, color: '#1e293b', display: 'block', noWrap: true, fontSize: '0.72rem', lineHeight: 1.1 }}>
+                      <Typography variant="caption" noWrap sx={{ fontWeight: 800, color: '#1e293b', display: 'block', fontSize: '0.72rem', lineHeight: 1.1 }}>
                         {u.name.split(' ')[0]}
                       </Typography>
                       <Chip

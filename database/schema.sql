@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS classroom_materials (
     name TEXT NOT NULL,
     file_url TEXT,
     file_type TEXT,
+    storage_path TEXT,
+    mime_type TEXT,
+    file_size BIGINT,
+    uploaded_by TEXT,
+    uploaded_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    content TEXT,
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -106,6 +112,11 @@ CREATE TABLE IF NOT EXISTS exam_attempts (
     exam_id TEXT REFERENCES exams(id) ON DELETE CASCADE,
     student_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     answers JSONB DEFAULT '{}'::jsonb NOT NULL,
+    -- Snapshot of the questions as administered to this student, including the
+    -- per-attempt shuffled option order and the re-indexed correctAnswer. Without
+    -- it a stored multiple-choice answer index cannot be mapped back to a master
+    -- option, so item and distractor analysis are impossible.
+    questions JSONB DEFAULT '[]'::jsonb NOT NULL,
     score NUMERIC,
     started_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
     submitted_at TIMESTAMPTZ
@@ -153,6 +164,22 @@ CREATE TABLE IF NOT EXISTS question_bank (
 );
 
 -- =============================================================================
+-- 10. ANNOUNCEMENTS TABLE
+-- Instructor stream posts (rich text + attachments) shown on the classroom home
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS announcements (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    classroom_id TEXT REFERENCES classrooms(id) ON DELETE CASCADE,
+    author_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    author_name TEXT,
+    body_html TEXT DEFAULT '' NOT NULL,
+    attachments JSONB DEFAULT '[]'::jsonb NOT NULL,
+    is_pinned BOOLEAN DEFAULT false NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ
+);
+
+-- =============================================================================
 -- PERFORMANCE INDEXES
 -- Optimizes foreign key lookups and frequent filter criteria
 -- =============================================================================
@@ -168,6 +195,8 @@ CREATE INDEX IF NOT EXISTS idx_exam_attempts_exam ON exam_attempts(exam_id);
 CREATE INDEX IF NOT EXISTS idx_exam_attempts_student ON exam_attempts(student_id);
 CREATE INDEX IF NOT EXISTS idx_reviewers_created_by ON reviewers(created_by);
 CREATE INDEX IF NOT EXISTS idx_question_bank_subject ON question_bank(subject);
+CREATE INDEX IF NOT EXISTS idx_announcements_classroom ON announcements(classroom_id);
+CREATE INDEX IF NOT EXISTS idx_announcements_feed ON announcements(classroom_id, is_pinned DESC, created_at DESC);
 
 -- =============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -182,6 +211,7 @@ ALTER TABLE exams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE exam_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviewers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE question_bank ENABLE ROW LEVEL SECURITY;
+ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing generic policies if any to allow safe re-running
 DROP POLICY IF EXISTS "Allow all on users" ON users;
@@ -193,6 +223,7 @@ DROP POLICY IF EXISTS "Allow all on exams" ON exams;
 DROP POLICY IF EXISTS "Allow all on exam_attempts" ON exam_attempts;
 DROP POLICY IF EXISTS "Allow all on reviewers" ON reviewers;
 DROP POLICY IF EXISTS "Allow all on question_bank" ON question_bank;
+DROP POLICY IF EXISTS "Allow all on announcements" ON announcements;
 
 CREATE POLICY "Allow all on users" ON users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on classrooms" ON classrooms FOR ALL USING (true) WITH CHECK (true);
@@ -203,3 +234,4 @@ CREATE POLICY "Allow all on exams" ON exams FOR ALL USING (true) WITH CHECK (tru
 CREATE POLICY "Allow all on exam_attempts" ON exam_attempts FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on reviewers" ON reviewers FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all on question_bank" ON question_bank FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all on announcements" ON announcements FOR ALL USING (true) WITH CHECK (true);

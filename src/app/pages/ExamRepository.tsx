@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -25,6 +25,7 @@ import {
   FormControlLabel,
   Tooltip,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -36,7 +37,10 @@ import {
   Image as ImageIcon,
   Save,
   AutoAwesome,
+  Print,
 } from '@mui/icons-material';
+import PrintableExam, { PrintPortal } from '../components/PrintableExam';
+import type { PrintPaperSize, PrintMode } from '../types';
 
 const MOCK_IMAGES = [
   'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&q=80',
@@ -156,6 +160,7 @@ const ALTERNATIVE_QUESTIONS: Record<string, any[]> = {
 export default function ExamRepository() {
   const {
     currentUser,
+    users,
     savedExams,
     classrooms,
     assignExamToClassroom,
@@ -165,6 +170,31 @@ export default function ExamRepository() {
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Print state
+  const [printTarget, setPrintTarget] = useState<any | null>(null);
+  const [printPaper, setPrintPaper] = useState<PrintPaperSize>('A4');
+  const [printMode, setPrintMode] = useState<PrintMode>('student');
+  const [printing, setPrinting] = useState(false);
+
+  /**
+   * Letterhead data for the printed paper. A saved template has no classroomId, so the class
+   * name is only known once the template has been assigned; where it is not, the field prints
+   * as a ruled blank instead of "undefined".
+   */
+  const printHeader = useMemo(() => {
+    const assignedClass = printTarget?.classroomId
+      ? classrooms.find((c: any) => c.id === printTarget.classroomId)
+      : undefined;
+    const author = users.find((u: any) => u.id === printTarget?.createdBy);
+    return {
+      className: assignedClass?.name || '',
+      section: assignedClass?.section || '',
+      subject: assignedClass?.subject || '',
+      instructorName: author?.name || currentUser?.name || '',
+      schoolName: 'Occidental Mindoro State College',
+    };
+  }, [printTarget, classrooms, users, currentUser]);
 
   // Assign modal state
   const [openAssignModal, setOpenAssignModal] = useState(false);
@@ -580,19 +610,30 @@ export default function ExamRepository() {
                   </Box>
                 </Box>
 
-                {/* Right Section: Edit, Delete, Assign Actions */}
+                {/* Right Section: Print, Edit, Delete, Assign Actions */}
                 <Box sx={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1.5,
                   flexShrink: 0,
+                  flexWrap: 'wrap',
                   minWidth: { md: '280px' },
                   width: { xs: '100%', md: 'auto' },
-                  justifyContent: { xs: 'space-between', md: 'flex-end' },
+                  justifyContent: { xs: 'flex-start', md: 'flex-end' },
                   borderTop: { xs: '1px solid #f1f5f9', md: 'none' },
                   pt: { xs: 1.5, md: 0 },
                   mt: { xs: 1, md: 0 }
                 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Print />}
+                    onClick={() => setPrintTarget(exam)}
+                    sx={{ fontWeight: 700, height: 32 }}
+                  >
+                    Print Exam
+                  </Button>
+
                   <Button
                     size="small"
                     variant="outlined"
@@ -741,7 +782,7 @@ export default function ExamRepository() {
                 {editingExam.questions.map((q: any, qIdx: number) => {
                   const isQRegenerating = !!regeneratingMap[q.id];
                   return (
-                    <Grid item xs={12} key={q.id}>
+                    <Grid size={12} key={q.id}>
                       <Paper
                         variant="outlined"
                         sx={{
@@ -942,7 +983,7 @@ export default function ExamRepository() {
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #f1f5f9' }}>
                             <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Metadata Weights</Typography>
                             <Grid container spacing={2}>
-                              <Grid item xs={12} md={6}>
+                              <Grid size={{ xs: 12, md: 6 }}>
                                 <TextField
                                   fullWidth
                                   label="Points weight"
@@ -953,7 +994,7 @@ export default function ExamRepository() {
                                   sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                                 />
                               </Grid>
-                              <Grid item xs={12} md={6}>
+                              <Grid size={{ xs: 12, md: 6 }}>
                                 <FormControl fullWidth size="small">
                                   <InputLabel>Difficulty</InputLabel>
                                   <Select
@@ -1042,6 +1083,78 @@ export default function ExamRepository() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ── Print Exam ── */}
+      <Dialog
+        open={Boolean(printTarget)}
+        onClose={() => setPrintTarget(null)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: '#0f172a' }}>
+          Print “{printTarget?.title}”
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2.5 }}>
+            <TextField
+              select size="small" label="Paper size" value={printPaper}
+              onChange={(e) => setPrintPaper(e.target.value as PrintPaperSize)}
+              sx={{ minWidth: 150 }}
+            >
+              <MenuItem value="A4">A4</MenuItem>
+              <MenuItem value="Letter">Letter</MenuItem>
+            </TextField>
+            <TextField
+              select size="small" label="Copy" value={printMode}
+              onChange={(e) => setPrintMode(e.target.value as PrintMode)}
+              sx={{ minWidth: 210 }}
+              helperText={printMode === 'student'
+                ? 'Answers are omitted entirely from the markup.'
+                : 'Includes the answer key — do not distribute.'}
+            >
+              <MenuItem value="student">Student copy</MenuItem>
+              <MenuItem value="key">Answer key (instructor)</MenuItem>
+            </TextField>
+          </Box>
+
+          {!printHeader.className && (
+            <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+              This template is not assigned to a class yet, so the Class line will print as a
+              blank for you to fill in by hand.
+            </Alert>
+          )}
+
+          <Typography variant="caption" sx={{ fontWeight: 800, color: '#475569', display: 'block', mb: 1 }}>
+            PREVIEW
+          </Typography>
+          <Box sx={{ maxHeight: 460, overflowY: 'auto', overflowX: 'hidden', border: '1px solid #e2e8f0', borderRadius: 2, bgcolor: '#f8fafc', p: 1 }}>
+            {printTarget && (
+              <PrintableExam exam={printTarget} header={printHeader} paper={printPaper} mode={printMode} />
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, flexWrap: 'wrap', gap: 1 }}>
+          <Button onClick={() => setPrintTarget(null)}>Close</Button>
+          <Button
+            variant="contained"
+            startIcon={<Print />}
+            onClick={() => setPrinting(true)}
+            sx={{ borderRadius: 2.5, px: 3, fontWeight: 800 }}
+          >
+            Print
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Body-level portal: the print stylesheet hides every direct child of <body> and
+          re-shows only this node, which is what makes it proof against MUI's own portals
+          (the open Dialog above would otherwise print on top of the exam). */}
+      <PrintPortal open={printing} onFinished={() => setPrinting(false)}>
+        {printTarget && (
+          <PrintableExam exam={printTarget} header={printHeader} paper={printPaper} mode={printMode} />
+        )}
+      </PrintPortal>
     </Container>
   );
 }

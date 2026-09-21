@@ -3,7 +3,7 @@
  * Connects directly to local Ollama API (http://localhost:11434 or proxy /api/ollama)
  */
 
-import { buildTopicDrivenQuestions, buildTopicDrivenModules } from './geminiService';
+import { buildTopicDrivenQuestions, buildTopicDrivenModules, buildTopicDrivenQuestionsForSpecs } from './geminiService';
 import { TOSData, buildTOSConstraintText, normaliseCogLevel, extractFileText, isAdministrativeMetadata } from './tosParser';
 
 export const DEFAULT_OLLAMA_URL = '/api/ollama';
@@ -528,8 +528,30 @@ Respond ONLY with valid JSON matching this schema:
   }
 
   let idCounter = 1;
+
+  // In TOS mode the model is asked for every item in one request under a token cap, so a
+  // large blueprint is routinely truncated. Previously the result was simply however many
+  // questions came back — a 60-item TOS could yield a 6-item exam while the UI still
+  // displayed "60 items". Pad the tail from the spec-driven generator so the blueprint's
+  // item count is always honoured; padded items are flagged for the instructor to author,
+  // and the TOS validator re-checks the whole set afterwards.
+  const requiredSpecs = params.tosData?.itemSpecs ?? [];
+  if (requiredSpecs.length > 0 && rawQuestions.length < requiredSpecs.length) {
+    console.warn(
+      `Ollama returned ${rawQuestions.length}/${requiredSpecs.length} items (likely truncated by the token limit); ` +
+      `padding ${requiredSpecs.length - rawQuestions.length} item(s) from the spec generator.`
+    );
+    // A null entry maps to a spec-only item below.
+    while (rawQuestions.length < requiredSpecs.length) rawQuestions.push(null);
+  }
+
   return rawQuestions.map((q: any, idx: number) => {
     const spec = params.tosData?.itemSpecs?.[idx];
+    // Padding slot: build the item purely from its blueprint spec.
+    if (q === null || q === undefined) {
+      const [filled] = buildTopicDrivenQuestionsForSpecs([spec], primaryTopic, params.difficulty);
+      return filled ? { ...filled, needsAuthoring: true } : null;
+    }
 
     let qType = spec?.questionType || (targetTypes[idx] ? targetTypes[idx].type : (q.t || q.type || q.question_type || '').toLowerCase());
     if (!['multiple-choice', 'true-false', 'short-answer', 'essay'].includes(qType)) {
@@ -538,12 +560,17 @@ Respond ONLY with valid JSON matching this schema:
 
     const isExtra = targetTypes[idx] ? targetTypes[idx].isExtra : Boolean(q.e || q.isExtra || q.is_extra);
     const defaultPoints = spec?.points || (qType === 'multiple-choice' ? 2 : qType === 'true-false' ? 1 : qType === 'short-answer' ? 3 : 5);
-    const cogLevel = normaliseCogLevel(q.cognitiveLevel || q.bloomLevel || q.level) || spec?.cognitiveLevel || (params.difficulty === 'hard' ? 'Analyzing' : 'Understanding');
-    let topicName = q.topic || spec?.topic || primaryTopic;
+    // The TOS blueprint wins over the model's own labels. This path previously let the model's
+    // topic AND itemPlacement both beat the spec, while the spec itself was looked up
+    // positionally — so a model that skipped or reordered an item bound every subsequent
+    // question to the wrong spec and kept its own placement number, misaligning the exam twice.
+    const aiClaimedCognitiveLevel = normaliseCogLevel(q.cognitiveLevel || q.bloomLevel || q.level) || undefined;
+    const cogLevel = spec?.cognitiveLevel || aiClaimedCognitiveLevel || (params.difficulty === 'hard' ? 'Analyzing' : 'Understanding');
+    let topicName = spec?.topic || q.topic || primaryTopic;
     if (isAdministrativeMetadata(topicName)) {
       topicName = params.tosData?.topics?.find((t) => !isAdministrativeMetadata(t)) || primaryTopic;
     }
-    const placementNum = q.itemPlacement || spec?.itemNumber || (idx + 1);
+    const placementNum = spec?.itemNumber || q.itemPlacement || (idx + 1);
 
     let questionStem = q.q || q.question || q.stem || q.text || q.title || `Question about ${topicName}`;
     if (
@@ -624,6 +651,25 @@ Respond ONLY with valid JSON matching this schema:
     }
 
     return formattedItem;
+  }).filter(Boolean);
+}
+
+/**
+ * Regenerates questions for a specific subset of TOS item specs (the TOS compliance loop
+ * repairs only the items that failed validation rather than discarding the whole exam).
+ */
+export async function regenerateItemsForSpecsOllama(
+  specs: any[],
+  params: ExamGenerationParams
+): Promise<any[]> {
+  if (!specs || specs.length === 0) return [];
+  return generateExamWithOllama({
+    ...params,
+    tosData: {
+      ...(params.tosData as any),
+      itemSpecs: specs,
+      totalItems: specs.length,
+    } as any,
   });
 }
 

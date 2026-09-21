@@ -110,7 +110,13 @@ function mapRawToExamItem(q: any, spec: any, defaultTopic: string, fallbackIdx: 
     topicName = defaultTopic;
   }
 
-  const cogLevel = normaliseCogLevel(q?.cognitiveLevel || q?.bloomLevel || q?.level) || spec?.cognitiveLevel || 'Understanding';
+  // The TOS blueprint is authoritative, NOT the model's self-declared metadata. Previously
+  // this read `normaliseCogLevel(q.cognitiveLevel) || spec.cognitiveLevel`, letting the model
+  // relabel an item the blueprint required at "Applying / Analyzing" as "Remembering" — so the
+  // mandated 20/50/30 distribution silently drifted while the exam still looked complete.
+  // The model's claim is retained separately so the compliance report can show the drift.
+  const aiClaimedCognitiveLevel = normaliseCogLevel(q?.cognitiveLevel || q?.bloomLevel || q?.level) || undefined;
+  const cogLevel = spec?.cognitiveLevel || aiClaimedCognitiveLevel || 'Understanding';
   const defaultPoints = spec?.points || (qType === 'multiple-choice' ? 2 : qType === 'true-false' ? 1 : qType === 'short-answer' ? 3 : 5);
   const placementNum = spec?.itemNumber || q?.itemPlacement || (fallbackIdx + 1);
 
@@ -128,13 +134,21 @@ function mapRawToExamItem(q: any, spec: any, defaultTopic: string, fallbackIdx: 
     id: `gq-gemini-${Date.now()}-${geminiIdCounter++}`,
     type: qType,
     question: questionStem,
-    points: Number(q?.points) || defaultPoints,
+    // Points come from the blueprint when it specifies them; the model's figure is only a
+    // fallback for the no-TOS path. Letting the model win here shifted the exam's total away
+    // from the TOS's mandated points.
+    points: spec?.points || Number(q?.points) || defaultPoints,
     difficulty: q?.difficulty || (['Remembering', 'Understanding'].includes(cogLevel) ? 'easy' : ['Evaluating', 'Creating'].includes(cogLevel) ? 'hard' : 'medium'),
     topic: topicName,
     cognitiveLevel: cogLevel,
     itemPlacement: placementNum,
     image: '',
     isExtra: Boolean(spec?.isExtra || q?.isExtra),
+    // What the model claimed, kept for the TOS compliance report so drift is visible rather
+    // than silently overwritten.
+    aiClaimedCognitiveLevel,
+    aiClaimedTopic: q?.topic || undefined,
+    aiClaimedPlacement: Number(q?.itemPlacement) || undefined,
   };
 
   if (qType === 'multiple-choice') {
@@ -223,16 +237,25 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
 
       params.onProgress?.(finalQuestions.length, totalQuestions, `Generating items ${startNum}–${endNum} of ${totalQuestions} (${currentTopic})...`);
 
-      const systemPrompt = `You are an expert university professor creating an exam strictly adhering to an official Table of Specifications (TOS).
+      const systemPrompt = `You are an expert academic test generator. You must parse the provided TOS document and map your output strictly to its parameters. Do not deviate from the item count, topic distribution, or cognitive levels.
+
 Target Academic Subject / Course: "${primaryTopic}".
-CRITICAL DIRECTIVE: You are generating Items #${startNum} through #${endNum} (${chunkSpecs.length} items total).
+TOS blueprint source: ${params.tosData?.fileName || 'uploaded Table of Specifications'}${params.tosData?.totalItems ? ` (${params.tosData.totalItems} items in total)` : ''}.
+
+CRITICAL DIRECTIVE: You are generating Items #${startNum} through #${endNum}. You must return EXACTLY ${chunkSpecs.length} question objects — no more, no fewer.
 Every item MUST test its specific academic topic and cognitive level:
 ${chunkSpecs.map((s) => `Item #${s.itemNumber} | Placement: ${s.itemNumber} | Topic: "${s.topic}" | Cognitive Level: "${s.cognitiveLevel}" | Points: ${s.points || 1} | Type: ${s.questionType || 'multiple-choice'}`).join('\n')}
+
+BLUEPRINT COMPLIANCE RULES (these are validated after generation; violations are regenerated):
+1. Return the questions in item-placement order, and set "itemPlacement" on each one to the exact item number it fulfils.
+2. Echo the assigned Topic and Cognitive Level verbatim on each question. Do NOT substitute your own judgement about which cognitive level a question belongs to — the blueprint decides, and mislabelled items are rejected.
+3. Write to the assigned cognitive level. "Remembering / Understanding" = recall and explain. "Applying / Analyzing" = use the concept in a scenario, compare, or debug. "Synthesizing / Evaluating" = design, justify a trade-off, or critique a decision.
+4. Every question stem must be UNIQUE. Never repeat or lightly reword a stem you have already produced in this exam.
 
 ANTI-HALLUCINATION GUARDRAILS:
 1. NEVER generate questions about document administrative metadata (such as "Effectivity Date", "Revision No", "Form No", "Prepared by", "Approved by", "March 01, 2024", or university headers).
 2. Questions MUST test substantive curriculum concepts and academic domain knowledge of ${primaryTopic}.
-3. Every multiple-choice question must have 4 distinct, plausible options and the correct answer index (0-3).`;
+3. Every multiple-choice question must have 4 distinct, plausible options and the correct answer index (0-3). Distractors must be plausible to a student who holds a specific misconception — never filler.`;
 
       const promptText = `Generate the exact ${chunkSpecs.length} questions for Items #${startNum} through #${endNum} strictly matching their specified Topic and Cognitive Level.
 ${params.uploadedText ? `Attached Syllabus / Curriculum Reference:\n${params.uploadedText.slice(0, 3000)}\n` : ''}
@@ -257,16 +280,34 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
       const rawBatch = await callGeminiApiForBatch(apiKey, modelsToTry, systemPrompt, promptText, 40000);
 
       if (rawBatch && rawBatch.length > 0) {
+        // Pair each spec with its OWN returned question. The previous
+        // `rawBatch[cIdx] || rawBatch[cIdx % rawBatch.length]` wrapped around whenever the
+        // model returned fewer items than requested, emitting verbatim duplicate stems each
+        // relabelled with a different spec's topic and cognitive level — an exam that looks
+        // complete by count while repeating questions that do not match their stated topic.
+        // A short batch now falls back to the spec-driven generator for the UNFILLED specs
+        // only, and the TOS validator re-checks the result afterwards.
         for (let cIdx = 0; cIdx < chunkSpecs.length; cIdx++) {
           const spec = chunkSpecs[cIdx];
-          const rawQ = rawBatch[cIdx] || rawBatch[cIdx % rawBatch.length];
-          finalQuestions.push(mapRawToExamItem(rawQ, spec, primaryTopic, finalQuestions.length));
+          const rawQ = rawBatch[cIdx];
+          if (rawQ) {
+            finalQuestions.push(mapRawToExamItem(rawQ, spec, primaryTopic, finalQuestions.length));
+          } else {
+            const [filled] = buildTopicDrivenQuestionsForSpecs([spec], primaryTopic, params.difficulty);
+            if (filled) finalQuestions.push({ ...filled, needsAuthoring: true });
+          }
+        }
+        if (rawBatch.length < chunkSpecs.length) {
+          console.warn(
+            `Gemini returned ${rawBatch.length}/${chunkSpecs.length} questions for items ${startNum}-${endNum}; ` +
+            `${chunkSpecs.length - rawBatch.length} item(s) filled from the spec generator and flagged for authoring.`
+          );
         }
       } else {
         // Fallback specifically for this chunk using dynamic spec generator
         console.warn(`Gemini batch for items ${startNum}-${endNum} failed or timed out, generating via dynamic spec generator.`);
         const fallbackChunk = buildTopicDrivenQuestionsForSpecs(chunkSpecs, primaryTopic, params.difficulty);
-        finalQuestions.push(...fallbackChunk);
+        finalQuestions.push(...fallbackChunk.map((q: any) => ({ ...q, needsAuthoring: true })));
       }
     }
 
@@ -348,6 +389,28 @@ Respond ONLY with raw valid JSON:
 
   params.onProgress?.(finalQuestions.length, totalQuestions, 'Question generation complete!');
   return finalQuestions;
+}
+
+/**
+ * Regenerate questions for a specific subset of TOS item specs.
+ *
+ * Used by the TOS compliance loop to repair ONLY the items that failed validation, instead
+ * of discarding an entire exam because a handful of items drifted. It reuses the blueprint
+ * path of generateExamWithGemini by handing it a blueprint narrowed to just those specs.
+ */
+export async function regenerateItemsForSpecs(
+  specs: any[],
+  params: GeminiExamParams
+): Promise<any[]> {
+  if (!specs || specs.length === 0) return [];
+  return generateExamWithGemini({
+    ...params,
+    tosData: {
+      ...(params.tosData as any),
+      itemSpecs: specs,
+      totalItems: specs.length,
+    } as any,
+  });
 }
 
 /**

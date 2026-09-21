@@ -137,7 +137,7 @@ export default function OllamaConfigControl({
         >
           <Grid container spacing={1.5}>
             {/* Google Gemini Option */}
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Paper
                 variant="outlined"
                 onClick={() => onEngineChange('gemini')}
@@ -168,7 +168,7 @@ export default function OllamaConfigControl({
             </Grid>
 
             {/* Local Ollama Option */}
-            <Grid item xs={12} sm={6}>
+            <Grid size={{ xs: 12, sm: 6 }}>
               <Paper
                 variant="outlined"
                 onClick={() => onEngineChange('ollama')}
@@ -220,7 +220,7 @@ export default function OllamaConfigControl({
           </FormControl>
         ) : (
           <Grid container spacing={1.5} alignItems="center">
-            <Grid item xs={12} sm={8}>
+            <Grid size={{ xs: 12, sm: 8 }}>
               <FormControl fullWidth size="small">
                 <InputLabel id="ollama-model-label">Select Ollama Model</InputLabel>
                 <Select
@@ -243,7 +243,7 @@ export default function OllamaConfigControl({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Button
                 fullWidth
                 variant="outlined"

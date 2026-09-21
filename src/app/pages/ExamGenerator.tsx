@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import OllamaConfigControl, { AIEngineType } from '../components/OllamaConfigControl';
-import { generateExamWithOllama, regenerateQuestionWithOllama } from '../services/ollamaService';
-import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey } from '../services/geminiService';
+import { generateExamWithOllama, regenerateQuestionWithOllama, regenerateItemsForSpecsOllama } from '../services/ollamaService';
+import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey, regenerateItemsForSpecs } from '../services/geminiService';
 import { parseTOSFile, extractFilesContentEnhanced, TOSData, BLOOM_LEVELS } from '../services/tosParser';
+import { enforceTOSCompliance, type TOSComplianceReport } from '../services/tosValidator';
+import TOSCompliancePanel from '../components/TOSCompliancePanel';
+import { useIsMobile } from '../hooks/useResponsive';
 import {
   Container,
   Paper,
@@ -30,6 +33,7 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Checkbox,
   Tooltip,
   CardActionArea,
   CircularProgress,
@@ -238,6 +242,12 @@ export default function ExamGenerator() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationStatusText, setGenerationStatusText] = useState('');
 
+  // TOS compliance
+  const [tosReport, setTosReport] = useState<TOSComplianceReport | null>(null);
+  const [tosOverride, setTosOverride] = useState(false);
+
+  const isMobile = useIsMobile();
+
   const isTosActive = Boolean(tos);
   const activeQuestionCount = (tosData && tosData.totalItems > 0)
     ? tosData.totalItems
@@ -260,10 +270,50 @@ export default function ExamGenerator() {
     setTosParseError(null);
   };
 
+  /**
+   * Validate generated questions against the uploaded Table of Specifications and
+   * automatically regenerate the items that fail, before the instructor ever sees the result.
+   *
+   * Only the non-compliant items are re-requested — regenerating the whole exam would discard
+   * items that already satisfied the blueprint. If retries are exhausted the questions are
+   * still shown, but the compliance panel reports the failure and the Save button is gated
+   * behind an explicit override, so a non-compliant exam can never be saved silently.
+   */
+  const runTosEnforcement = async (
+    questions: any[],
+    effectiveTos: TOSData | null,
+    regenerate: (specs: any[]) => Promise<any[]>
+  ): Promise<any[]> => {
+    setTosOverride(false);
+    if (!effectiveTos || !effectiveTos.itemSpecs || effectiveTos.itemSpecs.length === 0) {
+      setTosReport(null);
+      return questions;
+    }
+    const { questions: enforced, report } = await enforceTOSCompliance(
+      questions,
+      effectiveTos,
+      (specs) => regenerate(specs),
+      {
+        maxAttempts: 3,
+        onProgress: (_current, _total, msg) => setGenerationStatusText(msg),
+      }
+    );
+    setTosReport(report);
+    if (!report.compliant) {
+      setGenerationError(
+        `The generated exam does not yet match the Table of Specifications. ${report.summary} ` +
+        `Review the compliance report below — you can regenerate, edit the flagged items by hand, ` +
+        `or save anyway once you have acknowledged the mismatch.`
+      );
+    }
+    return enforced;
+  };
+
   const handleGenerateQuestions = async () => {
     setActiveStep(2);
     setGenerating(true);
     setGenerationError(null);
+    setTosReport(null);
 
     try {
       setGenerationStatusText(
@@ -291,7 +341,7 @@ export default function ExamGenerator() {
         try {
           setGenerationStatusText(`Connecting to Google Gemini AI (${geminiModel}) for ${isTosActive ? 'TOS-aligned' : 'topic-driven'} generation on "${primarySubject}"...`);
 
-          const questions = await generateExamWithGemini({
+          const geminiParams = {
             model: geminiModel,
             mcCount,
             tfCount,
@@ -303,12 +353,18 @@ export default function ExamGenerator() {
             generationPrompt: effectivePrompt,
             uploadedText: extractedText,
             tosData: effectiveTos,
-            onProgress: (current, total, msg) => {
+            onProgress: (_current: number, _total: number, msg: string) => {
               setGenerationStatusText(msg);
             },
-          });
+          };
 
-          setGeneratedQuestions(questions);
+          const questions = await generateExamWithGemini(geminiParams);
+
+          // Validate against the TOS and repair only the non-compliant items.
+          const finalQuestions = await runTosEnforcement(questions, effectiveTos, (specs) =>
+            regenerateItemsForSpecs(specs, geminiParams)
+          );
+          setGeneratedQuestions(finalQuestions);
         } catch (err: any) {
           console.error('Gemini Generation error:', err);
           const fallbackQuestions = buildTopicDrivenQuestions({
@@ -332,7 +388,7 @@ export default function ExamGenerator() {
         try {
           setGenerationStatusText(`Prompting local Ollama model (${ollamaModel}) for "${primarySubject}"...`);
 
-          const questions = await generateExamWithOllama({
+          const ollamaParams = {
             model: ollamaModel,
             mcCount,
             tfCount,
@@ -345,9 +401,14 @@ export default function ExamGenerator() {
             uploadedText: extractedText,
             baseUrl: ollamaUrl,
             tosData: effectiveTos,
-          });
+          };
 
-          setGeneratedQuestions(questions);
+          const questions = await generateExamWithOllama(ollamaParams);
+
+          const finalQuestions = await runTosEnforcement(questions, effectiveTos, (specs) =>
+            regenerateItemsForSpecsOllama(specs, ollamaParams)
+          );
+          setGeneratedQuestions(finalQuestions);
         } catch (err: any) {
           console.error('Ollama Generation error:', err);
           const fallbackQuestions = buildTopicDrivenQuestions({
@@ -720,6 +781,17 @@ export default function ExamGenerator() {
       return;
     }
 
+    // Belt and braces: the Save buttons are already disabled in this state, but never let a
+    // non-compliant exam reach the repository without an explicit acknowledgement.
+    if (tosReport && !tosReport.compliant && !tosOverride) {
+      alert(
+        'This exam does not match the uploaded Table of Specifications.\n\n' +
+        `${tosReport.summary}\n\n` +
+        'Regenerate the flagged items, correct them by hand, or tick the acknowledgement box to save anyway.'
+      );
+      return;
+    }
+
     const savedType = assessmentType === 'Other' ? (customAssessmentType || 'Custom Assessment') : assessmentType;
 
     const examTemplate = {
@@ -730,10 +802,26 @@ export default function ExamGenerator() {
       questions: generatedQuestions,
       activeQuestionCount: activeQuestionCount, // Student takes N questions
       extraQuestionCount: extraCount,           // Drawer has E extra
-      totalPoints: totalPoints,                 // Set point cap (e.g. 50)
+      // With a TOS attached the blueprint's point total is authoritative, not the UI's
+      // default of 50 — the two disagreeing is how a 60-item TOS ended up saved as 50 points.
+      totalPoints: (tosData && tosData.totalPoints > 0) ? tosData.totalPoints : totalPoints,
       duration: duration,
       createdBy: currentUser?.id || 'instructor',
       createdAt: new Date().toISOString(),
+      // Persisted so the repository can show how the exam measured up when it was generated.
+      tosCompliance: tosReport
+        ? {
+            compliant: tosReport.compliant,
+            expectedTotal: tosReport.expectedTotal,
+            actualTotal: tosReport.actualTotal,
+            compliantItemCount: tosReport.compliantItemCount,
+            violationCount: tosReport.violations.length,
+            attemptsUsed: tosReport.attemptsUsed,
+            blueprintFileName: tosReport.blueprintFileName,
+            checkedAt: tosReport.checkedAt,
+            acknowledgedOverride: tosOverride,
+          }
+        : undefined,
     };
 
     saveExamToRepository(examTemplate);
@@ -825,7 +913,7 @@ export default function ExamGenerator() {
         {activeStep === 0 && (
           <Grid container spacing={3} sx={{ animation: 'fadeIn 0.3s ease' }}>
             {/* LEFT COLUMN: Basic Details & AI Engine Selection */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: '#e2e8f0', height: '100%', p: 1 }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
@@ -856,7 +944,7 @@ export default function ExamGenerator() {
                     />
 
                     <Grid container spacing={2}>
-                      <Grid item xs={6}>
+                      <Grid size={6}>
                         <TextField
                           fullWidth
                           label="Duration (Minutes)"
@@ -866,7 +954,7 @@ export default function ExamGenerator() {
                           sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2.5 } }}
                         />
                       </Grid>
-                      <Grid item xs={6}>
+                      <Grid size={6}>
                         <FormControl fullWidth>
                           <InputLabel>Total Points Cap</InputLabel>
                           <Select
@@ -932,7 +1020,7 @@ export default function ExamGenerator() {
             </Grid>
 
             {/* RIGHT COLUMN: AI Topics, Difficulty, Allocations & File Attachments */}
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: isTosActive ? '#c084fc' : '#e2e8f0', height: '100%', p: 1 }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
@@ -1084,7 +1172,7 @@ export default function ExamGenerator() {
 
                     {/* Difficulty & Anti-Cheat */}
                     <Grid container spacing={2} sx={{ opacity: isTosActive ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <FormControl fullWidth size="small" disabled={isTosActive}>
                           <InputLabel>Difficulty Strategy</InputLabel>
                           <Select
@@ -1100,7 +1188,7 @@ export default function ExamGenerator() {
                           </Select>
                         </FormControl>
                       </Grid>
-                      <Grid item xs={12} sm={6}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           fullWidth
                           size="small"
@@ -1142,7 +1230,7 @@ export default function ExamGenerator() {
                         )}
                       </Box>
                       <Grid container spacing={1.5}>
-                        <Grid item xs={6} sm={3}>
+                        <Grid size={{ xs: 6, sm: 3 }}>
                           <TextField
                             fullWidth
                             size="small"
@@ -1154,7 +1242,7 @@ export default function ExamGenerator() {
                             sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
                           />
                         </Grid>
-                        <Grid item xs={6} sm={3}>
+                        <Grid size={{ xs: 6, sm: 3 }}>
                           <TextField
                             fullWidth
                             size="small"
@@ -1166,7 +1254,7 @@ export default function ExamGenerator() {
                             sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
                           />
                         </Grid>
-                        <Grid item xs={6} sm={3}>
+                        <Grid size={{ xs: 6, sm: 3 }}>
                           <TextField
                             fullWidth
                             size="small"
@@ -1178,7 +1266,7 @@ export default function ExamGenerator() {
                             sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
                           />
                         </Grid>
-                        <Grid item xs={6} sm={3}>
+                        <Grid size={{ xs: 6, sm: 3 }}>
                           <TextField
                             fullWidth
                             size="small"
@@ -1272,7 +1360,7 @@ export default function ExamGenerator() {
 
             <Grid container spacing={4}>
               {/* Left Column: Config Profile */}
-              <Grid item xs={12} md={8}>
+              <Grid size={{ xs: 12, md: 8 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
 
                   {/* Summary Profile */}
@@ -1292,7 +1380,7 @@ export default function ExamGenerator() {
                       </Typography>
 
                       <Grid container spacing={2.5}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Assignment sx={{ color: '#2563eb', fontSize: 22 }} />
                             <Box>
@@ -1303,7 +1391,7 @@ export default function ExamGenerator() {
                             </Box>
                           </Box>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <AccessTime sx={{ color: '#6366f1', fontSize: 22 }} />
                             <Box>
@@ -1312,7 +1400,7 @@ export default function ExamGenerator() {
                             </Box>
                           </Box>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <SportsScore sx={{ color: '#d97706', fontSize: 22 }} />
                             <Box>
@@ -1321,7 +1409,7 @@ export default function ExamGenerator() {
                             </Box>
                           </Box>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                           <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <TrendingUp sx={{ color: '#059669', fontSize: 22 }} />
                             <Box>
@@ -1402,7 +1490,7 @@ export default function ExamGenerator() {
               </Grid>
 
               {/* Sidebar Matrix Manifest (Upgraded Design) */}
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <Card variant="outlined" sx={{ borderRadius: 4, borderColor: '#6366f1', bgcolor: 'rgba(99,102,241,0.01)', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
                   {/* Indigo Mini Header Banner */}
@@ -1568,6 +1656,9 @@ export default function ExamGenerator() {
                       size="large"
                       startIcon={<Save />}
                       onClick={handleSaveExam}
+                      // Blocked while the exam does not match the TOS, until the instructor
+                      // explicitly acknowledges the mismatch below.
+                      disabled={Boolean(tosReport && !tosReport.compliant && !tosOverride)}
                       sx={{
                         borderRadius: 3,
                         px: 3.5,
@@ -1587,6 +1678,31 @@ export default function ExamGenerator() {
                     </Typography>
                   )}
                 </Card>
+
+                {/* ── TOS compliance report ── */}
+                {tosReport && (
+                  <>
+                    <TOSCompliancePanel report={tosReport} tosData={tosData} />
+                    {!tosReport.compliant && (
+                      <FormControlLabel
+                        sx={{ mb: 3, ml: 0.5 }}
+                        control={
+                          <Checkbox
+                            checked={tosOverride}
+                            onChange={(e) => setTosOverride(e.target.checked)}
+                            sx={{ color: '#dc2626', '&.Mui-checked': { color: '#dc2626' } }}
+                          />
+                        }
+                        label={
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#991b1b' }}>
+                            I understand this exam does not match the uploaded Table of
+                            Specifications, and I want to save it anyway.
+                          </Typography>
+                        }
+                      />
+                    )}
+                  </>
+                )}
 
                 {/* Top Action & View Toolbar */}
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, gap: 2, mb: 3.5, p: 2, bgcolor: '#f8fafc', borderRadius: 3.5, border: '1px solid #e2e8f0' }}>
@@ -2008,7 +2124,7 @@ export default function ExamGenerator() {
                                   Item Settings & Weight
                                 </Typography>
                                 <Grid container spacing={2}>
-                                  <Grid item xs={12} sm={4}>
+                                  <Grid size={{ xs: 12, sm: 4 }}>
                                     <TextField
                                       fullWidth
                                       label="Points"
@@ -2019,7 +2135,7 @@ export default function ExamGenerator() {
                                       sx={{ bgcolor: 'white', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                                     />
                                   </Grid>
-                                  <Grid item xs={12} sm={4}>
+                                  <Grid size={{ xs: 12, sm: 4 }}>
                                     <FormControl fullWidth size="small" sx={{ bgcolor: 'white' }}>
                                       <InputLabel>Difficulty</InputLabel>
                                       <Select
@@ -2038,7 +2154,7 @@ export default function ExamGenerator() {
                                       </Select>
                                     </FormControl>
                                   </Grid>
-                                  <Grid item xs={12} sm={4}>
+                                  <Grid size={{ xs: 12, sm: 4 }}>
                                     <FormControl fullWidth size="small" sx={{ bgcolor: 'white' }}>
                                       <InputLabel>Cognitive Level</InputLabel>
                                       <Select
@@ -2216,8 +2332,12 @@ export default function ExamGenerator() {
                     size="large"
                     startIcon={<Save />}
                     onClick={handleSaveExam}
+                    disabled={Boolean(tosReport && !tosReport.compliant && !tosOverride)}
+                    fullWidth={isMobile}
                     sx={{
-                      px: 6,
+                      // px: 6 (48px) around a ~200px label overflowed a ~310px content box
+                      // at 390px; the horizontal padding now scales with the viewport.
+                      px: { xs: 2.5, sm: 6 },
                       py: 1.8,
                       borderRadius: 3.5,
                       textTransform: 'none',

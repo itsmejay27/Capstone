@@ -101,7 +101,7 @@ export default function ExamResults() {
       </Paper>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
+        <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex' }}>
           <Card variant="outlined" sx={{ width: '100%', height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -121,7 +121,7 @@ export default function ExamResults() {
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={6} sx={{ display: 'flex' }}>
+        <Grid size={{ xs: 12, md: 6 }} sx={{ display: 'flex' }}>
           <Card variant="outlined" sx={{ width: '100%', height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
