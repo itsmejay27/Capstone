@@ -113,8 +113,8 @@ export default function Dashboard() {
       ? savedExams.length
       : 0
     : exams
-    ? exams.filter((e) => userClassrooms.some((c) => c.id === e.classroomId)).length
-    : 0;
+      ? exams.filter((e) => userClassrooms.some((c) => c.id === e.classroomId)).length
+      : 0;
 
   const handleCreateClassroom = () => {
     if (!className || !subject || !section) return;
