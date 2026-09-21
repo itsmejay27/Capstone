@@ -266,6 +266,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // regresses to an empty state (e.g. if RLS blocks anonymous reads for a table).
   useEffect(() => {
     (async () => {
+      // A session restored from localStorage must exist in Supabase too: classrooms,
+      // exams and attempts all carry a foreign key to this user.
+      if (currentUser) await db.upsertUser(currentUser);
+
       const [dbUsers, dbClassrooms, dbExams, dbSavedExams, dbAttempts, dbReviewers, dbMaterials] = await Promise.all([
         db.fetchUsers(),
         db.fetchClassrooms(),
@@ -330,6 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       setCurrentUser(user);
       localStorage.setItem('currentUserId', user.id);
+      db.upsertUser(user);
       return true;
     }
     return false;
@@ -383,6 +388,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       setCurrentUser(user);
       localStorage.setItem('currentUserId', user.id);
+      db.upsertUser(user);
     }
   };
 

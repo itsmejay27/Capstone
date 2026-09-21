@@ -1,17 +1,36 @@
 import { supabase } from '../config/supabaseClient';
 
-// Best-effort bridge between the app's existing client-generated IDs (e.g. "class-172...")
-// and Supabase's uuid primary keys. Local state always keeps the original id so every page
-// keeps working unchanged; this only translates the id used when mirroring to Supabase.
+// Bridge between the app's client-generated IDs (e.g. "class-172...") and Supabase's uuid
+// primary keys. Local state always keeps the original id so every page keeps working
+// unchanged; this only translates the id used when mirroring to Supabase.
+//
+// The mapping must be deterministic: a random uuid per session would give the same
+// "user-1" a different id on every page load and on every device, so foreign keys
+// between rows written at different times could never line up.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const idTranslations: Record<string, string> = {};
+
+function hash32(input: string, seed: number): number {
+  let h = seed >>> 0;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
 
 export function toDbId(id: string): string {
   if (UUID_RE.test(id)) return id;
-  if (!idTranslations[id]) {
-    idTranslations[id] = crypto.randomUUID();
-  }
-  return idTranslations[id];
+  const hex = [0x811c9dc5, 0x9e3779b9, 0x85ebca6b, 0xc2b2ae35]
+    .map((seed) => hash32(id, seed).toString(16).padStart(8, '0'))
+    .join('');
+  // Force the RFC-4122 version/variant nibbles so the result is a well-formed uuid.
+  const v =
+    hex.slice(0, 12) +
+    '4' +
+    hex.slice(13, 16) +
+    (((parseInt(hex[16], 16) & 0x3) | 0x8).toString(16)) +
+    hex.slice(17, 32);
+  return `${v.slice(0, 8)}-${v.slice(8, 12)}-${v.slice(12, 16)}-${v.slice(16, 20)}-${v.slice(20, 32)}`;
 }
 
 function warn(op: string, error: unknown) {
@@ -49,7 +68,9 @@ export async function upsertUser(user: { id: string; email: string; name: string
           role: user.role,
           avatar: user.avatar || null,
         },
-        { onConflict: 'email' }
+        // Conflict on the primary key, never on email: the id is what every other
+        // table's foreign key points at, so it must stay stable.
+        { onConflict: 'id' }
       );
     if (error) warn('upsertUser', error);
   } catch (e) {
