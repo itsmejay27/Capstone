@@ -20,6 +20,7 @@ function warn(op: string, error: unknown) {
 
 // ---- users ----
 export async function fetchUsers() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('users').select('*');
   if (error) {
     warn('fetchUsers', error);
@@ -36,6 +37,7 @@ export async function fetchUsers() {
 }
 
 export async function upsertUser(user: { id: string; email: string; name: string; role: string; avatar?: string }) {
+  if (!supabase) return;
   try {
     const { error } = await supabase
       .from('users')
@@ -57,6 +59,7 @@ export async function upsertUser(user: { id: string; email: string; name: string
 
 // ---- classrooms ----
 export async function fetchClassrooms() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('classrooms').select('*, classroom_students(student_id)');
   if (error) {
     warn('fetchClassrooms', error);
@@ -77,10 +80,10 @@ export async function fetchClassrooms() {
 }
 
 export async function upsertClassroom(classroom: any) {
+  if (!supabase) return;
   try {
-    const dbId = toDbId(classroom.id);
     const { error } = await supabase.from('classrooms').upsert({
-      id: dbId,
+      id: toDbId(classroom.id),
       name: classroom.name,
       subject: classroom.subject,
       section: classroom.section,
@@ -96,6 +99,7 @@ export async function upsertClassroom(classroom: any) {
 }
 
 export async function addClassroomStudent(classroomId: string, studentId: string) {
+  if (!supabase) return;
   try {
     const { error } = await supabase
       .from('classroom_students')
@@ -108,6 +112,7 @@ export async function addClassroomStudent(classroomId: string, studentId: string
 
 // ---- classroom materials ----
 export async function fetchClassroomMaterials(): Promise<Record<string, any[]>> {
+  if (!supabase) return {};
   const { data, error } = await supabase.from('classroom_materials').select('*');
   if (error) {
     warn('fetchClassroomMaterials', error);
@@ -123,6 +128,7 @@ export async function fetchClassroomMaterials(): Promise<Record<string, any[]>> 
 }
 
 export async function insertClassroomMaterial(classroomId: string, material: any) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('classroom_materials').insert({
       id: toDbId(material.id),
@@ -138,6 +144,7 @@ export async function insertClassroomMaterial(classroomId: string, material: any
 }
 
 export async function deleteClassroomMaterialDb(materialId: string) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('classroom_materials').delete().eq('id', toDbId(materialId));
     if (error) warn('deleteClassroomMaterialDb', error);
@@ -148,6 +155,7 @@ export async function deleteClassroomMaterialDb(materialId: string) {
 
 // ---- saved exams (repository) ----
 export async function fetchSavedExams() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('saved_exams').select('*');
   if (error) {
     warn('fetchSavedExams', error);
@@ -166,6 +174,7 @@ export async function fetchSavedExams() {
 }
 
 export async function upsertSavedExam(exam: any) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('saved_exams').upsert({
       id: toDbId(exam.id),
@@ -183,6 +192,7 @@ export async function upsertSavedExam(exam: any) {
 }
 
 export async function deleteSavedExamDb(examId: string) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('saved_exams').delete().eq('id', toDbId(examId));
     if (error) warn('deleteSavedExamDb', error);
@@ -193,6 +203,7 @@ export async function deleteSavedExamDb(examId: string) {
 
 // ---- exams (assigned to classrooms) ----
 export async function fetchExams() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('exams').select('*');
   if (error) {
     warn('fetchExams', error);
@@ -217,6 +228,7 @@ export async function fetchExams() {
 }
 
 export async function upsertExam(exam: any) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('exams').upsert({
       id: toDbId(exam.id),
@@ -240,6 +252,7 @@ export async function upsertExam(exam: any) {
 }
 
 export async function deleteExamDb(examId: string) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('exams').delete().eq('id', toDbId(examId));
     if (error) warn('deleteExamDb', error);
@@ -250,6 +263,7 @@ export async function deleteExamDb(examId: string) {
 
 // ---- exam attempts ----
 export async function fetchExamAttempts() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('exam_attempts').select('*');
   if (error) {
     warn('fetchExamAttempts', error);
@@ -267,6 +281,7 @@ export async function fetchExamAttempts() {
 }
 
 export async function upsertExamAttempt(attempt: any) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('exam_attempts').upsert({
       id: toDbId(attempt.id),
@@ -285,6 +300,7 @@ export async function upsertExamAttempt(attempt: any) {
 
 // ---- reviewers ----
 export async function fetchReviewers() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('reviewers').select('*');
   if (error) {
     warn('fetchReviewers', error);
@@ -308,6 +324,7 @@ export async function fetchReviewers() {
 }
 
 export async function upsertReviewer(reviewer: any) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('reviewers').upsert({
       id: toDbId(reviewer.id),
@@ -330,6 +347,7 @@ export async function upsertReviewer(reviewer: any) {
 }
 
 export async function deleteReviewerDb(reviewerId: string) {
+  if (!supabase) return;
   try {
     const { error } = await supabase.from('reviewers').delete().eq('id', toDbId(reviewerId));
     if (error) warn('deleteReviewerDb', error);
@@ -340,6 +358,7 @@ export async function deleteReviewerDb(reviewerId: string) {
 
 // ---- question bank ----
 export async function fetchQuestionBank() {
+  if (!supabase) return [];
   const { data, error } = await supabase.from('question_bank').select('*');
   if (error) {
     warn('fetchQuestionBank', error);
