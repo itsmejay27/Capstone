@@ -51,6 +51,8 @@ import {
   FolderOpen,
 } from '@mui/icons-material';
 import { useState } from 'react';
+import { extractFileText } from '../services/tosParser';
+import { uploadMaterialFile } from '../services/supabaseData';
 
 // Academic grade converter standard for OMSC (Occidental Mindoro State College)
 // Base-65 Transmutation System (65% raw passing -> 75% transmuted passing)
@@ -117,6 +119,8 @@ export default function ClassroomDetail() {
 
   const [activeTab, setActiveTab] = useState(0);
   const [viewMaterial, setViewMaterial] = useState<any | null>(null);
+  const [uploadingMaterial, setUploadingMaterial] = useState('');
+  const [uploadError, setUploadError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState(false);
 
@@ -162,20 +166,41 @@ export default function ClassroomDetail() {
     return 'not-started';
   };
 
-  const handleMaterialUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMaterialUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file || !classroomId) return;
-    const material = {
-      id: `mat-${Date.now()}`,
+
+    const materialId = `mat-${Date.now()}`;
+    setUploadingMaterial(file.name);
+    setUploadError('');
+
+    // Read the document's real text so reviewers and exams can be generated from
+    // it, and upload the file itself so students can open the original.
+    let content = '';
+    try {
+      content = await extractFileText(file);
+    } catch (err) {
+      console.warn('Could not extract text from material:', err);
+    }
+
+    const fileUrl = await uploadMaterialFile(classroomId, materialId, file);
+    if (!fileUrl) {
+      setUploadError(`"${file.name}" was saved, but the file could not be uploaded to storage.`);
+    }
+
+    addClassroomMaterial(classroomId, {
+      id: materialId,
       name: file.name,
       size: file.size,
       type: file.type,
+      fileType: file.type,
+      fileUrl,
       uploadedAt: new Date().toISOString(),
       uploadedBy: currentUser?.name || 'Instructor',
-      content: `Study document "${file.name}" uploaded by the instructor for course study and exam preparation.`,
-    };
-    addClassroomMaterial(classroomId, material);
-    e.target.value = '';
+      content,
+    });
+    setUploadingMaterial('');
   };
 
   const handleDeleteMaterial = (materialId: string) => {
@@ -509,10 +534,27 @@ export default function ClassroomDetail() {
                   startIcon={<Upload />}
                   sx={{ bgcolor: '#2563eb', fontWeight: 800, textTransform: 'none', borderRadius: 2.5 }}
                 >
-                  Upload Study Material
-                  <input type="file" hidden onChange={handleMaterialUpload} accept=".pdf,.doc,.docx,.txt" />
+                  {uploadingMaterial ? 'Uploading…' : 'Upload Study Material'}
+                  <input
+                    type="file"
+                    hidden
+                    disabled={Boolean(uploadingMaterial)}
+                    onChange={handleMaterialUpload}
+                    accept=".pdf,.doc,.docx,.txt"
+                  />
                 </Button>
               </Box>
+            )}
+
+            {uploadingMaterial && (
+              <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                Reading and uploading "{uploadingMaterial}"…
+              </Alert>
+            )}
+            {uploadError && (
+              <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setUploadError('')}>
+                {uploadError}
+              </Alert>
             )}
 
             {materials.length === 0 ? (
@@ -717,9 +759,25 @@ export default function ClassroomDetail() {
             {viewMaterial?.name}
           </DialogTitle>
           <DialogContent>
-            <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.6 }}>
-              {viewMaterial?.content}
+            <Typography
+              variant="body2"
+              sx={{ color: '#475569', lineHeight: 1.6, whiteSpace: 'pre-wrap', maxHeight: 360, overflowY: 'auto' }}
+            >
+              {viewMaterial?.content?.trim()
+                ? viewMaterial.content
+                : 'No readable text could be extracted from this file.'}
             </Typography>
+            {viewMaterial?.fileUrl && (
+              <Button
+                href={viewMaterial.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                startIcon={<Visibility />}
+                sx={{ mt: 2, fontWeight: 700, textTransform: 'none' }}
+              >
+                Open original file
+              </Button>
+            )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button onClick={() => setViewMaterial(null)} sx={{ fontWeight: 700 }}>Close</Button>
