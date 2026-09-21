@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { User, UserRole } from '../types';
 import { mockUsers, mockClassrooms, mockExams, mockQuestionBank, mockExamAttempts } from '../data/mockData';
 import { parseGoogleJwt } from '../utils/authUtils';
+import * as db from '../services/supabaseData';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -11,15 +12,15 @@ interface AuthContextType {
   logout: () => void;
   switchAccount: (userId: string) => void;
   isAuthenticated: boolean;
-  
-  // Custom reactive localStorage state
+
+  // Reactive state, hydrated from Supabase when available and mirrored to localStorage as a fallback cache
   classrooms: any[];
   exams: any[];
   savedExams: any[];
   examAttempts: any[];
   reviewers: any[];
   classroomMaterials: Record<string, any[]>; // classroomId -> materials[]
-  
+
   // Mutators
   addClassroom: (classroom: any) => void;
   joinClassroom: (classCode: string, studentId: string) => boolean;
@@ -62,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   });
 
-  // Local storage state initialization
+  // Local state initialization (falls back to localStorage, then seed mock data; Supabase hydration below can override once loaded)
   const [classrooms, setClassrooms] = useState<any[]>(() => {
     const stored = localStorage.getItem('classrooms');
     if (stored) {
@@ -259,6 +260,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   });
 
+  // ── Supabase hydration ──
+  // Best-effort: if the Supabase project has rows for a given collection, prefer them.
+  // Otherwise keep whatever localStorage/mock data was loaded above, so the app never
+  // regresses to an empty state (e.g. if RLS blocks anonymous reads for a table).
+  useEffect(() => {
+    (async () => {
+      const [dbUsers, dbClassrooms, dbExams, dbSavedExams, dbAttempts, dbReviewers, dbMaterials] = await Promise.all([
+        db.fetchUsers(),
+        db.fetchClassrooms(),
+        db.fetchExams(),
+        db.fetchSavedExams(),
+        db.fetchExamAttempts(),
+        db.fetchReviewers(),
+        db.fetchClassroomMaterials(),
+      ]);
+
+      if (dbUsers.length > 0) {
+        setUsers((prev) => {
+          const byEmail = new Map(dbUsers.map((u) => [u.email.toLowerCase(), u]));
+          const merged = prev.map((u) => byEmail.get(u.email.toLowerCase()) ? { ...u, ...byEmail.get(u.email.toLowerCase()), password: u.password } : u);
+          const existingEmails = new Set(merged.map((u) => u.email.toLowerCase()));
+          const extra = dbUsers.filter((u) => !existingEmails.has(u.email.toLowerCase()));
+          return [...merged, ...extra];
+        });
+      }
+      if (dbClassrooms.length > 0) setClassrooms(dbClassrooms);
+      if (dbExams.length > 0) setExams(dbExams);
+      if (dbSavedExams.length > 0) setSavedExams(dbSavedExams);
+      if (dbAttempts.length > 0) setExamAttempts(dbAttempts);
+      if (dbReviewers.length > 0) setReviewers(dbReviewers);
+      if (Object.keys(dbMaterials).length > 0) setClassroomMaterials(dbMaterials);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('registeredUsers', JSON.stringify(users));
   }, [users]);
@@ -317,6 +353,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUsers((prev) => prev.map((u) => (u.id === existingUser.id ? updatedUser : u)));
       setCurrentUser(updatedUser);
       localStorage.setItem('currentUserId', updatedUser.id);
+      db.upsertUser(updatedUser);
       return true;
     }
 
@@ -332,6 +369,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUsers((prev) => [...prev, newUser]);
     setCurrentUser(newUser);
     localStorage.setItem('currentUserId', newUser.id);
+    db.upsertUser(newUser);
     return true;
   };
 
@@ -350,6 +388,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const addClassroom = (classroom: any) => {
     setClassrooms((prev) => [...prev, classroom]);
+    db.upsertClassroom(classroom);
   };
 
   const joinClassroom = (classCode: string, studentId: string): boolean => {
@@ -362,6 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           return c;
         }));
+        db.addClassroomStudent(target.id, studentId);
       }
       return true;
     }
@@ -379,6 +419,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, exam];
     });
+    db.upsertSavedExam(exam);
   };
 
   const updateExamInRepository = (exam: any) => {
@@ -388,18 +429,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteExamFromRepository = (examId: string) => {
     setSavedExams((prev) => prev.filter((e) => e.id !== examId));
     setExams((prev) => prev.filter((e) => e.id !== examId && e.sourceExamId !== examId));
+    db.deleteSavedExamDb(examId);
   };
 
   const archiveClassroom = (classroomId: string) => {
-    setClassrooms((prev) =>
-      prev.map((c) => (c.id === classroomId ? { ...c, isArchived: true } : c))
-    );
+    setClassrooms((prev) => {
+      const updated = prev.map((c) => (c.id === classroomId ? { ...c, isArchived: true } : c));
+      const target = updated.find((c) => c.id === classroomId);
+      if (target) db.upsertClassroom(target);
+      return updated;
+    });
   };
 
   const unarchiveClassroom = (classroomId: string) => {
-    setClassrooms((prev) =>
-      prev.map((c) => (c.id === classroomId ? { ...c, isArchived: false } : c))
-    );
+    setClassrooms((prev) => {
+      const updated = prev.map((c) => (c.id === classroomId ? { ...c, isArchived: false } : c));
+      const target = updated.find((c) => c.id === classroomId);
+      if (target) db.upsertClassroom(target);
+      return updated;
+    });
   };
 
   const assignExamToClassroom = (examId: string, classroomId: string, postDate: string, dueDate: string) => {
@@ -407,7 +455,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (repoExam) {
       const activeExam = {
         ...repoExam,
-        id: `exam-${Date.now()}`,
+        id: crypto.randomUUID(),
+        sourceExamId: repoExam.id,
         classroomId,
         isPublished: true,
         allowedAttempts: 1,
@@ -416,6 +465,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         createdAt: new Date(),
       };
       setExams((prev) => [...prev, activeExam]);
+      db.upsertExam(activeExam);
     }
   };
 
@@ -429,18 +479,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, attempt];
     });
+    db.upsertExamAttempt(attempt);
   };
 
   const saveReviewer = (reviewer: any) => {
     setReviewers((prev) => [...prev, reviewer]);
+    db.upsertReviewer(reviewer);
   };
 
   const deleteReviewer = (reviewerId: string) => {
     setReviewers((prev) => prev.filter((r) => r.id !== reviewerId));
+    db.deleteReviewerDb(reviewerId);
   };
 
   const updateReviewer = (reviewer: any) => {
     setReviewers((prev) => prev.map((r) => r.id === reviewer.id ? reviewer : r));
+    db.upsertReviewer(reviewer);
   };
 
   const addClassroomMaterial = (classroomId: string, material: any) => {
@@ -448,6 +502,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...prev,
       [classroomId]: [...(prev[classroomId] || []), material],
     }));
+    db.insertClassroomMaterial(classroomId, material);
   };
 
   const deleteClassroomMaterial = (classroomId: string, materialId: string) => {
@@ -455,6 +510,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...prev,
       [classroomId]: (prev[classroomId] || []).filter((m: any) => m.id !== materialId),
     }));
+    db.deleteClassroomMaterialDb(materialId);
   };
 
   return (
@@ -467,14 +523,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         switchAccount,
         isAuthenticated: !!currentUser,
-        
+
         classrooms,
         exams,
         savedExams,
         examAttempts,
         reviewers,
         classroomMaterials,
-        
+
         addClassroom,
         joinClassroom,
         saveExamToRepository,
