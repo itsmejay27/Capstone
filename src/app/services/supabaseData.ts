@@ -1,17 +1,11 @@
 import { supabase } from '../config/supabaseClient';
 
-// Best-effort bridge between the app's existing client-generated IDs (e.g. "class-172...")
-// and Supabase's uuid primary keys. Local state always keeps the original id so every page
-// keeps working unchanged; this only translates the id used when mirroring to Supabase.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const idTranslations: Record<string, string> = {};
-
+// IDs in Supabase are configured as TEXT DEFAULT gen_random_uuid()::text.
+// This allows deterministic IDs ('user-1', 'class-1', or UUIDs) to stay consistent
+// across browser page reloads without foreign key mismatches.
 export function toDbId(id: string): string {
-  if (UUID_RE.test(id)) return id;
-  if (!idTranslations[id]) {
-    idTranslations[id] = crypto.randomUUID();
-  }
-  return idTranslations[id];
+  if (!id) return crypto.randomUUID();
+  return id;
 }
 
 function warn(op: string, error: unknown) {
@@ -29,14 +23,14 @@ export async function fetchUsers() {
   return (data || []).map((u: any) => ({
     id: u.id,
     email: u.email,
-    password: '',
+    password: u.password || '',
     name: u.name,
     role: u.role,
     avatar: u.avatar || undefined,
   }));
 }
 
-export async function upsertUser(user: { id: string; email: string; name: string; role: string; avatar?: string }) {
+export async function upsertUser(user: { id: string; email: string; password?: string; name: string; role: string; avatar?: string }) {
   if (!supabase) return;
   try {
     const { error } = await supabase
@@ -45,6 +39,7 @@ export async function upsertUser(user: { id: string; email: string; name: string
         {
           id: toDbId(user.id),
           email: user.email,
+          password: user.password || null,
           name: user.name,
           role: user.role,
           avatar: user.avatar || null,
@@ -381,3 +376,38 @@ export async function fetchQuestionBank() {
     subject: q.subject || undefined,
   }));
 }
+
+export async function upsertQuestionBankItem(item: any) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('question_bank').upsert({
+      id: toDbId(item.id),
+      type: item.type,
+      question: item.question,
+      options: item.options || null,
+      correct_answer: item.correctAnswer != null ? String(item.correctAnswer) : null,
+      points: item.points || 1,
+      difficulty: item.difficulty || 'easy',
+      topic: item.topic || null,
+      cognitive_level: item.cognitiveLevel || null,
+      item_placement: item.itemPlacement || null,
+      tags: item.tags || [],
+      subject: item.subject || null,
+      created_by: item.createdBy ? toDbId(item.createdBy) : null,
+    });
+    if (error) warn('upsertQuestionBankItem', error);
+  } catch (e) {
+    warn('upsertQuestionBankItem', e);
+  }
+}
+
+export async function deleteQuestionBankItemDb(itemId: string) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('question_bank').delete().eq('id', toDbId(itemId));
+    if (error) warn('deleteQuestionBankItemDb', error);
+  } catch (e) {
+    warn('deleteQuestionBankItemDb', e);
+  }
+}
+
