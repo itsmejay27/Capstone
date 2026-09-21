@@ -119,9 +119,42 @@ export async function fetchClassroomMaterials(): Promise<Record<string, any[]>> 
   for (const m of data || []) {
     const key = m.classroom_id;
     if (!grouped[key]) grouped[key] = [];
-    grouped[key].push({ id: m.id, name: m.name, fileUrl: m.file_url, fileType: m.file_type });
+    grouped[key].push({
+      id: m.id,
+      name: m.name,
+      fileUrl: m.file_url,
+      fileType: m.file_type,
+      type: m.file_type,
+      content: m.content || '',
+      size: m.size ?? 0,
+      uploadedAt: m.created_at,
+      uploadedBy: m.uploaded_by || 'Instructor',
+    });
   }
   return grouped;
+}
+
+const MATERIALS_BUCKET = 'classroom-materials';
+
+// Uploads the file itself and returns its public URL, or null when storage is
+// unavailable. The caller still saves the row so the material stays listed.
+export async function uploadMaterialFile(classroomId: string, materialId: string, file: File) {
+  if (!supabase) return null;
+  try {
+    const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+    const path = `${toDbId(classroomId)}/${materialId}-${safeName}`;
+    const { error } = await supabase.storage
+      .from(MATERIALS_BUCKET)
+      .upload(path, file, { upsert: true, contentType: file.type || undefined });
+    if (error) {
+      warn('uploadMaterialFile', error);
+      return null;
+    }
+    return supabase.storage.from(MATERIALS_BUCKET).getPublicUrl(path).data.publicUrl;
+  } catch (e) {
+    warn('uploadMaterialFile', e);
+    return null;
+  }
 }
 
 export async function insertClassroomMaterial(classroomId: string, material: any) {
@@ -133,6 +166,9 @@ export async function insertClassroomMaterial(classroomId: string, material: any
       name: material.name,
       file_url: material.fileUrl || null,
       file_type: material.fileType || material.type || null,
+      content: material.content || null,
+      size: material.size ?? null,
+      uploaded_by: material.uploadedBy || null,
     });
     if (error) warn('insertClassroomMaterial', error);
   } catch (e) {
