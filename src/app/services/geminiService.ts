@@ -5,7 +5,7 @@
 
 import { getDifficultyPromptDirective } from './ollamaService';
 import { TOSData, buildTOSConstraintText, normaliseCogLevel, isAdministrativeMetadata } from './tosParser';
-import { geminiEndpoint } from './geminiEndpoint';
+import { geminiEndpoint, isGeminiAvailable } from './geminiEndpoint';
 
 export const DEFAULT_GEMINI_API_KEY =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) || '';
@@ -26,6 +26,20 @@ export function getStoredGeminiApiKey(): string {
 
 export { geminiEndpoint, isGeminiAvailable } from './geminiEndpoint';
 
+/** Which hosted model service a generation request is routed to. */
+export type AIProvider = 'gemini' | 'nvidia';
+
+/** NVIDIA NIM is always reached through the server proxy, which holds NVIDIA_API_KEY. */
+const NVIDIA_PROXY_URL = '/api/nvidia';
+
+export const NVIDIA_MODELS = [
+  { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct (Recommended)' },
+  { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'Llama 3.1 Nemotron 70B Instruct' },
+  { id: 'meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B Instruct (Fastest)' },
+];
+
+export const DEFAULT_NVIDIA_MODEL = 'meta/llama-3.3-70b-instruct';
+
 export interface GeminiExamParams {
   apiKey?: string;
   model?: string;
@@ -40,6 +54,8 @@ export interface GeminiExamParams {
   uploadedText?: string;
   tosData?: TOSData;
   onProgress?: (current: number, total: number, message: string) => void;
+  /** Defaults to Gemini; 'nvidia' routes the same prompts to NVIDIA NIM via /api/nvidia. */
+  provider?: AIProvider;
 }
 
 export interface GeminiReviewerParams {
@@ -60,38 +76,65 @@ async function callGeminiApiForBatch(
   modelsToTry: string[],
   systemPrompt: string,
   promptText: string,
-  timeoutMs: number = 40000
+  timeoutMs: number = 40000,
+  provider: AIProvider = 'gemini'
 ): Promise<any[]> {
-  if (!apiKey) return [];
+  // NVIDIA is reached only through the server proxy, which supplies the key, so an empty
+  // client-side key is expected there and must not short-circuit the call.
+  if (provider === 'gemini' && !apiKey && !isGeminiAvailable(apiKey)) return [];
   for (const modelCandidate of modelsToTry) {
     try {
-      const url = geminiEndpoint(modelCandidate, apiKey);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: promptText }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.25,
-            maxOutputTokens: 8192,
-          },
-        }),
-      });
+      const response = await fetch(
+        provider === 'nvidia' ? NVIDIA_PROXY_URL : geminiEndpoint(modelCandidate, apiKey),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify(
+            provider === 'nvidia'
+              ? {
+                  // NVIDIA NIM speaks the OpenAI chat-completions schema.
+                  model: modelCandidate,
+                  messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: promptText },
+                  ],
+                  temperature: 0.25,
+                  max_tokens: 8192,
+                  response_format: { type: 'json_object' },
+                }
+              : {
+                  system_instruction: { parts: [{ text: systemPrompt }] },
+                  contents: [{ role: 'user', parts: [{ text: promptText }] }],
+                  generationConfig: {
+                    responseMimeType: 'application/json',
+                    temperature: 0.25,
+                    maxOutputTokens: 8192,
+                  },
+                }
+          ),
+        }
+      );
       clearTimeout(timeoutId);
 
       if (response.ok) {
         const resData = await response.json();
-        const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const rawText =
+          provider === 'nvidia'
+            ? resData.choices?.[0]?.message?.content || ''
+            : resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
         const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim();
         const parsed = JSON.parse(cleanJson);
         const list = Array.isArray(parsed) ? parsed : (parsed.questions || []);
         if (list.length > 0) return list;
+      } else {
+        // The proxies answer a misconfiguration with an explicit message (e.g. a missing
+        // server key); surfacing it beats a silent fall through to the offline generator.
+        const detail = await response.text().catch(() => '');
+        console.warn(`${provider} batch HTTP ${response.status}: ${detail.slice(0, 200)}`);
       }
     } catch (err: any) {
       // Continue to next model candidate
@@ -197,8 +240,11 @@ function mapRawToExamItem(q: any, spec: any, defaultTopic: string, fallbackIdx: 
  */
 export async function generateExamWithGemini(params: GeminiExamParams): Promise<any[]> {
   const apiKey = (params.apiKey || getStoredGeminiApiKey()).trim();
-  const requestedModel = params.model || 'gemini-3.6-flash';
-  const modelsToTry = Array.from(new Set([requestedModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']));
+  const provider: AIProvider = params.provider || 'gemini';
+  const requestedModel = params.model || (provider === 'nvidia' ? DEFAULT_NVIDIA_MODEL : 'gemini-3.6-flash');
+  const modelsToTry = provider === 'nvidia'
+    ? Array.from(new Set([requestedModel, DEFAULT_NVIDIA_MODEL, 'meta/llama-3.1-8b-instruct']))
+    : Array.from(new Set([requestedModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']));
 
   const primaryTopic = params.generationPrompt?.trim()
     || (params.tosData?.courseTitle)
@@ -280,7 +326,7 @@ Respond ONLY with raw valid JSON:
 }
 Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this batch.`;
 
-      const rawBatch = await callGeminiApiForBatch(apiKey, modelsToTry, systemPrompt, promptText, 40000);
+      const rawBatch = await callGeminiApiForBatch(apiKey, modelsToTry, systemPrompt, promptText, 40000, provider);
 
       if (rawBatch && rawBatch.length > 0) {
         // Pair each spec with its OWN returned question. The previous
@@ -368,7 +414,7 @@ Respond ONLY with raw valid JSON:
   ]
 }`;
 
-    const rawBatch = await callGeminiApiForBatch(apiKey, modelsToTry, systemPrompt, promptText, 35000);
+    const rawBatch = await callGeminiApiForBatch(apiKey, modelsToTry, systemPrompt, promptText, 35000, provider);
 
     if (rawBatch && rawBatch.length > 0) {
       for (let cIdx = 0; cIdx < chunkTypes.length; cIdx++) {
