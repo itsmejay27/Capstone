@@ -25,7 +25,7 @@ import {
   AutoAwesome,
 } from '@mui/icons-material';
 import { checkOllamaConnection, OllamaConnectionState } from '../services/ollamaService';
-import { GEMINI_MODELS, NVIDIA_MODELS } from '../services/geminiService';
+import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel } from '../services/geminiService';
 
 export type AIEngineType = 'gemini' | 'nvidia' | 'ollama';
 
@@ -56,6 +56,32 @@ export default function OllamaConfigControl({
   onConnectionStatusChange,
 }: OllamaConfigControlProps) {
   const [loading, setLoading] = useState(false);
+
+  // The NVIDIA catalogue changes over time, so it is read when that engine is selected
+  // rather than shipped as a fixed list that eventually 410s.
+  const [nvidiaModels, setNvidiaModels] = useState<NvidiaModel[]>([]);
+  const [nvidiaLoading, setNvidiaLoading] = useState(false);
+  const [nvidiaError, setNvidiaError] = useState('');
+
+  useEffect(() => {
+    if (engine !== 'nvidia' || nvidiaModels.length > 0) return;
+    let cancelled = false;
+    setNvidiaLoading(true);
+    setNvidiaError('');
+    fetchNvidiaModels()
+      .then((models) => {
+        if (cancelled) return;
+        setNvidiaModels(models);
+        if (models.length === 0) {
+          setNvidiaError('Could not load the NVIDIA model list. Check NVIDIA_API_KEY in the Vercel project settings.');
+        } else if (!models.some((m) => m.id === nvidiaModel)) {
+          onNvidiaModelChange?.(models[0].id);
+        }
+      })
+      .finally(() => { if (!cancelled) setNvidiaLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine]);
 
   const [ollamaStatus, setOllamaStatus] = useState<OllamaConnectionState>({
     connected: false,
@@ -245,19 +271,29 @@ export default function OllamaConfigControl({
         </RadioGroup>
 
         {engine === 'nvidia' && (
-          <FormControl fullWidth size="small">
-            <InputLabel id="nvidia-model-label">Select Llama Model</InputLabel>
-            <Select
-              labelId="nvidia-model-label"
-              value={nvidiaModel}
-              label="Select Llama Model"
-              onChange={(e) => onNvidiaModelChange?.(e.target.value)}
-            >
-              {NVIDIA_MODELS.map((m) => (
-                <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <>
+            <FormControl fullWidth size="small" disabled={nvidiaLoading || nvidiaModels.length === 0}>
+              <InputLabel id="nvidia-model-label">
+                {nvidiaLoading ? 'Loading available models…' : 'Select Llama Model'}
+              </InputLabel>
+              <Select
+                labelId="nvidia-model-label"
+                value={nvidiaModels.some((m) => m.id === nvidiaModel) ? nvidiaModel : ''}
+                label={nvidiaLoading ? 'Loading available models…' : 'Select Llama Model'}
+                onChange={(e) => onNvidiaModelChange?.(e.target.value)}
+                sx={{ borderRadius: 2, bgcolor: '#fff' }}
+              >
+                {nvidiaModels.map((m) => (
+                  <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {nvidiaError && (
+              <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
+                {nvidiaError}
+              </Typography>
+            )}
+          </>
         )}
 
         {/* Model Selector Dropdown (Gemini or Ollama; NVIDIA has its own above) */}

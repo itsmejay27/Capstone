@@ -57,6 +57,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     const initGoogleGsi = () => {
+      // Initialising with an empty client_id makes Google's iframe answer 400 and log
+      // "Parameter client_id is not set correctly", leaving a button that cannot work.
+      // Better to not render it at all and say why.
+      if (!GOOGLE_CLIENT_ID) return;
       if (window.google?.accounts?.id && openLoginModal) {
         setGsiLoaded(true);
         try {
@@ -698,6 +702,13 @@ export default function LoginPage() {
 
           {/* English Google Sign-In Container */}
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+            {!GOOGLE_CLIENT_ID ? (
+              <Alert severity="info" sx={{ width: '100%', borderRadius: 2, fontSize: '0.8rem' }}>
+                Google Sign-In is not configured. Set <strong>VITE_GOOGLE_CLIENT_ID</strong> to enable it —
+                use the demo accounts below in the meantime.
+              </Alert>
+            ) : (
+              <>
             <div id="googleGsiButtonModal" style={{ minHeight: 44, display: 'flex', justifyContent: 'center', width: '100%' }}></div>
             {!gsiLoaded && (
               <Button
@@ -725,6 +736,8 @@ export default function LoginPage() {
               >
                 Continue with Google
               </Button>
+            )}
+              </>
             )}
           </Box>
 
