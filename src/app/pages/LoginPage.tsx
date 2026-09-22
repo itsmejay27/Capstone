@@ -134,21 +134,21 @@ export default function LoginPage() {
 
   const isInstructorRole = selectedRole === 'instructor';
   const roleGradient = isInstructorRole
-    ? 'linear-gradient(135deg, #10b981 0%, #22d3ee 100%)'
-    : 'linear-gradient(135deg, #38bdf8 0%, #22d3ee 100%)';
+    ? 'linear-gradient(135deg, #059669 0%, #0d9488 100%)'
+    : 'linear-gradient(135deg, #0284c7 0%, #0d9488 100%)';
   const roleShadow = isInstructorRole
     ? '0 10px 25px rgba(16, 185, 129, 0.40)'
     : '0 10px 25px rgba(56, 189, 248, 0.40)';
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#0b1120', color: '#f8fafc', overflowX: 'hidden' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#ffffff', color: '#f8fafc', overflowX: 'hidden' }}>
       {/* ── 1. Top Navigation Bar ── */}
       <AppBarNav onOpenLogin={() => setOpenLoginModal(true)} onScrollTo={scrollToSection} />
 
       {/* ── 2. Hero Intro Banner Section ── */}
       <Box
         sx={{
-          background: 'radial-gradient(circle at 50% 15%, #04352b 0%, #0b1120 60%, #050a14 100%)',
+          background: 'radial-gradient(circle at 50% 10%, #ecfdf5 0%, #f6f9fb 55%, #ffffff 100%)',
           pt: { xs: 8, md: 12 },
           pb: { xs: 8, md: 11 },
           px: 3,
@@ -157,8 +157,8 @@ export default function LoginPage() {
           textAlign: 'center',
         }}
       >
-        <Box sx={{ position: 'absolute', top: -100, left: '25%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(16,185,129,0.22) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', bottom: -100, right: '25%', width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(34,211,238,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: -100, left: '25%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(5,150,105,0.13) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', bottom: -100, right: '25%', width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(13,148,136,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Box
@@ -169,14 +169,14 @@ export default function LoginPage() {
               px: 2.5,
               py: 0.8,
               borderRadius: 10,
-              bgcolor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
+              bgcolor: '#ffffff',
+              border: '1px solid #e8e8ed',
               backdropFilter: 'blur(10px)',
               mb: 3,
             }}
           >
-            <School sx={{ color: '#6ee7b7', fontSize: 20 }} />
-            <Typography variant="caption" sx={{ color: '#e2e8f0', fontWeight: 800, letterSpacing: '0.06em' }}>
+            <School sx={{ color: '#047857', fontSize: 20 }} />
+            <Typography variant="caption" sx={{ color: '#3f3f4d', fontWeight: 800, letterSpacing: '0.06em' }}>
               OCCIDENTAL MINDORO STATE COLLEGE &bull; CAPSTONE SYSTEM
             </Typography>
           </Box>
@@ -185,7 +185,7 @@ export default function LoginPage() {
             variant="h2"
             sx={{
               fontWeight: 900,
-              background: 'linear-gradient(120deg, #ffffff 0%, #a7f3d0 45%, #67e8f9 100%)',
+              background: 'linear-gradient(120deg, #16161d 0%, #047857 55%, #0d9488 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -203,7 +203,7 @@ export default function LoginPage() {
           <Typography
             variant="h6"
             sx={{
-              color: '#94a3b8',
+              color: '#5c5c6b',
               fontSize: { xs: '1rem', md: '1.2rem' },
               fontWeight: 400,
               lineHeight: 1.6,
@@ -223,8 +223,8 @@ export default function LoginPage() {
               startIcon={<LoginIcon />}
               onClick={() => setOpenLoginModal(true)}
               sx={{
-                background: 'linear-gradient(90deg, #10b981 0%, #22d3ee 100%)',
-                color: '#04211a',
+                background: 'linear-gradient(90deg, #059669 0%, #0d9488 100%)',
+                color: '#ffffff',
                 fontWeight: 800,
                 px: 4,
                 py: 1.6,
@@ -243,8 +243,8 @@ export default function LoginPage() {
               startIcon={<HelpOutline />}
               onClick={() => scrollToSection('how-it-works')}
               sx={{
-                borderColor: 'rgba(255,255,255,0.25)',
-                color: '#e2e8f0',
+                borderColor: '#dcdce3',
+                color: '#3f3f4d',
                 fontWeight: 700,
                 px: 3.5,
                 py: 1.6,
@@ -252,7 +252,7 @@ export default function LoginPage() {
                 fontSize: '1rem',
                 textTransform: 'none',
                 backdropFilter: 'blur(8px)',
-                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.08)' },
+                '&:hover': { borderColor: 'white', bgcolor: '#ffffff' },
               }}
             >
               Learn How It Works
@@ -269,35 +269,35 @@ export default function LoginPage() {
               mx: 'auto',
             }}
           >
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-              <Speed sx={{ color: '#6ee7b7', mb: 0.5, fontSize: 24 }} />
-              <Typography variant="caption" sx={{ color: '#cbd5e1', fontWeight: 800, display: 'block' }}>15-Sec Generation</Typography>
+            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: '#ffffff', border: '1px solid #e8e8ed', textAlign: 'center' }}>
+              <Speed sx={{ color: '#047857', mb: 0.5, fontSize: 24 }} />
+              <Typography variant="caption" sx={{ color: '#3f3f4d', fontWeight: 800, display: 'block' }}>15-Sec Generation</Typography>
             </Paper>
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-              <Psychology sx={{ color: '#38bdf8', mb: 0.5, fontSize: 24 }} />
-              <Typography variant="caption" sx={{ color: '#cbd5e1', fontWeight: 800, display: 'block' }}>Bloom's Taxonomy</Typography>
+            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: '#ffffff', border: '1px solid #e8e8ed', textAlign: 'center' }}>
+              <Psychology sx={{ color: '#0284c7', mb: 0.5, fontSize: 24 }} />
+              <Typography variant="caption" sx={{ color: '#3f3f4d', fontWeight: 800, display: 'block' }}>Bloom's Taxonomy</Typography>
             </Paper>
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-              <Analytics sx={{ color: '#34d399', mb: 0.5, fontSize: 24 }} />
-              <Typography variant="caption" sx={{ color: '#cbd5e1', fontWeight: 800, display: 'block' }}>Auto Analytics</Typography>
+            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: '#ffffff', border: '1px solid #e8e8ed', textAlign: 'center' }}>
+              <Analytics sx={{ color: '#059669', mb: 0.5, fontSize: 24 }} />
+              <Typography variant="caption" sx={{ color: '#3f3f4d', fontWeight: 800, display: 'block' }}>Auto Analytics</Typography>
             </Paper>
-            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+            <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: '#ffffff', border: '1px solid #e8e8ed', textAlign: 'center' }}>
               <Shield sx={{ color: '#fb923c', mb: 0.5, fontSize: 24 }} />
-              <Typography variant="caption" sx={{ color: '#cbd5e1', fontWeight: 800, display: 'block' }}>Class Code Roster</Typography>
+              <Typography variant="caption" sx={{ color: '#3f3f4d', fontWeight: 800, display: 'block' }}>Class Code Roster</Typography>
             </Paper>
           </Box>
         </Container>
       </Box>
 
       {/* ── 3. Section: About Our System ── */}
-      <Box id="about" sx={{ py: 10, px: 3, bgcolor: '#0b1120', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <Box id="about" sx={{ py: 10, px: 3, bgcolor: '#ffffff', borderTop: '1px solid #e8e8ed' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Chip label="ABOUT THE PLATFORM" size="small" sx={{ bgcolor: 'rgba(4,120,87,0.15)', color: '#6ee7b7', fontWeight: 800, mb: 1.5 }} />
-            <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em', mb: 2 }}>
+            <Chip label="ABOUT THE PLATFORM" size="small" sx={{ bgcolor: 'rgba(4,120,87,0.15)', color: '#047857', fontWeight: 800, mb: 1.5 }} />
+            <Typography variant="h3" fontWeight={900} sx={{ color: '#16161d', letterSpacing: '-0.02em', mb: 2 }}>
               Revolutionizing Educational Assessments
             </Typography>
-            <Typography variant="body1" sx={{ color: '#94a3b8', maxWidth: 720, mx: 'auto', fontSize: '1.05rem', lineHeight: 1.6 }}>
+            <Typography variant="body1" sx={{ color: '#5c5c6b', maxWidth: 720, mx: 'auto', fontSize: '1.05rem', lineHeight: 1.6 }}>
               The OMSC AI-Generated Quiz Classroom is a specialized academic software built for Occidental Mindoro State College, designed to automate exam preparation and empower students with smart revision tools.
             </Typography>
           </Box>
@@ -316,19 +316,19 @@ export default function LoginPage() {
               sx={{
                 p: 4,
                 borderRadius: 4,
-                bgcolor: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                bgcolor: '#ffffff',
+                border: '1px solid #e8e8ed',
                 boxSizing: 'border-box',
                 height: '100%',
               }}
             >
               <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: 'rgba(4,120,87,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
-                <RecordVoiceOver sx={{ color: '#6ee7b7', fontSize: 26 }} />
+                <RecordVoiceOver sx={{ color: '#047857', fontSize: 26 }} />
               </Box>
-              <Typography variant="h6" fontWeight={800} sx={{ color: 'white', mb: 1.5 }}>
+              <Typography variant="h6" fontWeight={800} sx={{ color: '#16161d', mb: 1.5 }}>
                 For Educators & Instructors
               </Typography>
-              <Typography variant="body2" sx={{ color: '#94a3b8', lineHeight: 1.6 }}>
+              <Typography variant="body2" sx={{ color: '#5c5c6b', lineHeight: 1.6 }}>
                 Quickly input course topics or syllabus text to generate comprehensive examinations. Select question types (Multiple Choice, Identification, True/False, Essay) and configure Bloom's Taxonomy cognitive weights.
               </Typography>
             </Paper>
@@ -338,19 +338,19 @@ export default function LoginPage() {
               sx={{
                 p: 4,
                 borderRadius: 4,
-                bgcolor: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                bgcolor: '#ffffff',
+                border: '1px solid #e8e8ed',
                 boxSizing: 'border-box',
                 height: '100%',
               }}
             >
               <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: 'rgba(5,150,105,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
-                <Person sx={{ color: '#38bdf8', fontSize: 26 }} />
+                <Person sx={{ color: '#0284c7', fontSize: 26 }} />
               </Box>
-              <Typography variant="h6" fontWeight={800} sx={{ color: 'white', mb: 1.5 }}>
+              <Typography variant="h6" fontWeight={800} sx={{ color: '#16161d', mb: 1.5 }}>
                 For Enrolled Students
               </Typography>
-              <Typography variant="body2" sx={{ color: '#94a3b8', lineHeight: 1.6 }}>
+              <Typography variant="body2" sx={{ color: '#5c5c6b', lineHeight: 1.6 }}>
                 Join classrooms using unique instructor Class Codes. Generate personalized AI study reviewers, interactive flashcards, and summary notes per subject to prepare for official examinations.
               </Typography>
             </Paper>
@@ -360,19 +360,19 @@ export default function LoginPage() {
               sx={{
                 p: 4,
                 borderRadius: 4,
-                bgcolor: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                bgcolor: '#ffffff',
+                border: '1px solid #e8e8ed',
                 boxSizing: 'border-box',
                 height: '100%',
               }}
             >
               <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: 'rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
-                <Psychology sx={{ color: '#34d399', fontSize: 26 }} />
+                <Psychology sx={{ color: '#059669', fontSize: 26 }} />
               </Box>
-              <Typography variant="h6" fontWeight={800} sx={{ color: 'white', mb: 1.5 }}>
+              <Typography variant="h6" fontWeight={800} sx={{ color: '#16161d', mb: 1.5 }}>
                 AI Accuracy & Integrity
               </Typography>
-              <Typography variant="body2" sx={{ color: '#94a3b8', lineHeight: 1.6 }}>
+              <Typography variant="body2" sx={{ color: '#5c5c6b', lineHeight: 1.6 }}>
                 Powered by state-of-the-art AI, the engine guarantees academically sound questions, rationales, automatic grading with item analysis, and secure classroom code rosters.
               </Typography>
             </Paper>
@@ -381,14 +381,14 @@ export default function LoginPage() {
       </Box>
 
       {/* ── 4. Section: How It Works (Even 4-Column Step Grid) ── */}
-      <Box id="how-it-works" sx={{ py: 10, px: 3, bgcolor: '#0f172a', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <Box id="how-it-works" sx={{ py: 10, px: 3, bgcolor: '#0f172a', borderTop: '1px solid #e8e8ed' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 5 }}>
-            <Chip label="STEP-BY-STEP WORKFLOW" size="small" sx={{ bgcolor: 'rgba(56,189,248,0.15)', color: '#38bdf8', fontWeight: 800, mb: 1.5 }} />
-            <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em', mb: 2 }}>
+            <Chip label="STEP-BY-STEP WORKFLOW" size="small" sx={{ bgcolor: 'rgba(56,189,248,0.15)', color: '#0284c7', fontWeight: 800, mb: 1.5 }} />
+            <Typography variant="h3" fontWeight={900} sx={{ color: '#16161d', letterSpacing: '-0.02em', mb: 2 }}>
               How to Use the OMSC Platform
             </Typography>
-            <Typography variant="body1" sx={{ color: '#94a3b8', maxWidth: 650, mx: 'auto', fontSize: '1.05rem' }}>
+            <Typography variant="body1" sx={{ color: '#5c5c6b', maxWidth: 650, mx: 'auto', fontSize: '1.05rem' }}>
               Select your role below to view the simple 4-step workflow.
             </Typography>
 
@@ -399,12 +399,12 @@ export default function LoginPage() {
                 exclusive
                 onChange={(_, val) => val && setActiveWorkflowTab(val)}
                 sx={{
-                  bgcolor: 'rgba(255,255,255,0.05)',
+                  bgcolor: '#ffffff',
                   p: 0.5,
                   borderRadius: 3,
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  border: '1px solid #e8e8ed',
                   '& .MuiToggleButton-root': {
-                    color: '#94a3b8',
+                    color: '#5c5c6b',
                     px: 3.5,
                     py: 1,
                     fontWeight: 800,
@@ -444,25 +444,25 @@ export default function LoginPage() {
                   step="01"
                   title="Create Classroom"
                   description="Click '+ Create Classroom' in your instructor dashboard. Enter your subject title and section to receive a unique Class Code."
-                  icon={<GroupAdd sx={{ color: '#6ee7b7' }} />}
+                  icon={<GroupAdd sx={{ color: '#047857' }} />}
                 />
                 <StepItem
                   step="02"
                   title="Provide Course Topics"
                   description="Open the AI Exam Generator. Input your lecture topics, paste syllabus text, or upload reference files for the AI engine."
-                  icon={<AutoStories sx={{ color: '#6ee7b7' }} />}
+                  icon={<AutoStories sx={{ color: '#047857' }} />}
                 />
                 <StepItem
                   step="03"
                   title="Set Bloom's Taxonomy"
                   description="Select your target question distribution across Remembering, Understanding, Applying, and Analyzing cognitive levels."
-                  icon={<Psychology sx={{ color: '#6ee7b7' }} />}
+                  icon={<Psychology sx={{ color: '#047857' }} />}
                 />
                 <StepItem
                   step="04"
                   title="Publish & Auto-Grade"
                   description="Publish the exam to your classroom. Enrolled students take the test online, and scores are automatically calculated with item analytics."
-                  icon={<AssignmentTurnedIn sx={{ color: '#6ee7b7' }} />}
+                  icon={<AssignmentTurnedIn sx={{ color: '#047857' }} />}
                 />
               </>
             ) : (
@@ -471,25 +471,25 @@ export default function LoginPage() {
                   step="01"
                   title="Join with Class Code"
                   description="Log in as a student and click 'Join Classroom'. Enter the unique Class Code provided by your course instructor."
-                  icon={<GroupAdd sx={{ color: '#38bdf8' }} />}
+                  icon={<GroupAdd sx={{ color: '#0284c7' }} />}
                 />
                 <StepItem
                   step="02"
                   title="Generate AI Reviewers"
                   description="Generate smart study flashcards, key concept summaries, and self-quizzes to master your course subjects."
-                  icon={<Lightbulb sx={{ color: '#38bdf8' }} />}
+                  icon={<Lightbulb sx={{ color: '#0284c7' }} />}
                 />
                 <StepItem
                   step="03"
                   title="Take Online Exams"
                   description="Access active examinations published in your classroom. Complete timed assessments with clear question navigation."
-                  icon={<Quiz sx={{ color: '#38bdf8' }} />}
+                  icon={<Quiz sx={{ color: '#0284c7' }} />}
                 />
                 <StepItem
                   step="04"
                   title="Instant Results & Feedback"
                   description="View your score breakdown immediately upon submission, with question rationale explanations to boost retention."
-                  icon={<CheckCircle sx={{ color: '#38bdf8' }} />}
+                  icon={<CheckCircle sx={{ color: '#0284c7' }} />}
                 />
               </>
             )}
@@ -498,14 +498,14 @@ export default function LoginPage() {
       </Box>
 
       {/* ── 5. Section: Core Platform Capabilities (Perfect 3x2 Grid) ── */}
-      <Box id="features" sx={{ py: 10, px: 3, bgcolor: '#0b1120', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <Box id="features" sx={{ py: 10, px: 3, bgcolor: '#ffffff', borderTop: '1px solid #e8e8ed' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Chip label="CORE CAPABILITIES" size="small" sx={{ bgcolor: 'rgba(52,211,153,0.15)', color: '#34d399', fontWeight: 800, mb: 1.5 }} />
-            <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em', mb: 2 }}>
+            <Chip label="CORE CAPABILITIES" size="small" sx={{ bgcolor: '#ecfdf5', color: '#059669', fontWeight: 800, mb: 1.5 }} />
+            <Typography variant="h3" fontWeight={900} sx={{ color: '#16161d', letterSpacing: '-0.02em', mb: 2 }}>
               Built for Academic Excellence
             </Typography>
-            <Typography variant="body1" sx={{ color: '#94a3b8', maxWidth: 650, mx: 'auto', fontSize: '1.05rem' }}>
+            <Typography variant="body1" sx={{ color: '#5c5c6b', maxWidth: 650, mx: 'auto', fontSize: '1.05rem' }}>
               Designed to meet Occidental Mindoro State College standards for examination accuracy and integrity.
             </Typography>
           </Box>
@@ -522,17 +522,17 @@ export default function LoginPage() {
             <FeatureItem
               title="Instant AI Question Generator"
               description="Supports Multiple Choice, Identification, True or False, and Essay question formats generated in seconds."
-              icon={<AutoAwesome sx={{ color: '#6ee7b7' }} />}
+              icon={<AutoAwesome sx={{ color: '#047857' }} />}
             />
             <FeatureItem
               title="Bloom's Cognitive Taxonomy"
               description="Categorize questions from basic recall to complex problem-solving and critical evaluation."
-              icon={<Psychology sx={{ color: '#38bdf8' }} />}
+              icon={<Psychology sx={{ color: '#0284c7' }} />}
             />
             <FeatureItem
               title="Smart Study Reviewers"
               description="Interactive flashcards, key concept summaries, and self-assessment tools generated for student revision."
-              icon={<MenuBook sx={{ color: '#34d399' }} />}
+              icon={<MenuBook sx={{ color: '#059669' }} />}
             />
             <FeatureItem
               title="Automated Grading & Analytics"
@@ -547,7 +547,7 @@ export default function LoginPage() {
             <FeatureItem
               title="Central Exam Repository"
               description="Save, manage, export, and republish past examinations across academic terms."
-              icon={<Quiz sx={{ color: '#6ee7b7' }} />}
+              icon={<Quiz sx={{ color: '#047857' }} />}
             />
           </Box>
         </Container>
@@ -557,11 +557,11 @@ export default function LoginPage() {
           These are the fixed parameters of the OMSC Table of Specifications workflow, not
           usage metrics — the platform is a capstone deployment, so inventing adoption
           figures here would be dishonest. */}
-      <Box sx={{ py: { xs: 7, md: 9 }, px: 3, bgcolor: '#0e1526', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <Box sx={{ py: { xs: 7, md: 9 }, px: 3, bgcolor: '#f6f6f8', borderTop: '1px solid #e8e8ed' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 5 }}>
-            <Chip label="BY THE NUMBERS" size="small" sx={{ bgcolor: 'rgba(34,211,238,0.15)', color: '#67e8f9', fontWeight: 800, mb: 1.5 }} />
-            <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em' }}>
+            <Chip label="BY THE NUMBERS" size="small" sx={{ bgcolor: '#ccfbf1', color: '#0f766e', fontWeight: 800, mb: 1.5 }} />
+            <Typography variant="h3" fontWeight={900} sx={{ color: '#16161d', letterSpacing: '-0.02em' }}>
               What One Generation Run Produces
             </Typography>
           </Box>
@@ -581,14 +581,14 @@ export default function LoginPage() {
       </Box>
 
       {/* ── 5c. Section: what each role gets ── */}
-      <Box sx={{ py: { xs: 8, md: 10 }, px: 3, bgcolor: '#0b1120', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <Box sx={{ py: { xs: 8, md: 10 }, px: 3, bgcolor: '#ffffff', borderTop: '1px solid #e8e8ed' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Chip label="TWO PORTALS, ONE SYSTEM" size="small" sx={{ bgcolor: 'rgba(16,185,129,0.15)', color: '#6ee7b7', fontWeight: 800, mb: 1.5 }} />
-            <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em', mb: 2 }}>
+            <Chip label="TWO PORTALS, ONE SYSTEM" size="small" sx={{ bgcolor: '#ecfdf5', color: '#047857', fontWeight: 800, mb: 1.5 }} />
+            <Typography variant="h3" fontWeight={900} sx={{ color: '#16161d', letterSpacing: '-0.02em', mb: 2 }}>
               Made for Instructors and Students Alike
             </Typography>
-            <Typography variant="body1" sx={{ color: '#94a3b8', maxWidth: 680, mx: 'auto', fontSize: '1.05rem' }}>
+            <Typography variant="body1" sx={{ color: '#5c5c6b', maxWidth: 680, mx: 'auto', fontSize: '1.05rem' }}>
               The same class roster drives both sides — an exam an instructor publishes is the
               exam a student sits, and the results flow straight back into the gradebook.
             </Typography>
@@ -597,7 +597,7 @@ export default function LoginPage() {
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
             <RoleCard
               accent="#10b981"
-              icon={<RecordVoiceOver sx={{ color: '#6ee7b7', fontSize: 26 }} />}
+              icon={<RecordVoiceOver sx={{ color: '#047857', fontSize: 26 }} />}
               title="For Instructors"
               points={[
                 'Upload a Table of Specifications and generate a compliant exam',
@@ -609,7 +609,7 @@ export default function LoginPage() {
             />
             <RoleCard
               accent="#22d3ee"
-              icon={<Person sx={{ color: '#67e8f9', fontSize: 26 }} />}
+              icon={<Person sx={{ color: '#0f766e', fontSize: 26 }} />}
               title="For Students"
               points={[
                 'Join a section with the class code your instructor shares',
@@ -624,11 +624,11 @@ export default function LoginPage() {
       </Box>
 
       {/* ── 5d. Section: FAQ ── */}
-      <Box id="faq" sx={{ py: { xs: 8, md: 10 }, px: 3, bgcolor: '#0e1526', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <Box id="faq" sx={{ py: { xs: 8, md: 10 }, px: 3, bgcolor: '#f6f6f8', borderTop: '1px solid #e8e8ed' }}>
         <Container maxWidth="md">
           <Box sx={{ textAlign: 'center', mb: 5 }}>
-            <Chip label="QUESTIONS" size="small" sx={{ bgcolor: 'rgba(251,191,36,0.15)', color: '#fcd34d', fontWeight: 800, mb: 1.5 }} />
-            <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em' }}>
+            <Chip label="QUESTIONS" size="small" sx={{ bgcolor: '#fef3c7', color: '#b45309', fontWeight: 800, mb: 1.5 }} />
+            <Typography variant="h3" fontWeight={900} sx={{ color: '#16161d', letterSpacing: '-0.02em' }}>
               Frequently Asked
             </Typography>
           </Box>
@@ -670,10 +670,10 @@ export default function LoginPage() {
         }}
       >
         <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
-          <Box sx={{ width: 64, height: 64, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2.5, backdropFilter: 'blur(10px)' }}>
+          <Box sx={{ width: 64, height: 64, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2.5, backdropFilter: 'blur(10px)' }}>
             <School sx={{ fontSize: 36, color: 'white' }} />
           </Box>
-          <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em', mb: 2, fontSize: { xs: '2rem', md: '2.8rem' } }}>
+          <Typography variant="h3" fontWeight={900} sx={{ color: '#16161d', letterSpacing: '-0.02em', mb: 2, fontSize: { xs: '2rem', md: '2.8rem' } }}>
             Ready to Access the OMSC AI Portal?
           </Typography>
           <Typography variant="body1" sx={{ color: '#a7f3d0', fontSize: '1.1rem', mb: 4, maxWidth: 600, mx: 'auto' }}>
@@ -686,7 +686,7 @@ export default function LoginPage() {
             startIcon={<LoginIcon />}
             onClick={() => setOpenLoginModal(true)}
             sx={{
-              bgcolor: '#131b2e',
+              bgcolor: '#ffffff',
               color: '#064e3b',
               fontWeight: 900,
               px: 4.5,
@@ -704,7 +704,7 @@ export default function LoginPage() {
       </Box>
 
       {/* ── 7. Footer ── */}
-      <Box sx={{ py: 4, px: 3, bgcolor: '#030712', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      <Box sx={{ py: 4, px: 3, bgcolor: '#f2f2f5', textAlign: 'center', borderTop: '1px solid #e8e8ed' }}>
         <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600 }}>
           &copy; {new Date().getFullYear()} Occidental Mindoro State College &bull; AI Examination Platform Capstone Project
         </Typography>
@@ -720,8 +720,8 @@ export default function LoginPage() {
           sx: {
             borderRadius: 4,
             p: 1,
-            bgcolor: '#131b2e',
-            border: '1px solid #25304a',
+            bgcolor: '#ffffff',
+            border: '1px solid #e8e8ed',
             backgroundImage: 'none',
             boxShadow: '0 25px 70px rgba(0,0,0,0.65)',
           },
@@ -750,19 +750,19 @@ export default function LoginPage() {
                 boxShadow: roleShadow,
               }}
             >
-              <School sx={{ fontSize: 32, color: '#04211a' }} />
+              <School sx={{ fontSize: 32, color: '#ffffff' }} />
             </Box>
-            <Typography variant="h5" component="h1" sx={{ fontWeight: 900, color: '#e8edf7', letterSpacing: '-0.02em' }}>
+            <Typography variant="h5" component="h1" sx={{ fontWeight: 900, color: '#16161d', letterSpacing: '-0.02em' }}>
               OMSC AI Classroom
             </Typography>
-            <Typography variant="caption" sx={{ color: '#a3b0c7', fontWeight: 700, mt: 0.3, display: 'block' }}>
+            <Typography variant="caption" sx={{ color: '#5c5c6b', fontWeight: 700, mt: 0.3, display: 'block' }}>
               Occidental Mindoro State College Examination Portal
             </Typography>
           </Box>
 
           {/* Role Switcher */}
           <Box sx={{ mb: 3 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: '#a3b0c7', mb: 1, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.68rem' }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: '#5c5c6b', mb: 1, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.68rem' }}>
               Select Login Role
             </Typography>
             <ToggleButtonGroup
@@ -774,10 +774,10 @@ export default function LoginPage() {
               size="small"
               sx={{
                 width: '100%',
-                bgcolor: '#1a2338',
+                bgcolor: '#fafafb',
                 p: 0.5,
                 borderRadius: 3,
-                border: '1px solid #25304a',
+                border: '1px solid #e8e8ed',
                 '& .MuiToggleButton-root': {
                   flex: 1,
                   py: 1.1,
@@ -786,11 +786,11 @@ export default function LoginPage() {
                   textTransform: 'none',
                   borderRadius: '10px !important',
                   border: 'none !important',
-                  color: '#a3b0c7',
+                  color: '#5c5c6b',
                 },
                 '& .Mui-selected': {
                   background: `${roleGradient} !important`,
-                  color: '#04211a !important',
+                  color: '#ffffff !important',
                   boxShadow: '0 3px 10px rgba(0,0,0,0.15)',
                 },
               }}
@@ -836,12 +836,12 @@ export default function LoginPage() {
                 sx={{
                   py: 1.3,
                   borderRadius: 3,
-                  borderColor: '#33415c',
-                  color: '#e8edf7',
+                  borderColor: '#dcdce3',
+                  color: '#16161d',
                   fontWeight: 700,
                   fontSize: '0.9rem',
                   textTransform: 'none',
-                  '&:hover': { bgcolor: '#1a2338', borderColor: '#7482a0' },
+                  '&:hover': { bgcolor: '#fafafb', borderColor: '#8e8e9e' },
                 }}
               >
                 Continue with Google
@@ -852,10 +852,10 @@ export default function LoginPage() {
           </Box>
 
           {/* Quick Demo Sign-In Bar */}
-          <Box sx={{ pt: 2.5, borderTop: '1px dashed #25304a' }}>
+          <Box sx={{ pt: 2.5, borderTop: '1px dashed #e8e8ed' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: '#a3b0c7', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.72rem' }}>
-                <AutoAwesome sx={{ fontSize: 14, color: '#10b981' }} /> Quick Demo Sign-In
+              <Typography variant="caption" sx={{ fontWeight: 800, color: '#5c5c6b', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.72rem' }}>
+                <AutoAwesome sx={{ fontSize: 14, color: '#059669' }} /> Quick Demo Sign-In
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
                 Click to auto-login
@@ -880,12 +880,12 @@ export default function LoginPage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1.2,
-                      bgcolor: '#1a2338',
-                      borderColor: '#25304a',
+                      bgcolor: '#fafafb',
+                      borderColor: '#e8e8ed',
                       transition: 'all 0.15s ease',
                       '&:hover': {
                         borderColor: isInstructorUser ? '#10b981' : '#38bdf8',
-                        bgcolor: isInstructorUser ? 'rgba(16,185,129,0.13)' : 'rgba(56,189,248,0.13)',
+                        bgcolor: isInstructorUser ? '#ecfdf5' : '#e0f2fe',
                         transform: 'translateY(-1px)',
                       },
                     }}
@@ -897,14 +897,14 @@ export default function LoginPage() {
                         height: 28,
                         fontSize: '0.75rem',
                         fontWeight: 800,
-                        bgcolor: isInstructorUser ? '#10b981' : '#38bdf8',
-                        color: '#04211a',
+                        bgcolor: isInstructorUser ? '#047857' : '#0284c7',
+                        color: '#ffffff',
                       }}
                     >
                       {u.name.charAt(0)}
                     </Avatar>
                     <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                      <Typography variant="caption" noWrap sx={{ fontWeight: 800, color: '#e8edf7', display: 'block', fontSize: '0.72rem', lineHeight: 1.1 }}>
+                      <Typography variant="caption" noWrap sx={{ fontWeight: 800, color: '#16161d', display: 'block', fontSize: '0.72rem', lineHeight: 1.1 }}>
                         {u.name.split(' ')[0]}
                       </Typography>
                       <Chip
@@ -914,8 +914,8 @@ export default function LoginPage() {
                           height: 15,
                           fontSize: '0.55rem',
                           fontWeight: 800,
-                          bgcolor: isInstructorUser ? 'rgba(16,185,129,0.18)' : 'rgba(56,189,248,0.18)',
-                          color: isInstructorUser ? '#6ee7b7' : '#7dd3fc',
+                          bgcolor: isInstructorUser ? '#d1fae5' : '#e0f2fe',
+                          color: isInstructorUser ? '#065f46' : '#075985',
                           p: 0,
                           mt: 0.2,
                         }}
@@ -940,7 +940,7 @@ function AppBarNav({ onOpenLogin, onScrollTo }: { onOpenLogin: () => void; onScr
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        bgcolor: 'rgba(11, 17, 32, 0.9)',
+        bgcolor: 'rgba(255, 255, 255, 0.88)',
         backdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         py: 1.5,
@@ -950,30 +950,30 @@ function AppBarNav({ onOpenLogin, onScrollTo }: { onOpenLogin: () => void; onScr
       <Container maxWidth="xl">
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <Box sx={{ width: 38, height: 38, borderRadius: 2.5, background: 'linear-gradient(135deg, #10b981 0%, #22d3ee 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#04211a', fontWeight: 900 }}>
+            <Box sx={{ width: 38, height: 38, borderRadius: 2.5, background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 900 }}>
               <School sx={{ fontSize: 22 }} />
             </Box>
             <Box>
-              <Typography variant="subtitle1" fontWeight={900} sx={{ color: 'white', lineHeight: 1.1, letterSpacing: '-0.01em' }}>
+              <Typography variant="subtitle1" fontWeight={900} sx={{ color: '#16161d', lineHeight: 1.1, letterSpacing: '-0.01em' }}>
                 OMSC AI Classroom
               </Typography>
-              <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.65rem' }}>
+              <Typography variant="caption" sx={{ color: '#5c5c6b', fontSize: '0.65rem' }}>
                 Occidental Mindoro State College
               </Typography>
             </Box>
           </Box>
 
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 3.5 }}>
-            <Typography variant="body2" onClick={() => onScrollTo('about')} sx={{ color: '#cbd5e1', fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'white' } }}>
+            <Typography variant="body2" onClick={() => onScrollTo('about')} sx={{ color: '#3f3f4d', fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'white' } }}>
               About System
             </Typography>
-            <Typography variant="body2" onClick={() => onScrollTo('how-it-works')} sx={{ color: '#cbd5e1', fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'white' } }}>
+            <Typography variant="body2" onClick={() => onScrollTo('how-it-works')} sx={{ color: '#3f3f4d', fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'white' } }}>
               How It Works
             </Typography>
-            <Typography variant="body2" onClick={() => onScrollTo('features')} sx={{ color: '#cbd5e1', fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'white' } }}>
+            <Typography variant="body2" onClick={() => onScrollTo('features')} sx={{ color: '#3f3f4d', fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'white' } }}>
               Features
             </Typography>
-            <Typography variant="body2" onClick={() => onScrollTo('faq')} sx={{ color: '#cbd5e1', fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'white' } }}>
+            <Typography variant="body2" onClick={() => onScrollTo('faq')} sx={{ color: '#3f3f4d', fontWeight: 600, cursor: 'pointer', '&:hover': { color: 'white' } }}>
               FAQ
             </Typography>
           </Box>
@@ -983,8 +983,8 @@ function AppBarNav({ onOpenLogin, onScrollTo }: { onOpenLogin: () => void; onScr
             startIcon={<LoginIcon />}
             onClick={onOpenLogin}
             sx={{
-              background: 'linear-gradient(90deg, #10b981 0%, #22d3ee 100%)',
-              color: '#04211a',
+              background: 'linear-gradient(90deg, #059669 0%, #0d9488 100%)',
+              color: '#ffffff',
               fontWeight: 800,
               borderRadius: 2.5,
               px: 2.5,
@@ -1010,8 +1010,8 @@ function StepItem({ step, title, description, icon }: { step: string; title: str
       sx={{
         p: 3,
         borderRadius: 3.5,
-        bgcolor: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        bgcolor: '#ffffff',
+        border: '1px solid #e8e8ed',
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -1019,17 +1019,17 @@ function StepItem({ step, title, description, icon }: { step: string; title: str
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Box sx={{ width: 40, height: 40, borderRadius: 2.5, bgcolor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Box sx={{ width: 40, height: 40, borderRadius: 2.5, bgcolor: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {icon}
         </Box>
         <Typography variant="h6" fontWeight={900} sx={{ color: 'rgba(255,255,255,0.2)', fontSize: '1.2rem' }}>
           {step}
         </Typography>
       </Box>
-      <Typography variant="subtitle1" fontWeight={800} sx={{ color: 'white', mb: 1 }}>
+      <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#16161d', mb: 1 }}>
         {title}
       </Typography>
-      <Typography variant="caption" sx={{ color: '#94a3b8', lineHeight: 1.5, display: 'block' }}>
+      <Typography variant="caption" sx={{ color: '#5c5c6b', lineHeight: 1.5, display: 'block' }}>
         {description}
       </Typography>
     </Paper>
@@ -1046,8 +1046,8 @@ function LandingStat({ value, label, caption }: { value: string; label: string; 
         overflow: 'hidden',
         p: { xs: 2.25, md: 3 },
         borderRadius: 3.5,
-        bgcolor: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        bgcolor: '#ffffff',
+        border: '1px solid #e8e8ed',
         textAlign: 'center',
         height: '100%',
         boxSizing: 'border-box',
@@ -1057,7 +1057,7 @@ function LandingStat({ value, label, caption }: { value: string; label: string; 
           insetInline: 0,
           top: 0,
           height: 2,
-          background: 'linear-gradient(90deg, #10b981 0%, #22d3ee 100%)',
+          background: 'linear-gradient(90deg, #059669 0%, #0d9488 100%)',
         },
       }}
     >
@@ -1067,7 +1067,7 @@ function LandingStat({ value, label, caption }: { value: string; label: string; 
           fontSize: { xs: '2.1rem', md: '2.7rem' },
           lineHeight: 1.1,
           letterSpacing: '-0.03em',
-          background: 'linear-gradient(90deg, #10b981 0%, #22d3ee 100%)',
+          background: 'linear-gradient(90deg, #059669 0%, #0d9488 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
@@ -1075,10 +1075,10 @@ function LandingStat({ value, label, caption }: { value: string; label: string; 
       >
         {value}
       </Typography>
-      <Typography variant="subtitle2" sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>
+      <Typography variant="subtitle2" sx={{ color: '#16161d', fontWeight: 800, mt: 0.5 }}>
         {label}
       </Typography>
-      <Typography variant="caption" sx={{ color: '#94a3b8', display: 'block', mt: 0.5, lineHeight: 1.45 }}>
+      <Typography variant="caption" sx={{ color: '#5c5c6b', display: 'block', mt: 0.5, lineHeight: 1.45 }}>
         {caption}
       </Typography>
     </Paper>
@@ -1105,8 +1105,8 @@ function RoleCard({
         overflow: 'hidden',
         p: { xs: 3, md: 3.5 },
         borderRadius: 3.5,
-        bgcolor: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        bgcolor: '#ffffff',
+        border: '1px solid #e8e8ed',
         height: '100%',
         boxSizing: 'border-box',
         '&::before': {
@@ -1126,7 +1126,7 @@ function RoleCard({
             height: 48,
             borderRadius: 3,
             flexShrink: 0,
-            bgcolor: 'rgba(255,255,255,0.05)',
+            bgcolor: '#ffffff',
             border: `1px solid ${accent}44`,
             display: 'flex',
             alignItems: 'center',
@@ -1135,7 +1135,7 @@ function RoleCard({
         >
           {icon}
         </Box>
-        <Typography variant="h6" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.01em' }}>
+        <Typography variant="h6" fontWeight={900} sx={{ color: '#16161d', letterSpacing: '-0.01em' }}>
           {title}
         </Typography>
       </Box>
@@ -1144,7 +1144,7 @@ function RoleCard({
         {points.map((point) => (
           <Box component="li" key={point} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
             <CheckCircle sx={{ color: accent, fontSize: 18, mt: '2px', flexShrink: 0 }} />
-            <Typography variant="body2" sx={{ color: '#cbd5e1', lineHeight: 1.55 }}>
+            <Typography variant="body2" sx={{ color: '#3f3f4d', lineHeight: 1.55 }}>
               {point}
             </Typography>
           </Box>
@@ -1165,12 +1165,12 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
       component="details"
       sx={{
         borderRadius: 3,
-        bgcolor: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        bgcolor: '#ffffff',
+        border: '1px solid #e8e8ed',
         px: { xs: 2, md: 2.75 },
         py: 1.75,
         transition: 'border-color .2s ease',
-        '&[open]': { borderColor: 'rgba(16,185,129,0.35)' },
+        '&[open]': { borderColor: '#a7f3d0' },
         '&[open] .faq-marker': { transform: 'rotate(45deg)' },
       }}
     >
@@ -1185,7 +1185,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
           '&::-webkit-details-marker': { display: 'none' },
         }}
       >
-        <Typography variant="subtitle1" fontWeight={800} sx={{ color: 'white', flex: 1 }}>
+        <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#16161d', flex: 1 }}>
           {question}
         </Typography>
         <Box
@@ -1196,7 +1196,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
             flexShrink: 0,
             position: 'relative',
             transition: 'transform .2s ease',
-            color: '#6ee7b7',
+            color: '#047857',
             '&::before, &::after': {
               content: '""',
               position: 'absolute',
@@ -1208,7 +1208,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
           }}
         />
       </Box>
-      <Typography variant="body2" sx={{ color: '#94a3b8', lineHeight: 1.65, mt: 1.75, pr: { md: 4 } }}>
+      <Typography variant="body2" sx={{ color: '#5c5c6b', lineHeight: 1.65, mt: 1.75, pr: { md: 4 } }}>
         {answer}
       </Typography>
     </Box>
@@ -1222,21 +1222,21 @@ function FeatureItem({ title, description, icon }: { title: string; description:
       sx={{
         p: 3,
         borderRadius: 3.5,
-        bgcolor: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        bgcolor: '#ffffff',
+        border: '1px solid #e8e8ed',
         height: '100%',
         boxSizing: 'border-box',
         transition: 'transform 0.2s ease, border-color 0.2s ease',
-        '&:hover': { transform: 'translateY(-3px)', borderColor: 'rgba(255,255,255,0.2)' },
+        '&:hover': { transform: 'translateY(-3px)', borderColor: '#dcdce3' },
       }}
     >
-      <Box sx={{ width: 42, height: 42, borderRadius: 2.5, bgcolor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+      <Box sx={{ width: 42, height: 42, borderRadius: 2.5, bgcolor: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
         {icon}
       </Box>
-      <Typography variant="subtitle1" fontWeight={800} sx={{ color: 'white', mb: 1 }}>
+      <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#16161d', mb: 1 }}>
         {title}
       </Typography>
-      <Typography variant="caption" sx={{ color: '#94a3b8', lineHeight: 1.5, display: 'block' }}>
+      <Typography variant="caption" sx={{ color: '#5c5c6b', lineHeight: 1.5, display: 'block' }}>
         {description}
       </Typography>
     </Paper>

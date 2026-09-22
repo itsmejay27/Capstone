@@ -3,78 +3,82 @@
  *
  * Single source of truth for colour, radius, shadow and spacing across the app. Pages should
  * read from here (or from the MUI theme built on top of it) rather than hard-coding hex
- * values.
+ * values — the existing pages are full of one-off '#059669' / '#e2e8f0' literals, which is
+ * why nothing lines up.
  *
- * The palette is a dark "console" scheme: a deep navy canvas, slightly lifted navy surfaces,
- * hairline borders that read as a subtle lift rather than a line, and an emerald→cyan
- * gradient reserved for brand moments (headings, primary actions, card accent strips).
+ * The palette is a light, low-chroma "workspace" scheme: near-white canvas, white surfaces,
+ * hairline borders, and colour reserved for meaning (state, role, action) rather than
+ * decoration.
  */
 
 export const palette = {
   // Canvas and surfaces
-  canvas: '#0b1120',
-  surface: '#131b2e',
-  surfaceMuted: '#18223a',
-  surfaceSunken: '#1c2740',
+  canvas: '#f6f6f8',
+  surface: '#ffffff',
+  surfaceMuted: '#fafafb',
+  surfaceSunken: '#f2f2f5',
 
   // Hairlines
-  border: '#25304a',
-  borderStrong: '#33415c',
+  border: '#e8e8ed',
+  borderStrong: '#dcdce3',
 
   // Ink
-  ink: '#e8edf7',
-  inkSecondary: '#a3b0c7',
-  inkTertiary: '#7482a0',
-  inkDisabled: '#55627d',
+  ink: '#16161d',
+  inkSecondary: '#5c5c6b',
+  inkTertiary: '#8e8e9e',
+  inkDisabled: '#b4b4c0',
 
   // Brand / action
-  primary: '#10b981',
-  primaryHover: '#34d399',
-  primarySoft: 'rgba(16, 185, 129, 0.13)',
-  primaryBorder: 'rgba(16, 185, 129, 0.38)',
+  primary: '#059669',
+  primaryHover: '#047857',
+  primarySoft: '#ecfdf5',
+  primaryBorder: '#a7f3d0',
 
   // Role accents
-  instructor: '#34d399',
-  instructorSoft: 'rgba(52, 211, 153, 0.13)',
-  student: '#38bdf8',
-  studentSoft: 'rgba(56, 189, 248, 0.13)',
+  instructor: '#047857',
+  instructorSoft: '#ecfdf5',
+  student: '#0284c7',
+  studentSoft: '#e0f2fe',
 
   // Status
-  success: '#4ade80',
-  successSoft: 'rgba(74, 222, 128, 0.13)',
-  warning: '#fbbf24',
-  warningSoft: 'rgba(251, 191, 36, 0.13)',
-  danger: '#f87171',
-  dangerSoft: 'rgba(248, 113, 113, 0.13)',
-  info: '#38bdf8',
-  infoSoft: 'rgba(56, 189, 248, 0.13)',
+  success: '#15803d',
+  successSoft: '#dcfce7',
+  warning: '#b45309',
+  warningSoft: '#fef3c7',
+  danger: '#b91c1c',
+  dangerSoft: '#fee2e2',
+  info: '#0369a1',
+  infoSoft: '#e0f2fe',
 } as const;
 
 /**
- * The brand gradient. Used for the wordmark, page titles, primary buttons and the accent
+ * The brand gradient, used for the wordmark, page titles, primary buttons and the accent
  * strip along the top of a card — the handful of places that carry brand, never as a
  * background for text the user has to read at length.
+ *
+ * On a light canvas the stops are held at emerald 600 / teal 600 rather than the brighter
+ * 500s, so white text on a gradient button still clears the contrast floor.
  */
 export const gradient = {
-  brand: `linear-gradient(90deg, ${palette.primary} 0%, #22d3ee 100%)`,
-  brandDiagonal: `linear-gradient(135deg, ${palette.primary} 0%, #22d3ee 100%)`,
-  /** Full-bleed glow behind the landing hero. */
+  brand: `linear-gradient(90deg, ${palette.primary} 0%, #0d9488 100%)`,
+  brandDiagonal: `linear-gradient(135deg, ${palette.primary} 0%, #0d9488 100%)`,
+  /** Full-bleed tint behind the landing hero. */
   heroGlow:
-    'radial-gradient(900px 480px at 15% -10%, rgba(16, 185, 129, 0.20), transparent 60%),' +
-    'radial-gradient(760px 420px at 88% 8%, rgba(34, 211, 238, 0.16), transparent 62%)',
+    'radial-gradient(900px 480px at 15% -10%, rgba(5, 150, 105, 0.10), transparent 60%),' +
+    'radial-gradient(760px 420px at 88% 8%, rgba(13, 148, 136, 0.09), transparent 62%)',
 } as const;
 
 /**
- * Tinted gradients for folder/class cards. Indexed deterministically by entity id so a
- * class keeps its colour between renders.
+ * Pastel gradients for folder/class cards, matching the reference's soft tinted tiles.
+ * Indexed deterministically by entity id so a class keeps its colour between renders.
  */
 export const cardTints = [
-  { from: 'rgba(16, 185, 129, 0.16)', to: 'rgba(16, 185, 129, 0.04)', ink: '#6ee7b7' },
-  { from: 'rgba(34, 211, 238, 0.16)', to: 'rgba(34, 211, 238, 0.04)', ink: '#67e8f9' },
-  { from: 'rgba(251, 191, 36, 0.14)', to: 'rgba(251, 191, 36, 0.04)', ink: '#fcd34d' },
-  { from: 'rgba(74, 222, 128, 0.15)', to: 'rgba(74, 222, 128, 0.04)', ink: '#86efac' },
-  { from: 'rgba(244, 114, 182, 0.14)', to: 'rgba(244, 114, 182, 0.04)', ink: '#f9a8d4' },
-  { from: 'rgba(56, 189, 248, 0.15)', to: 'rgba(56, 189, 248, 0.04)', ink: '#7dd3fc' },
+  { from: '#d1fae5', to: '#ecfdf5', ink: '#065f46' }, // lavender
+  { from: '#d1fae5', to: '#ecfdf5', ink: '#065f46' }, // blue
+  { from: '#ffedd5', to: '#fff7ed', ink: '#9a3412' }, // peach
+  { from: '#dcfce7', to: '#f0fdf4', ink: '#166534' }, // mint
+  { from: '#fce7f3', to: '#fdf2f8', ink: '#9d174d' }, // rose
+  { from: '#cffafe', to: '#ecfeff', ink: '#155e75' }, // cyan
 ] as const;
 
 /** Stable tint for an entity, so a card does not change colour on re-render. */
@@ -94,19 +98,16 @@ export const radius = {
 } as const;
 
 /**
- * On a dark canvas a drop shadow is nearly invisible, so depth comes from the border and a
- * faint inner highlight. The shadows stay for focus rings and floating surfaces (menus,
- * dialogs) where a real cast shadow still separates layers.
+ * Soft, short shadows. The reference has almost no elevation — depth comes from hairline
+ * borders, not drop shadows, so these stay deliberately subtle.
  */
 export const shadow = {
   none: 'none',
-  xs: '0 1px 2px rgba(0, 0, 0, 0.30)',
-  sm: '0 1px 3px rgba(0, 0, 0, 0.36), 0 1px 2px rgba(0, 0, 0, 0.24)',
-  md: '0 4px 14px rgba(0, 0, 0, 0.40)',
-  lg: '0 18px 40px rgba(0, 0, 0, 0.55)',
-  focus: `0 0 0 3px ${palette.primarySoft}`,
-  /** The soft coloured halo under a gradient button. */
-  brandGlow: '0 6px 20px rgba(16, 185, 129, 0.30)',
+  xs: '0 1px 2px rgba(22, 22, 29, 0.04)',
+  sm: '0 1px 3px rgba(22, 22, 29, 0.06), 0 1px 2px rgba(22, 22, 29, 0.04)',
+  md: '0 4px 12px rgba(22, 22, 29, 0.06)',
+  lg: '0 12px 28px rgba(22, 22, 29, 0.10)',
+  focus: `0 0 0 3px ${palette.primary}22`,
 } as const;
 
 /** Fixed measurements the shell and pages agree on. */
@@ -122,6 +123,6 @@ export const layout = {
 
 export const font = {
   sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  /** Entity titles are set in a mono face; used for card/section titles. */
+  /** The reference sets entity titles in a mono face; used for card/section titles. */
   mono: "'JetBrains Mono', 'SF Mono', ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace",
 } as const;

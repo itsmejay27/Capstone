@@ -17,9 +17,9 @@ import { palette, gradient, radius, shadow, layout, font } from './tokens';
  */
 export const theme = createTheme({
   palette: {
-    mode: 'dark',
-    primary: { main: palette.primary, dark: palette.primaryHover, light: palette.primaryHover, contrastText: '#04211a' },
-    secondary: { main: '#22d3ee', light: '#67e8f9', contrastText: '#04211a' },
+    mode: 'light',
+    primary: { main: palette.primary, dark: palette.primaryHover, light: palette.primarySoft, contrastText: '#ffffff' },
+    secondary: { main: palette.instructor, light: palette.instructorSoft, contrastText: '#ffffff' },
     success: { main: palette.success, light: palette.successSoft },
     warning: { main: palette.warning, light: palette.warningSoft },
     error: { main: palette.danger, light: palette.dangerSoft },
@@ -53,7 +53,6 @@ export const theme = createTheme({
         body: {
           backgroundColor: palette.canvas,
           color: palette.ink,
-          colorScheme: 'dark',
           // No page-level horizontal scroll, ever. Wide content scrolls in its own container.
           overflowX: 'hidden',
         },
@@ -133,8 +132,8 @@ export const theme = createTheme({
         contained: { boxShadow: 'none', '&:hover': { boxShadow: shadow.sm } },
         containedPrimary: {
           background: gradient.brand,
-          color: '#04211a',
-          '&:hover': { background: gradient.brand, filter: 'brightness(1.08)', boxShadow: shadow.brandGlow },
+          color: '#ffffff',
+          '&:hover': { background: gradient.brand, filter: 'brightness(1.06)', boxShadow: shadow.md },
           '&.Mui-disabled': { background: palette.surfaceSunken, color: palette.inkDisabled },
         },
         outlined: {
@@ -179,8 +178,6 @@ export const theme = createTheme({
           borderRadius: radius.lg,
           border: `1px solid ${palette.border}`,
           boxShadow: shadow.xs,
-          backgroundColor: palette.surface,
-          // The reference's signature: a 2px gradient rule capping every card.
           position: 'relative',
           overflow: 'hidden',
           '&::before': {
@@ -215,19 +212,11 @@ export const theme = createTheme({
     MuiDivider: { styleOverrides: { root: { borderColor: palette.border } } },
     MuiTooltip: {
       styleOverrides: {
-        tooltip: { backgroundColor: palette.surfaceSunken, color: palette.ink, border: `1px solid ${palette.border}`, fontSize: '0.75rem', borderRadius: radius.sm, padding: '6px 10px' },
+        tooltip: { backgroundColor: palette.ink, fontSize: '0.75rem', borderRadius: radius.sm, padding: '6px 10px' },
       },
     },
     MuiAlert: {
-      styleOverrides: {
-        root: { borderRadius: radius.lg, fontSize: '0.85rem', alignItems: 'flex-start' },
-        // MUI's dark-mode standard Alert derives a very low-contrast fill from the palette;
-        // pin each severity to an explicit tint + bright ink so the text stays readable.
-        standardInfo: { backgroundColor: palette.infoSoft, color: palette.info, border: `1px solid ${palette.info}33` },
-        standardSuccess: { backgroundColor: palette.successSoft, color: palette.success, border: `1px solid ${palette.success}33` },
-        standardWarning: { backgroundColor: palette.warningSoft, color: palette.warning, border: `1px solid ${palette.warning}33` },
-        standardError: { backgroundColor: palette.dangerSoft, color: palette.danger, border: `1px solid ${palette.danger}33` },
-      },
+      styleOverrides: { root: { borderRadius: radius.lg, fontSize: '0.85rem', alignItems: 'flex-start' } },
     },
 
     // ── Tabs ──
@@ -268,7 +257,7 @@ export const theme = createTheme({
           position: 'relative',
           '&.Mui-selected': {
             backgroundColor: palette.primarySoft,
-            color: palette.primary,
+            color: palette.primaryHover,
             '&:hover': { backgroundColor: palette.primarySoft },
             '&::after': {
               content: '""',

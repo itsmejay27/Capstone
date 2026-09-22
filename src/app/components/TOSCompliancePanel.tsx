@@ -19,37 +19,37 @@ function CountTable({ title, rows, isMobile }: { title: string; rows: TOSCountRo
   if (rows.length === 0) return null;
   return (
     <Box sx={{ mb: 2.5 }}>
-      <Typography variant="caption" sx={{ fontWeight: 900, color: '#c3cddf', display: 'block', mb: 0.75 }}>
+      <Typography variant="caption" sx={{ fontWeight: 900, color: '#475569', display: 'block', mb: 0.75 }}>
         {title}
       </Typography>
-      <TableContainer sx={{ overflowX: 'auto', border: '1px solid #25304a', borderRadius: 2 }}>
+      <TableContainer sx={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 2 }}>
         <Table size="small" sx={{ minWidth: isMobile ? 0 : 420 }}>
-          <TableHead sx={{ bgcolor: '#0f1626' }}>
+          <TableHead sx={{ bgcolor: '#f8fafc' }}>
             <TableRow>
-              <TableCell sx={{ fontWeight: 800, color: '#dbe3f0' }}>
+              <TableCell sx={{ fontWeight: 800, color: '#334155' }}>
                 {title.toLowerCase().includes('topic') ? 'Topic' : 'Cognitive level'}
               </TableCell>
-              <TableCell align="center" sx={{ fontWeight: 800, color: '#dbe3f0' }}>Required</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 800, color: '#dbe3f0' }}>Generated</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 800, color: '#dbe3f0' }}>Status</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 800, color: '#334155' }}>Required</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 800, color: '#334155' }}>Generated</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 800, color: '#334155' }}>Status</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.map((r) => (
               <TableRow key={r.key} hover>
-                <TableCell sx={{ color: '#e8edf7', fontWeight: 600, wordBreak: 'break-word', minWidth: isMobile ? 120 : 180 }}>
+                <TableCell sx={{ color: '#0f172a', fontWeight: 600, wordBreak: 'break-word', minWidth: isMobile ? 120 : 180 }}>
                   {r.key || '(unspecified)'}
                 </TableCell>
                 <TableCell align="center" sx={{ fontWeight: 800 }}>{r.expected}</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 800, color: r.ok ? '#86efac' : '#f87171' }}>{r.actual}</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 800, color: r.ok ? '#166534' : '#b91c1c' }}>{r.actual}</TableCell>
                 <TableCell align="center">
                   {r.ok ? (
-                    <Chip label="OK" size="small" sx={{ bgcolor: 'rgba(74, 222, 128, 0.16)', color: '#86efac', fontWeight: 900, height: 20, fontSize: '0.65rem' }} />
+                    <Chip label="OK" size="small" sx={{ bgcolor: '#dcfce7', color: '#166534', fontWeight: 900, height: 20, fontSize: '0.65rem' }} />
                   ) : (
                     <Chip
                       label={r.delta > 0 ? `+${r.delta}` : String(r.delta)}
                       size="small"
-                      sx={{ bgcolor: 'rgba(248, 113, 113, 0.14)', color: '#fca5a5', fontWeight: 900, height: 20, fontSize: '0.65rem' }}
+                      sx={{ bgcolor: '#fee2e2', color: '#991b1b', fontWeight: 900, height: 20, fontSize: '0.65rem' }}
                     />
                   )}
                 </TableCell>
@@ -87,8 +87,8 @@ export default function TOSCompliancePanel({
       elevation={0}
       sx={{
         borderRadius: 3,
-        border: `2px solid ${report.compliant ? 'rgba(74, 222, 128, 0.45)' : 'rgba(248, 113, 113, 0.42)'}`,
-        bgcolor: report.compliant ? 'rgba(74, 222, 128, 0.09)' : 'rgba(248, 113, 113, 0.08)',
+        border: `2px solid ${report.compliant ? '#86efac' : '#fca5a5'}`,
+        bgcolor: report.compliant ? '#f0fdf4' : '#fef2f2',
         overflow: 'hidden',
         mb: 3,
       }}
@@ -96,17 +96,17 @@ export default function TOSCompliancePanel({
       <Box sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mb: 1.5 }}>
           {report.compliant
-            ? <CheckCircle sx={{ color: '#4ade80', fontSize: 28, flexShrink: 0 }} />
-            : <ErrorOutline sx={{ color: '#f87171', fontSize: 28, flexShrink: 0 }} />}
+            ? <CheckCircle sx={{ color: '#16a34a', fontSize: 28, flexShrink: 0 }} />
+            : <ErrorOutline sx={{ color: '#dc2626', fontSize: 28, flexShrink: 0 }} />}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography sx={{ fontWeight: 900, color: report.compliant ? '#86efac' : '#fca5a5', fontSize: '1rem' }}>
+            <Typography sx={{ fontWeight: 900, color: report.compliant ? '#166534' : '#991b1b', fontSize: '1rem' }}>
               {report.compliant ? 'Table of Specifications satisfied' : 'Does not match the Table of Specifications'}
             </Typography>
-            <Typography variant="body2" sx={{ color: '#c3cddf', wordBreak: 'break-word' }}>
+            <Typography variant="body2" sx={{ color: '#475569', wordBreak: 'break-word' }}>
               {report.summary}
             </Typography>
             {report.blueprintFileName && (
-              <Typography variant="caption" sx={{ color: '#a3b0c7', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+              <Typography variant="caption" sx={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                 <RuleFolder sx={{ fontSize: 14 }} /> {report.blueprintFileName}
                 {report.attemptsUsed > 0 && ` · ${report.attemptsUsed} regeneration attempt(s)`}
               </Typography>
@@ -116,10 +116,10 @@ export default function TOSCompliancePanel({
 
         <Box sx={{ mb: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, color: '#c3cddf' }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, color: '#475569' }}>
               {report.compliantItemCount} of {report.expectedTotal} items compliant
             </Typography>
-            <Typography variant="caption" sx={{ fontWeight: 900, color: report.compliant ? '#86efac' : '#fca5a5' }}>
+            <Typography variant="caption" sx={{ fontWeight: 900, color: report.compliant ? '#166534' : '#991b1b' }}>
               {pct}%
             </Typography>
           </Box>
@@ -127,8 +127,8 @@ export default function TOSCompliancePanel({
             variant="determinate"
             value={pct}
             sx={{
-              height: 10, borderRadius: 5, bgcolor: '#25304a',
-              '& .MuiLinearProgress-bar': { bgcolor: report.compliant ? '#4ade80' : '#f87171', borderRadius: 5 },
+              height: 10, borderRadius: 5, bgcolor: '#e2e8f0',
+              '& .MuiLinearProgress-bar': { bgcolor: report.compliant ? '#16a34a' : '#dc2626', borderRadius: 5 },
             }}
           />
         </Box>
@@ -139,13 +139,13 @@ export default function TOSCompliancePanel({
             <AlertTitle sx={{ fontWeight: 800, fontSize: '0.85rem' }}>
               The uploaded TOS is internally inconsistent
             </AlertTitle>
-            <Typography variant="caption" component="div" sx={{ color: '#c3cddf' }}>
+            <Typography variant="caption" component="div" sx={{ color: '#475569' }}>
               Item placements were treated as authoritative, because they are contiguous and sum to
               the document's stated total.
             </Typography>
             <Box component="ul" sx={{ pl: 2.5, m: 0, mt: 0.75 }}>
               {report.blueprintDiscrepancies.map((d, i) => (
-                <Typography component="li" variant="caption" key={i} sx={{ color: '#c3cddf' }}>{d}</Typography>
+                <Typography component="li" variant="caption" key={i} sx={{ color: '#475569' }}>{d}</Typography>
               ))}
             </Box>
           </Alert>
@@ -161,7 +161,7 @@ export default function TOSCompliancePanel({
               sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
               onClick={() => setShowViolations((v) => !v)}
             >
-              <Typography variant="caption" sx={{ fontWeight: 900, color: '#fca5a5' }}>
+              <Typography variant="caption" sx={{ fontWeight: 900, color: '#991b1b' }}>
                 {report.violations.length} NON-COMPLIANT ITEM{report.violations.length === 1 ? '' : 'S'}
               </Typography>
               <IconButton size="small" aria-label={showViolations ? 'Hide details' : 'Show details'}>
@@ -171,19 +171,19 @@ export default function TOSCompliancePanel({
             <Collapse in={showViolations}>
               <Box sx={{ mt: 1, maxHeight: 280, overflowY: 'auto', pr: 0.5 }}>
                 {report.violations.map((v, i) => (
-                  <Box key={`${v.itemNumber}-${i}`} sx={{ mb: 1, pb: 1, borderBottom: '1px solid rgba(248, 113, 113, 0.30)' }}>
+                  <Box key={`${v.itemNumber}-${i}`} sx={{ mb: 1, pb: 1, borderBottom: '1px solid #fecaca' }}>
                     <Stack direction="row" spacing={0.75} sx={{ flexWrap: 'wrap', gap: 0.5, mb: 0.25 }}>
                       <Chip
                         label={v.itemNumber > 0 ? `Item ${v.itemNumber}` : 'Unplaced'}
                         size="small"
-                        sx={{ bgcolor: 'rgba(248, 113, 113, 0.14)', color: '#fca5a5', fontWeight: 900, height: 20, fontSize: '0.65rem' }}
+                        sx={{ bgcolor: '#fee2e2', color: '#991b1b', fontWeight: 900, height: 20, fontSize: '0.65rem' }}
                       />
                       {v.codes.map((c) => (
                         <Chip key={c} label={c.replace(/_/g, ' ').toLowerCase()} size="small"
-                          sx={{ bgcolor: '#1a2338', color: '#c3cddf', fontWeight: 700, height: 20, fontSize: '0.62rem' }} />
+                          sx={{ bgcolor: '#f1f5f9', color: '#475569', fontWeight: 700, height: 20, fontSize: '0.62rem' }} />
                       ))}
                     </Stack>
-                    <Typography variant="caption" sx={{ color: '#c3cddf', display: 'block', wordBreak: 'break-word' }}>
+                    <Typography variant="caption" sx={{ color: '#475569', display: 'block', wordBreak: 'break-word' }}>
                       {v.detail}
                     </Typography>
                   </Box>
@@ -200,7 +200,7 @@ export default function TOSCompliancePanel({
             onClick={onRegenerate}
             disabled={busy}
             fullWidth={isMobile}
-            sx={{ mt: 2, bgcolor: '#f87171', fontWeight: 800, textTransform: 'none', '&:hover': { bgcolor: '#f87171' } }}
+            sx={{ mt: 2, bgcolor: '#dc2626', fontWeight: 800, textTransform: 'none', '&:hover': { bgcolor: '#b91c1c' } }}
           >
             {busy ? 'Regenerating…' : 'Regenerate non-compliant items'}
           </Button>

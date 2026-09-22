@@ -247,7 +247,7 @@ export default function ReviewerGenerator() {
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <Paper sx={{ p: 6, borderRadius: 4, textAlign: 'center', boxShadow: '0 12px 40px rgba(4,120,87,0.15)' }}>
           <AutoAwesome sx={{
-            fontSize: 72, color: '#34d399', mb: 3,
+            fontSize: 72, color: '#047857', mb: 3,
             animation: 'pulseSpin 3s infinite ease-in-out',
             '@keyframes pulseSpin': {
               '0%': { transform: 'rotate(0deg) scale(1)', filter: 'drop-shadow(0 0 0px rgba(4,120,87,0))' },
@@ -276,7 +276,7 @@ export default function ReviewerGenerator() {
 
       {/* Header */}
       <Paper sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 8px 30px rgba(88,28,135,0.12)' }}>
-        <Box sx={{ background: 'linear-gradient(135deg, #a5f3fc 0%, #34d399 100%)', p: { xs: 3, md: 4 }, color: 'white' }}>
+        <Box sx={{ background: 'linear-gradient(135deg, #581c87 0%, #34d399 100%)', p: { xs: 3, md: 4 }, color: 'white' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box sx={{ width: 56, height: 56, borderRadius: 3, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <AutoAwesome sx={{ fontSize: 30 }} />
@@ -293,20 +293,20 @@ export default function ReviewerGenerator() {
         </Box>
 
         {/* Step indicator pills */}
-        <Box sx={{ px: { xs: 2, md: 4 }, py: 2, bgcolor: 'rgba(34, 211, 238, 0.08)', borderTop: '1px solid rgba(168,85,247,0.15)', display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ px: { xs: 2, md: 4 }, py: 2, bgcolor: '#faf5ff', borderTop: '1px solid rgba(168,85,247,0.15)', display: 'flex', gap: 2, alignItems: 'center' }}>
           {['Study Source', 'Configure & Generate'].map((label, i) => (
             <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Box sx={{
                 width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: step >= i ? 'linear-gradient(135deg, #a5f3fc, #34d399)' : '#25304a',
-                color: step >= i ? 'white' : '#a3b0c7', fontWeight: 'bold', fontSize: '0.8rem',
+                background: step >= i ? 'linear-gradient(135deg, #581c87, #34d399)' : '#e2e8f0',
+                color: step >= i ? 'white' : '#64748b', fontWeight: 'bold', fontSize: '0.8rem',
               }}>
                 {step > i ? <CheckCircle sx={{ fontSize: 16 }} /> : i + 1}
               </Box>
-              <Typography variant="body2" fontWeight={step === i ? 700 : 400} color={step === i ? '#a5f3fc' : 'text.secondary'}>
+              <Typography variant="body2" fontWeight={step === i ? 700 : 400} color={step === i ? '#581c87' : 'text.secondary'}>
                 {label}
               </Typography>
-              {i < 1 && <Box sx={{ width: 32, height: 2, bgcolor: step > i ? '#34d399' : '#25304a', borderRadius: 1 }} />}
+              {i < 1 && <Box sx={{ width: 32, height: 2, bgcolor: step > i ? '#34d399' : '#e2e8f0', borderRadius: 1 }} />}
             </Box>
           ))}
         </Box>
@@ -356,9 +356,9 @@ export default function ReviewerGenerator() {
                         width: '100%',
                         cursor: 'pointer',
                         borderRadius: 3,
-                        border: mat.id === selectedMaterialId ? '1px solid #34d399' : '1px solid #25304a',
-                        borderLeft: `6px solid ${mat.id === selectedMaterialId ? '#34d399' : '#7482a0'}`,
-                        bgcolor: mat.id === selectedMaterialId ? 'rgba(34, 211, 238, 0.08)' : 'white',
+                        border: mat.id === selectedMaterialId ? '1px solid #34d399' : '1px solid #e2e8f0',
+                        borderLeft: `6px solid ${mat.id === selectedMaterialId ? '#34d399' : '#94a3b8'}`,
+                        bgcolor: mat.id === selectedMaterialId ? '#faf5ff' : 'white',
                         transition: 'all 0.2s ease',
                         '&:hover': {
                           borderColor: '#34d399',
@@ -377,13 +377,13 @@ export default function ReviewerGenerator() {
                           width: 40,
                           height: 40,
                           borderRadius: 2,
-                          bgcolor: mat.id === selectedMaterialId ? 'rgba(16, 185, 129, 0.18)' : '#1a2338',
+                          bgcolor: mat.id === selectedMaterialId ? '#d1fae5' : '#f1f5f9',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0
                         }}>
-                          <Article sx={{ color: mat.id === selectedMaterialId ? '#34d399' : '#7482a0', fontSize: 22 }} />
+                          <Article sx={{ color: mat.id === selectedMaterialId ? '#34d399' : '#94a3b8', fontSize: 22 }} />
                         </Box>
                         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                           <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -509,14 +509,14 @@ export default function ReviewerGenerator() {
             </Box>
 
             {/* Difficulty summary card */}
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(34, 211, 238, 0.08)', borderColor: 'rgba(16, 185, 129, 0.38)' }}>
-              <Typography variant="subtitle2" fontWeight="bold" color="#a5f3fc" gutterBottom>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: '#faf5ff', borderColor: '#a7f3d0' }}>
+              <Typography variant="subtitle2" fontWeight="bold" color="#581c87" gutterBottom>
                 Selected: {DIFFICULTY_CONFIG[difficulty].label}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Chip size="small" label={`${DIFFICULTY_CONFIG[difficulty].moduleCount} Modules`} sx={{ bgcolor: 'rgba(16, 185, 129, 0.18)', color: '#a5f3fc' }} />
-                <Chip size="small" label={`${DIFFICULTY_CONFIG[difficulty].itemsPerModule} Questions / Module`} sx={{ bgcolor: 'rgba(16, 185, 129, 0.18)', color: '#a5f3fc' }} />
-                <Chip size="small" label="80% Pass Threshold per Module" sx={{ bgcolor: 'rgba(16, 185, 129, 0.18)', color: '#a5f3fc' }} />
+                <Chip size="small" label={`${DIFFICULTY_CONFIG[difficulty].moduleCount} Modules`} sx={{ bgcolor: '#d1fae5', color: '#581c87' }} />
+                <Chip size="small" label={`${DIFFICULTY_CONFIG[difficulty].itemsPerModule} Questions / Module`} sx={{ bgcolor: '#d1fae5', color: '#581c87' }} />
+                <Chip size="small" label="80% Pass Threshold per Module" sx={{ bgcolor: '#d1fae5', color: '#581c87' }} />
               </Box>
             </Paper>
           </Box>
@@ -530,7 +530,7 @@ export default function ReviewerGenerator() {
               disabled={!title.trim() || !subject.trim()}
               sx={{
                 py: 1.5, fontWeight: 'bold',
-                background: 'linear-gradient(135deg, #a5f3fc 0%, #34d399 100%)',
+                background: 'linear-gradient(135deg, #581c87 0%, #34d399 100%)',
                 boxShadow: '0 6px 20px rgba(88,28,135,0.3)',
                 '&:hover': { boxShadow: '0 8px 24px rgba(88,28,135,0.4)' },
               }}
