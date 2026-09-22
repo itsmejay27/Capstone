@@ -44,7 +44,9 @@ export async function upsertUser(user: { id: string; email: string; password?: s
           role: user.role,
           avatar: user.avatar || null,
         },
-        { onConflict: 'email' }
+        // Conflict on the primary key, never on email: the id is what every other
+        // table's foreign key points at, so it must stay stable.
+        { onConflict: 'id' }
       );
     if (error) warn('upsertUser', error);
   } catch (e) {
