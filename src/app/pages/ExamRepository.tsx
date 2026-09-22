@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -34,6 +34,7 @@ import {
   Divider,
   FormHelperText,
   Switch,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add,
@@ -48,6 +49,7 @@ import {
   MoreVert,
   ArrowBack,
   Description,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import PrintableExam, { PrintPortal } from '../components/PrintableExam';
 import type { PrintPaperSize, PrintMode } from '../types';
@@ -283,6 +285,11 @@ export default function ExamRepository() {
   const [openEditModal, setOpenEditModal] = useState(false);
   const [editingExam, setEditingExam] = useState<any | null>(null);
   const [newQType, setNewQType] = useState('multiple-choice');
+  // A 60-item pool mounted every question card at once — several hundred MUI inputs, which
+  // is what made this dialog slow to open and to type in. The list is paged instead.
+  const [poolFilter, setPoolFilter] = useState('');
+  const [poolPage, setPoolPage] = useState(0);
+  const POOL_PAGE_SIZE = 6;
   const [regeneratingMap, setRegeneratingMap] = useState<Record<string, boolean>>({});
 
   const filteredExams = savedExams.filter((exam) =>
@@ -292,6 +299,32 @@ export default function ExamRepository() {
 
   // Topics belong to a class, so the picker has to follow the class selection.
   const classTopics: any[] = (topics && selectedClassroomId ? topics[selectedClassroomId] : []) || [];
+
+  // The pool list keeps each question's ORIGINAL index, because every editor handler
+  // addresses questions by position in `editingExam.questions` — filtering or paging must
+  // not renumber them.
+  const filteredPoolQuestions = useMemo(() => {
+    const all = (editingExam?.questions || []).map((q: any, qIdx: number) => ({ q, qIdx }));
+    const needle = poolFilter.trim().toLowerCase();
+    if (!needle) return all;
+    return all.filter(({ q }: any) =>
+      [q.question, q.topic, q.type, q.cognitiveLevel]
+        .filter(Boolean)
+        .some((field: string) => String(field).toLowerCase().includes(needle))
+    );
+  }, [editingExam, poolFilter]);
+
+  const poolPageCount = Math.max(1, Math.ceil(filteredPoolQuestions.length / POOL_PAGE_SIZE));
+  const visiblePoolQuestions = filteredPoolQuestions.slice(
+    poolPage * POOL_PAGE_SIZE,
+    (poolPage + 1) * POOL_PAGE_SIZE
+  );
+
+  // Opening a different template must not land the user on page 4 of the previous one.
+  useEffect(() => {
+    setPoolFilter('');
+    setPoolPage(0);
+  }, [editingExam?.id]);
 
   const handleOpenAssign = (examId: string) => {
     setSelectedExamId(examId);
@@ -970,8 +1003,19 @@ export default function ExamRepository() {
       </Dialog>
 
       {/* Full Template Editor Modal Upgraded with Vertical Layouts and Smart AI Regeneration */}
-      <Dialog open={openEditModal} onClose={() => setOpenEditModal(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
-        <DialogTitle sx={{ fontWeight: 900 }}>Edit Exam Template Pool</DialogTitle>
+      <Dialog
+        open={openEditModal}
+        onClose={() => setOpenEditModal(false)}
+        maxWidth="lg"
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, height: isMobile ? '100%' : '92vh' } }}
+      >
+        <DialogTitle sx={{ fontWeight: 900, pb: 0.5 }}>Edit exam template</DialogTitle>
+        <Typography variant="body2" sx={{ px: 3, pb: 1.5, color: 'var(--c-ink-secondary)' }}>
+          Changes apply to the template only. Exams already assigned to a class keep the
+          questions they were published with.
+        </Typography>
         <DialogContent dividers>
           {editingExam && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -994,7 +1038,7 @@ export default function ExamRepository() {
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 <Typography variant="h6" fontWeight="bold">
-                  Questions Pool ({editingExam.questions.length} items)
+                  Questions ({editingExam.questions.length})
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                   <FormControl size="small" sx={{ minWidth: 150 }}>
@@ -1017,9 +1061,25 @@ export default function ExamRepository() {
                 </Box>
               </Box>
 
-              {/* Stacked Vertical Question Cards list */}
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Filter questions by text, topic or type…"
+                value={poolFilter}
+                onChange={(e) => { setPoolFilter(e.target.value); setPoolPage(0); }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" sx={{ color: 'var(--c-ink-tertiary)' }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+
+              {/* Stacked Vertical Question Cards list — paged, so only a handful of
+                  question cards (and their inputs) are mounted at a time. */}
               <Grid container spacing={3.5}>
-                {editingExam.questions.map((q: any, qIdx: number) => {
+                {visiblePoolQuestions.map(({ q, qIdx }: any) => {
                   const isQRegenerating = !!regeneratingMap[q.id];
                   return (
                     <Grid size={12} key={q.id}>
@@ -1312,6 +1372,46 @@ export default function ExamRepository() {
                     </Grid>
                   );
                 })}
+
+                {filteredPoolQuestions.length === 0 && (
+                  <Grid size={12}>
+                    <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: '14px' }}>
+                      <Typography variant="body2" sx={{ color: 'var(--c-ink-secondary)' }}>
+                        No questions match “{poolFilter}”.
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                )}
+
+                {poolPageCount > 1 && (
+                  <Grid size={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+                      <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)', fontWeight: 600 }}>
+                        Showing {poolPage * POOL_PAGE_SIZE + 1}–
+                        {Math.min((poolPage + 1) * POOL_PAGE_SIZE, filteredPoolQuestions.length)} of{' '}
+                        {filteredPoolQuestions.length}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={poolPage === 0}
+                          onClick={() => setPoolPage((n) => Math.max(0, n - 1))}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={poolPage >= poolPageCount - 1}
+                          onClick={() => setPoolPage((n) => Math.min(poolPageCount - 1, n + 1))}
+                        >
+                          Next
+                        </Button>
+                      </Box>
+                    </Box>
+                  </Grid>
+                )}
               </Grid>
             </Box>
           )}

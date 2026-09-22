@@ -13,6 +13,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Autocomplete,
   CircularProgress,
   Paper,
 } from '@mui/material';
@@ -134,7 +135,7 @@ export default function OllamaConfigControl({
           ) : engine === 'nvidia' ? (
             <Chip
               icon={<AutoAwesome sx={{ color: 'var(--c-green-600) !important' }} />}
-              label="Llama via NVIDIA Cloud"
+              label="NVIDIA Cloud (NIM)"
               color="success"
               variant="outlined"
               size="small"
@@ -228,10 +229,10 @@ export default function OllamaConfigControl({
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
                     <AutoAwesome fontSize="small" color="success" />
-                    <Typography variant="body2" fontWeight="bold" color="var(--c-green-700)">Llama (NVIDIA Cloud)</Typography>
+                    <Typography variant="body2" fontWeight="bold" color="var(--c-green-700)">NVIDIA Cloud (NIM)</Typography>
                   </Box>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.75rem' }}>
-                    Hosted Llama 3.3 — works on the deployed site
+                    Llama, GLM, Qwen, DeepSeek and more — works on the deployed site
                   </Typography>
                 </Box>
               </Paper>
@@ -272,22 +273,28 @@ export default function OllamaConfigControl({
 
         {engine === 'nvidia' && (
           <>
-            <FormControl fullWidth size="small" disabled={nvidiaLoading || nvidiaModels.length === 0}>
-              <InputLabel id="nvidia-model-label">
-                {nvidiaLoading ? 'Loading available models…' : 'Select Llama Model'}
-              </InputLabel>
-              <Select
-                labelId="nvidia-model-label"
-                value={nvidiaModels.some((m) => m.id === nvidiaModel) ? nvidiaModel : ''}
-                label={nvidiaLoading ? 'Loading available models…' : 'Select Llama Model'}
-                onChange={(e) => onNvidiaModelChange?.(e.target.value)}
-                sx={{ borderRadius: 2, bgcolor: 'var(--c-surface)' }}
-              >
-                {nvidiaModels.map((m) => (
-                  <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              options={nvidiaModels}
+              getOptionLabel={(m: any) => m?.name || m?.id || ''}
+              isOptionEqualToValue={(a: any, b: any) => a?.id === b?.id}
+              value={nvidiaModels.find((m) => m.id === nvidiaModel) || null}
+              onChange={(_, picked: any) => onNvidiaModelChange?.(picked?.id || '')}
+              disabled={nvidiaLoading || nvidiaModels.length === 0}
+              size="small"
+              fullWidth
+              renderInput={(inputProps) => (
+                <TextField
+                  {...inputProps}
+                  label={nvidiaLoading ? 'Loading available models…' : 'Search NVIDIA models'}
+                  placeholder="Type to filter, e.g. glm, llama, qwen"
+                  helperText={
+                    nvidiaModels.length > 0
+                      ? `${nvidiaModels.length} models available on your key.`
+                      : undefined
+                  }
+                />
+              )}
+            />
             {nvidiaError && (
               <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
                 {nvidiaError}
