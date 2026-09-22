@@ -11,6 +11,7 @@ import TakeExam from './pages/TakeExam';
 import ExamResults from './pages/ExamResults';
 import QuestionBank from './pages/QuestionBank';
 import Notifications from './pages/Notifications';
+import Settings from './pages/Settings';
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       // QuestionBank existed as a page but was never reachable — the sidebar links it now.
       { path: 'question-bank', Component: QuestionBank },
       { path: 'notifications', Component: Notifications },
+      { path: 'settings', Component: Settings },
       { path: 'reviewer-generator', Component: ReviewerGenerator },
       { path: 'reviewer', Component: Reviewer },
       { path: 'exam/:examId/take', Component: TakeExam },

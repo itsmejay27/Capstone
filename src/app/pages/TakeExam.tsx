@@ -161,7 +161,7 @@ export default function TakeExam() {
     return (
       <Container maxWidth="md" sx={{ py: 8 }}>
         <Paper sx={{ p: 6, borderRadius: 4, textAlign: 'center', boxShadow: '0 8px 30px rgba(15,23,42,0.08)' }}>
-          <Typography variant="h4" fontWeight={900} gutterBottom sx={{ letterSpacing: '-0.02em', color: '#0f172a' }}>
+          <Typography variant="h4" fontWeight={900} gutterBottom sx={{ letterSpacing: '-0.02em', color: 'var(--c-slate-900)' }}>
             {exam.title}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4, px: { md: 4 } }}>
@@ -169,17 +169,17 @@ export default function TakeExam() {
           </Typography>
           
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 2, sm: 4 }, my: 4, flexWrap: 'wrap' }}>
-            <Box sx={{ px: 3, py: 1.5, bgcolor: '#f8fafc', borderRadius: 3 }}>
+            <Box sx={{ px: 3, py: 1.5, bgcolor: 'var(--c-slate-50)', borderRadius: 3 }}>
               <Typography variant="h5" fontWeight="black" color="primary.main">{exam.duration} Mins</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>TIME LIMIT</Typography>
             </Box>
             <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-            <Box sx={{ px: 3, py: 1.5, bgcolor: '#f8fafc', borderRadius: 3 }}>
+            <Box sx={{ px: 3, py: 1.5, bgcolor: 'var(--c-slate-50)', borderRadius: 3 }}>
               <Typography variant="h5" fontWeight="black" color="primary.main">{exam.activeQuestionCount || exam.questions.length}</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>QUESTIONS</Typography>
             </Box>
             <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-            <Box sx={{ px: 3, py: 1.5, bgcolor: '#f8fafc', borderRadius: 3 }}>
+            <Box sx={{ px: 3, py: 1.5, bgcolor: 'var(--c-slate-50)', borderRadius: 3 }}>
               <Typography variant="h5" fontWeight="black" color="primary.main">{exam.totalPoints} pts</Typography>
               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>TOTAL WEIGHT</Typography>
             </Box>
@@ -201,7 +201,7 @@ export default function TakeExam() {
               borderRadius: 3.5,
               textTransform: 'none',
               fontWeight: 700,
-              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+              background: 'linear-gradient(135deg, var(--c-slate-900) 0%, var(--c-slate-800) 100%)',
               boxShadow: '0 10px 25px -5px rgba(15,23,42,0.3)'
             }}
           >
@@ -299,7 +299,7 @@ export default function TakeExam() {
 
       {/* High-End Header Banner */}
       <Box sx={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        background: 'linear-gradient(135deg, var(--c-slate-900) 0%, var(--c-slate-800) 100%)',
         borderRadius: 4,
         p: { xs: 3, md: 4 },
         mb: 4,
@@ -319,7 +319,7 @@ export default function TakeExam() {
             sx={{ mb: 1.5, bgcolor: 'rgba(255,255,255,0.15)', color: 'white', fontWeight: 800, fontSize: '0.7rem', border: '1px solid rgba(255,255,255,0.3)' }}
           />
         )}
-        <Typography variant="body2" sx={{ color: '#cbd5e1', opacity: 0.9 }}>
+        <Typography variant="body2" sx={{ color: 'var(--c-slate-300)', opacity: 0.9 }}>
           {exam.description || 'Answer all questions in the pool. Review your answers before submitting.'}
         </Typography>
       </Box>
@@ -344,8 +344,8 @@ export default function TakeExam() {
                 variant="outlined"
                 sx={{
                   borderRadius: 4,
-                  borderColor: isAnswered ? '#10b981' : '#e2e8f0',
-                  borderLeft: `6px solid ${isAnswered ? '#10b981' : '#cbd5e1'}`,
+                  borderColor: isAnswered ? 'var(--c-emerald-500)' : 'var(--c-slate-200)',
+                  borderLeft: `6px solid ${isAnswered ? 'var(--c-emerald-500)' : 'var(--c-slate-300)'}`,
                   boxShadow: '0 4px 15px rgba(0,0,0,0.01)',
                   transition: 'all 0.2s',
                   '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }
@@ -364,7 +364,7 @@ export default function TakeExam() {
                   </Box>
 
                   {/* Question Statement */}
-                  <Typography variant="h6" fontWeight="bold" sx={{ color: '#1e293b', mb: 2, fontSize: '1.1rem', lineHeight: 1.6 }}>
+                  <Typography variant="h6" fontWeight="bold" sx={{ color: 'var(--c-slate-800)', mb: 2, fontSize: '1.1rem', lineHeight: 1.6 }}>
                     {q.question}
                   </Typography>
 
@@ -374,7 +374,7 @@ export default function TakeExam() {
                       <img
                         src={q.image}
                         alt={`Question ${idx + 1} Diagram`}
-                        style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', border: '1px solid #f1f5f9' }}
+                        style={{ maxWidth: '100%', maxHeight: '220px', borderRadius: '8px', border: '1px solid var(--c-slate-100)' }}
                       />
                     </Box>
                   )}
@@ -410,7 +410,7 @@ export default function TakeExam() {
                                 </Box>
                               }
                               sx={{
-                                border: isSelected ? '2px solid #10b981' : '1px solid #e2e8f0',
+                                border: isSelected ? '2px solid var(--c-emerald-500)' : '1px solid var(--c-slate-200)',
                                 bgcolor: isSelected ? 'rgba(16,185,129,0.04)' : 'transparent',
                                 borderRadius: 3,
                                 mb: 1.5,
@@ -418,8 +418,8 @@ export default function TakeExam() {
                                 p: 2,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  bgcolor: isSelected ? 'rgba(16,185,129,0.06)' : '#f8fafc',
-                                  borderColor: isSelected ? '#10b981' : '#cbd5e1',
+                                  bgcolor: isSelected ? 'rgba(16,185,129,0.06)' : 'var(--c-slate-50)',
+                                  borderColor: isSelected ? 'var(--c-emerald-500)' : 'var(--c-slate-300)',
                                 },
                               }}
                             />
@@ -445,7 +445,7 @@ export default function TakeExam() {
                               control={<Radio />}
                               label={val === 'true' ? 'True (Factual statement)' : 'False (Incorrect statement)'}
                               sx={{
-                                border: isSelected ? '2px solid #10b981' : '1px solid #e2e8f0',
+                                border: isSelected ? '2px solid var(--c-emerald-500)' : '1px solid var(--c-slate-200)',
                                 bgcolor: isSelected ? 'rgba(16,185,129,0.04)' : 'transparent',
                                 borderRadius: 3,
                                 mb: 1.5,
@@ -453,8 +453,8 @@ export default function TakeExam() {
                                 p: 2,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  bgcolor: isSelected ? 'rgba(16,185,129,0.06)' : '#f8fafc',
-                                  borderColor: isSelected ? '#10b981' : '#cbd5e1',
+                                  bgcolor: isSelected ? 'rgba(16,185,129,0.06)' : 'var(--c-slate-50)',
+                                  borderColor: isSelected ? 'var(--c-emerald-500)' : 'var(--c-slate-300)',
                                 },
                               }}
                             />
@@ -505,7 +505,7 @@ export default function TakeExam() {
             sx={{
               p: 3,
               borderRadius: 4,
-              border: timeRemaining < 300 ? '2px solid #fca5a5' : '1px solid #e2e8f0',
+              border: timeRemaining < 300 ? '2px solid var(--c-red-300)' : '1px solid var(--c-slate-200)',
               boxShadow: timeRemaining < 300
                 ? '0 4px 20px rgba(239,68,68,0.12)'
                 : '0 4px 20px rgba(0,0,0,0.05)',
@@ -522,7 +522,7 @@ export default function TakeExam() {
                 mb: 2,
                 borderRadius: 3,
                 bgcolor: timeRemaining < 300 ? 'rgba(239,68,68,0.05)' : 'rgba(16,185,129,0.04)',
-                border: timeRemaining < 300 ? '1px solid #fecaca' : '1px solid #d1fae5',
+                border: timeRemaining < 300 ? '1px solid var(--c-red-200)' : '1px solid var(--c-emerald-100)',
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -563,10 +563,10 @@ export default function TakeExam() {
                   sx={{
                     height: 8,
                     borderRadius: 4,
-                    bgcolor: '#f1f5f9',
+                    bgcolor: 'var(--c-slate-100)',
                     '& .MuiLinearProgress-bar': {
                       borderRadius: 4,
-                      background: 'linear-gradient(90deg, #10b981, #059669)',
+                      background: 'linear-gradient(90deg, var(--c-emerald-500), var(--c-emerald-600))',
                     }
                   }}
                 />
@@ -583,8 +583,8 @@ export default function TakeExam() {
                   <Chip label={unansweredCount} color="warning" size="small" sx={{ fontWeight: 800, minWidth: 40 }} />
                 </Box>
               ) : (
-                <Box sx={{ p: 1.5, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0', textAlign: 'center' }}>
-                  <Typography variant="body2" color="#166534" fontWeight="bold">✓ All Questions Answered!</Typography>
+                <Box sx={{ p: 1.5, bgcolor: 'var(--c-green-50)', borderRadius: 2, border: '1px solid var(--c-green-200)', textAlign: 'center' }}>
+                  <Typography variant="body2" color="var(--c-green-800)" fontWeight="bold">✓ All Questions Answered!</Typography>
                 </Box>
               )}
             </Box>
@@ -601,7 +601,7 @@ export default function TakeExam() {
                 fontWeight: 800,
                 textTransform: 'none',
                 fontSize: '0.95rem',
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                background: 'linear-gradient(135deg, var(--c-emerald-500) 0%, var(--c-emerald-600) 100%)',
                 boxShadow: '0 4px 15px rgba(16,185,129,0.3)',
                 '&:hover': {
                   transform: 'translateY(-1px)',
@@ -616,16 +616,16 @@ export default function TakeExam() {
           {/* Question Grid Index Card */}
           <Paper
             elevation={0}
-            sx={{ p: 3, borderRadius: 4, border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}
+            sx={{ p: 3, borderRadius: 4, border: '1px solid var(--c-slate-200)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary' }}>
                 QUESTION INDEX
               </Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: '#10b981' }} />
+                <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: 'var(--c-emerald-500)' }} />
                 <Typography variant="caption" color="text.secondary" fontWeight={600}>Done</Typography>
-                <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: '#f1f5f9', border: '1px solid #cbd5e1', ml: 1 }} />
+                <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: 'var(--c-slate-100)', border: '1px solid var(--c-slate-300)', ml: 1 }} />
                 <Typography variant="caption" color="text.secondary" fontWeight={600}>Blank</Typography>
               </Box>
             </Box>
@@ -646,17 +646,17 @@ export default function TakeExam() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      bgcolor: isAnswered ? '#10b981' : '#f1f5f9',
-                      color: isAnswered ? 'white' : '#64748b',
+                      bgcolor: isAnswered ? 'var(--c-emerald-500)' : 'var(--c-slate-100)',
+                      color: isAnswered ? 'white' : 'var(--c-slate-500)',
                       fontWeight: 800,
                       fontSize: '0.78rem',
                       cursor: 'pointer',
                       border: '1.5px solid transparent',
                       transition: 'all 0.15s',
                       '&:hover': {
-                        borderColor: '#10b981',
+                        borderColor: 'var(--c-emerald-500)',
                         transform: 'scale(1.1)',
-                        bgcolor: isAnswered ? '#059669' : '#e2e8f0',
+                        bgcolor: isAnswered ? 'var(--c-emerald-600)' : 'var(--c-slate-200)',
                       }
                     }}
                   >
@@ -680,8 +680,8 @@ export default function TakeExam() {
           left: 0,
           right: 0,
           zIndex: 100,
-          bgcolor: 'white',
-          borderTop: '1px solid #e2e8f0',
+          bgcolor: 'var(--c-surface)',
+          borderTop: '1px solid var(--c-slate-200)',
           boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
           p: 2,
           gap: 2,
@@ -711,7 +711,7 @@ export default function TakeExam() {
             fontWeight: 800,
             textTransform: 'none',
             borderRadius: 2.5,
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            background: 'linear-gradient(135deg, var(--c-emerald-500) 0%, var(--c-emerald-600) 100%)',
             px: 3
           }}
         >
@@ -726,7 +726,7 @@ export default function TakeExam() {
           <Typography variant="body1" color="text.secondary" gutterBottom>
             Are you sure you want to finalize and log your assessment answers?
           </Typography>
-          <Box sx={{ mt: 2.5, p: 2, bgcolor: '#f8fafc', borderRadius: 3 }}>
+          <Box sx={{ mt: 2.5, p: 2, bgcolor: 'var(--c-slate-50)', borderRadius: 3 }}>
             <Typography variant="body2" sx={{ mb: 1 }}>
               Answered: <strong>{answeredCount} / {activeQuestions.length}</strong>
             </Typography>

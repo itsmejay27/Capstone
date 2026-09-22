@@ -1,3 +1,5 @@
+import { cssVar, lightHex, darkHex } from './colorPairs';
+
 /**
  * Design tokens.
  *
@@ -11,45 +13,63 @@
  * decoration.
  */
 
+/**
+ * The palette every `sx` block reads. Each entry is a CSS custom property, so switching
+ * `data-theme` on <html> re-themes the app without React re-rendering a single component.
+ * MUI itself needs real colours for its alpha/darken maths, so {@link muiPalette} below
+ * resolves the same names to hex per mode.
+ */
 export const palette = {
-  // Canvas and surfaces
-  canvas: '#f6f6f8',
-  surface: '#ffffff',
-  surfaceMuted: '#fafafb',
-  surfaceSunken: '#f2f2f5',
+  canvas: cssVar('canvas'),
+  surface: cssVar('surface'),
+  surfaceMuted: cssVar('surface-muted'),
+  surfaceSunken: cssVar('surface-sunken'),
 
-  // Hairlines
-  border: '#e8e8ed',
-  borderStrong: '#dcdce3',
+  border: cssVar('border'),
+  borderStrong: cssVar('border-strong'),
 
-  // Ink
-  ink: '#16161d',
-  inkSecondary: '#5c5c6b',
-  inkTertiary: '#8e8e9e',
-  inkDisabled: '#b4b4c0',
+  ink: cssVar('ink'),
+  inkSecondary: cssVar('ink-secondary'),
+  inkTertiary: cssVar('ink-tertiary'),
+  inkDisabled: cssVar('ink-disabled'),
 
-  // Brand / action
-  primary: '#059669',
-  primaryHover: '#047857',
-  primarySoft: '#ecfdf5',
-  primaryBorder: '#a7f3d0',
+  primary: cssVar('emerald-600'),
+  primaryHover: cssVar('emerald-700'),
+  primarySoft: cssVar('emerald-50'),
+  primaryBorder: cssVar('emerald-200'),
 
-  // Role accents
-  instructor: '#047857',
-  instructorSoft: '#ecfdf5',
-  student: '#0284c7',
-  studentSoft: '#e0f2fe',
+  instructor: cssVar('emerald-700'),
+  instructorSoft: cssVar('emerald-50'),
+  student: cssVar('sky-600'),
+  studentSoft: cssVar('sky-100'),
 
-  // Status
-  success: '#15803d',
-  successSoft: '#dcfce7',
-  warning: '#b45309',
-  warningSoft: '#fef3c7',
-  danger: '#b91c1c',
-  dangerSoft: '#fee2e2',
-  info: '#0369a1',
-  infoSoft: '#e0f2fe',
+  success: cssVar('green-700'),
+  successSoft: cssVar('green-100'),
+  warning: cssVar('amber-700'),
+  warningSoft: cssVar('amber-100'),
+  danger: cssVar('red-700'),
+  dangerSoft: cssVar('red-100'),
+  info: cssVar('sky-700'),
+  infoSoft: cssVar('sky-100'),
 } as const;
+
+/** The same names resolved to real hex, for the MUI theme factory. */
+export function muiPalette(mode: 'light' | 'dark') {
+  const h = mode === 'dark' ? darkHex : lightHex;
+  return {
+    canvas: h['canvas'], surface: h['surface'], surfaceMuted: h['surface-muted'],
+    surfaceSunken: h['surface-sunken'], border: h['border'], borderStrong: h['border-strong'],
+    ink: h['ink'], inkSecondary: h['ink-secondary'], inkTertiary: h['ink-tertiary'],
+    inkDisabled: h['ink-disabled'],
+    primary: h['emerald-600'], primaryHover: h['emerald-700'],
+    primarySoft: h['emerald-50'], primaryBorder: h['emerald-200'],
+    instructor: h['emerald-700'], student: h['sky-600'],
+    success: h['green-700'], successSoft: h['green-100'],
+    warning: h['amber-700'], warningSoft: h['amber-100'],
+    danger: h['red-700'], dangerSoft: h['red-100'],
+    info: h['sky-700'], infoSoft: h['sky-100'],
+  };
+}
 
 /**
  * The brand gradient, used for the wordmark, page titles, primary buttons and the accent
@@ -60,12 +80,12 @@ export const palette = {
  * 500s, so white text on a gradient button still clears the contrast floor.
  */
 export const gradient = {
-  brand: `linear-gradient(90deg, ${palette.primary} 0%, #0d9488 100%)`,
-  brandDiagonal: `linear-gradient(135deg, ${palette.primary} 0%, #0d9488 100%)`,
+  brand: `linear-gradient(90deg, ${palette.primary} 0%, ${cssVar('teal-600')} 100%)`,
+  brandDiagonal: `linear-gradient(135deg, ${palette.primary} 0%, ${cssVar('teal-600')} 100%)`,
   /** Full-bleed tint behind the landing hero. */
   heroGlow:
-    'radial-gradient(900px 480px at 15% -10%, rgba(5, 150, 105, 0.10), transparent 60%),' +
-    'radial-gradient(760px 420px at 88% 8%, rgba(13, 148, 136, 0.09), transparent 62%)',
+    'radial-gradient(900px 480px at 15% -10%, var(--glow-a), transparent 60%),' +
+    'radial-gradient(760px 420px at 88% 8%, var(--glow-b), transparent 62%)',
 } as const;
 
 /**
@@ -73,12 +93,12 @@ export const gradient = {
  * Indexed deterministically by entity id so a class keeps its colour between renders.
  */
 export const cardTints = [
-  { from: '#d1fae5', to: '#ecfdf5', ink: '#065f46' }, // lavender
-  { from: '#d1fae5', to: '#ecfdf5', ink: '#065f46' }, // blue
-  { from: '#ffedd5', to: '#fff7ed', ink: '#9a3412' }, // peach
-  { from: '#dcfce7', to: '#f0fdf4', ink: '#166534' }, // mint
-  { from: '#fce7f3', to: '#fdf2f8', ink: '#9d174d' }, // rose
-  { from: '#cffafe', to: '#ecfeff', ink: '#155e75' }, // cyan
+  { from: cssVar('emerald-100'), to: cssVar('emerald-50'), ink: cssVar('emerald-800') },
+  { from: cssVar('sky-100'), to: cssVar('sky-50'), ink: cssVar('sky-800') },
+  { from: cssVar('orange-100'), to: cssVar('orange-50'), ink: cssVar('orange-800') },
+  { from: cssVar('green-100'), to: cssVar('green-50'), ink: cssVar('green-800') },
+  { from: cssVar('pink-100'), to: cssVar('pink-50'), ink: cssVar('pink-800') },
+  { from: cssVar('cyan-100'), to: cssVar('cyan-50'), ink: cssVar('cyan-800') },
 ] as const;
 
 /** Stable tint for an entity, so a card does not change colour on re-render. */
@@ -103,11 +123,11 @@ export const radius = {
  */
 export const shadow = {
   none: 'none',
-  xs: '0 1px 2px rgba(22, 22, 29, 0.04)',
-  sm: '0 1px 3px rgba(22, 22, 29, 0.06), 0 1px 2px rgba(22, 22, 29, 0.04)',
-  md: '0 4px 12px rgba(22, 22, 29, 0.06)',
-  lg: '0 12px 28px rgba(22, 22, 29, 0.10)',
-  focus: `0 0 0 3px ${palette.primary}22`,
+  xs: 'var(--shadow-xs)',
+  sm: 'var(--shadow-sm)',
+  md: 'var(--shadow-md)',
+  lg: 'var(--shadow-lg)',
+  focus: '0 0 0 3px var(--shadow-focus-ring)',
 } as const;
 
 /** Fixed measurements the shell and pages agree on. */

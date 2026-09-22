@@ -1,5 +1,5 @@
 import { createTheme } from '@mui/material/styles';
-import { palette, gradient, radius, shadow, layout, font } from './tokens';
+import { palette, muiPalette, gradient, radius, shadow, layout, font } from './tokens';
 
 /**
  * The application theme.
@@ -15,18 +15,24 @@ import { palette, gradient, radius, shadow, layout, font } from './tokens';
  * - Controls default to `fullWidth` so a grid cell governs the width, not the control.
  * - Labels are shrunk-by-default outlined labels; no floating-label jump.
  */
-export const theme = createTheme({
+export function createAppTheme(mode: 'light' | 'dark') {
+  const mui = muiPalette(mode);
+  // In dark mode the brand greens are light (they have to be, to read on navy), so text
+  // sitting ON the brand must be near-black rather than white — otherwise every contained
+  // button and `color="secondary"` chip is white-on-mint.
+  const onBrand = mode === 'dark' ? '#04211a' : '#ffffff';
+  return createTheme({
   palette: {
-    mode: 'light',
-    primary: { main: palette.primary, dark: palette.primaryHover, light: palette.primarySoft, contrastText: '#ffffff' },
-    secondary: { main: palette.instructor, light: palette.instructorSoft, contrastText: '#ffffff' },
-    success: { main: palette.success, light: palette.successSoft },
-    warning: { main: palette.warning, light: palette.warningSoft },
-    error: { main: palette.danger, light: palette.dangerSoft },
-    info: { main: palette.info, light: palette.infoSoft },
-    background: { default: palette.canvas, paper: palette.surface },
-    text: { primary: palette.ink, secondary: palette.inkSecondary, disabled: palette.inkDisabled },
-    divider: palette.border,
+    mode,
+    primary: { main: mui.primary, dark: mui.primaryHover, light: mui.primaryHover, contrastText: onBrand },
+    secondary: { main: mui.instructor, light: mui.primarySoft, contrastText: onBrand },
+    success: { main: mui.success, light: mui.successSoft },
+    warning: { main: mui.warning, light: mui.warningSoft },
+    error: { main: mui.danger, light: mui.dangerSoft },
+    info: { main: mui.info, light: mui.infoSoft },
+    background: { default: mui.canvas, paper: mui.surface },
+    text: { primary: mui.ink, secondary: mui.inkSecondary, disabled: mui.inkDisabled },
+    divider: mui.border,
   },
 
   shape: { borderRadius: radius.md },
@@ -132,7 +138,7 @@ export const theme = createTheme({
         contained: { boxShadow: 'none', '&:hover': { boxShadow: shadow.sm } },
         containedPrimary: {
           background: gradient.brand,
-          color: '#ffffff',
+          color: onBrand,
           '&:hover': { background: gradient.brand, filter: 'brightness(1.06)', boxShadow: shadow.md },
           '&.Mui-disabled': { background: palette.surfaceSunken, color: palette.inkDisabled },
         },
@@ -279,7 +285,12 @@ export const theme = createTheme({
       styleOverrides: { root: { borderRadius: radius.pill, backgroundColor: palette.surfaceSunken, height: 8 } },
     },
   },
-});
+  });
+}
+
+/** Default instance, kept for modules that import the theme directly. */
+export const theme = createAppTheme('light');
 
 export default theme;
 export * from './tokens';
+export * from './colorPairs';

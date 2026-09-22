@@ -1,8 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useEffect } from 'react';
-import { ThemeProvider, CssBaseline, Box } from '@mui/material';
-import theme from '../theme';
+import { Box } from '@mui/material';
 import AppShell from '../components/shell/AppShell';
 
 /**
@@ -80,8 +79,7 @@ export default function RootLayout() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <>
       {isAuthenticated ? (
         <AppShell
           currentUser={currentUser}
@@ -99,6 +97,6 @@ export default function RootLayout() {
           <Outlet />
         </Box>
       )}
-    </ThemeProvider>
+    </>
   );
 }
