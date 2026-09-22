@@ -150,9 +150,19 @@ export default function AppShell({
               onClick={toggle}
               size="small"
               aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              sx={{ color: palette.inkSecondary }}
+              sx={{
+                color: palette.inkSecondary,
+                transition: 'color .2s ease, transform .35s cubic-bezier(.4,0,.2,1)',
+                '&:hover': { color: palette.primary, transform: 'rotate(18deg)' },
+                '& .mode-icon': {
+                  display: 'block',
+                  transition: 'transform .35s cubic-bezier(.4,0,.2,1), opacity .25s ease',
+                },
+              }}
             >
-              {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+              {mode === 'dark'
+                ? <LightMode className="mode-icon" fontSize="small" />
+                : <DarkMode className="mode-icon" fontSize="small" />}
             </IconButton>
           </Tooltip>
 

@@ -282,6 +282,34 @@ export default function OllamaConfigControl({
               disabled={nvidiaLoading || nvidiaModels.length === 0}
               size="small"
               fullWidth
+              autoHighlight
+              openOnFocus
+              // Cap both the rendered list and its height: the catalogue is several hundred
+              // entries, which overflowed the viewport and made the popup unusable.
+              filterOptions={(opts, state) => {
+                const needle = state.inputValue.trim().toLowerCase();
+                const matched = needle
+                  ? opts.filter((o: any) =>
+                      `${o.name || ''} ${o.id || ''}`.toLowerCase().includes(needle))
+                  : opts;
+                return matched.slice(0, 50);
+              }}
+              slotProps={{
+                listbox: { sx: { maxHeight: 320 } },
+                paper: { sx: { borderRadius: '12px' } },
+              }}
+              renderOption={(optProps, option: any) => (
+                <Box component="li" {...optProps} key={option.id} sx={{ display: 'block !important', py: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+                    {option.name || option.id}
+                  </Typography>
+                  {option.name && option.name !== option.id && (
+                    <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)' }} noWrap>
+                      {option.id}
+                    </Typography>
+                  )}
+                </Box>
+              )}
               renderInput={(inputProps) => (
                 <TextField
                   {...inputProps}
