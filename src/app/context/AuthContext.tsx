@@ -21,6 +21,7 @@ interface AuthContextType {
   savedExams: any[];
   examAttempts: any[];
   reviewers: any[];
+  questionBank: any[];
   classroomMaterials: Record<string, any[]>; // classroomId -> materials[]
   announcements: Record<string, any[]>; // classroomId -> announcements[]
   topics: Record<string, any[]>; // classroomId -> topics[]
@@ -35,6 +36,8 @@ interface AuthContextType {
   assignExamToClassroom: (examId: string, classroomId: string, postDate: string, dueDate: string) => void;
   submitExamAttempt: (attempt: any) => void;
   saveReviewer: (reviewer: any) => void;
+  saveQuestionBankItem: (item: any) => void;
+  deleteQuestionBankItem: (itemId: string) => void;
   deleteReviewer: (reviewerId: string) => void;
   updateReviewer: (reviewer: any) => void;
   updateExamInRepository: (exam: any) => void;
@@ -252,6 +255,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return mockExamAttempts;
   });
 
+  const [questionBank, setQuestionBank] = useState<any[]>(() => {
+    const stored = localStorage.getItem('questionBank');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return mockQuestionBank;
+  });
+
   const [reviewers, setReviewers] = useState<any[]>(() => {
     const stored = localStorage.getItem('reviewers');
     if (stored) {
@@ -362,7 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentUser) await db.upsertUser(currentUser);
 
       const [
-        dbUsers, dbClassrooms, dbExams, dbSavedExams, dbAttempts, dbReviewers,
+        dbUsers, dbClassrooms, dbExams, dbSavedExams, dbAttempts, dbReviewers, dbQuestionBank,
         dbMaterials, dbAnnouncements, dbTopics, dbClasswork, dbSubmissions, dbComments,
       ] = await Promise.all([
         db.fetchUsers(),
@@ -371,6 +385,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         db.fetchSavedExams(),
         db.fetchExamAttempts(),
         db.fetchReviewers(),
+        db.fetchQuestionBank(),
         db.fetchClassroomMaterials(),
         db.fetchAnnouncements(),
         db.fetchTopics(),
@@ -392,6 +407,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (dbExams.length > 0) setExams(dbExams);
       if (dbSavedExams.length > 0) setSavedExams(dbSavedExams);
       if (dbReviewers.length > 0) setReviewers(dbReviewers);
+      if (dbQuestionBank.length > 0) setQuestionBank(dbQuestionBank);
 
       // Attempts merge by id rather than replace. A wholesale replace would drop the locally
       // cached `questions` snapshot of any attempt whose row predates that column, and item
@@ -464,6 +480,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => { safeSetItem('classwork', classwork); }, [classwork]);
   useEffect(() => { safeSetItem('classworkSubmissions', submissions); }, [submissions]);
   useEffect(() => { safeSetItem('postComments', comments); }, [comments]);
+
+  useEffect(() => {
+    safeSetItem('questionBank', questionBank);
+  }, [questionBank]);
 
   const login = (email: string, password: string): boolean => {
     const user = users.find(
@@ -744,6 +764,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     db.upsertExamAttempt(attempt);
   };
 
+  const saveQuestionBankItem = (item: any) => {
+    setQuestionBank((prev) => {
+      const idx = prev.findIndex((q) => q.id === item.id);
+      if (idx > -1) {
+        const updated = [...prev];
+        updated[idx] = item;
+        return updated;
+      }
+      return [item, ...prev];
+    });
+    db.upsertQuestionBankItem(item);
+  };
+
+  const deleteQuestionBankItem = (itemId: string) => {
+    setQuestionBank((prev) => prev.filter((q) => q.id !== itemId));
+    db.deleteQuestionBankItemDb(itemId);
+  };
+
   const saveReviewer = (reviewer: any) => {
     setReviewers((prev) => [...prev, reviewer]);
     db.upsertReviewer(reviewer);
@@ -865,6 +903,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         savedExams,
         examAttempts,
         reviewers,
+        questionBank,
         classroomMaterials,
         announcements,
         topics,
@@ -878,6 +917,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         assignExamToClassroom,
         submitExamAttempt,
         saveReviewer,
+        saveQuestionBankItem,
+        deleteQuestionBankItem,
         deleteReviewer,
         updateReviewer,
         updateExamInRepository,

@@ -275,6 +275,7 @@ export async function fetchSavedExams() {
     duration: e.duration || undefined,
     createdBy: e.created_by,
     createdAt: e.created_at,
+    sourceFiles: Array.isArray(e.source_files) ? e.source_files : [],
   }));
 }
 
@@ -289,6 +290,7 @@ export async function upsertSavedExam(exam: any) {
       total_points: exam.totalPoints || 0,
       duration: exam.duration || null,
       created_by: exam.createdBy ? toDbId(exam.createdBy) : null,
+      source_files: exam.sourceFiles || [],
     });
     if (error) warn('upsertSavedExam', error);
   } catch (e) {
