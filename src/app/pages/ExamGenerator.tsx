@@ -9,6 +9,11 @@ import { enforceTOSCompliance, type TOSComplianceReport } from '../services/tosV
 import TOSCompliancePanel from '../components/TOSCompliancePanel';
 import { useIsMobile } from '../hooks/useResponsive';
 import {
+  Container,
+  Card,
+  CardContent,
+  FormControl,
+  InputLabel,
   Paper,
   Typography,
   Box,
