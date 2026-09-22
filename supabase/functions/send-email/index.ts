@@ -45,6 +45,11 @@ const TEMPLATES = {
     heading: (d) => `Due soon: ${d.title}`,
     intro: (d) => `This is a reminder that "${d.title}" in ${d.className} is ${d.dueLabel || 'due shortly'}.`,
   },
+  comment: {
+    subject: (d) => `[${d.className}] ${d.authorName || 'Someone'} commented on "${d.title || 'your post'}"`,
+    heading: (d) => `New comment on "${d.title || 'your post'}"`,
+    intro: (d) => `${d.authorName || 'Someone'} commented in ${d.className}.`,
+  },
   graded: {
     subject: (d) => `[${d.className}] Your work was graded: ${d.title}`,
     heading: (d) => `${d.title} — graded`,
@@ -160,7 +165,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from,
         // BCC so a class email never leaks the roster's addresses to every student.
-        to: [from],
+        to: [from.replace(/^.*<([^>]+)>.*$/, '$1')],
         bcc: recipients,
         subject: tpl.subject(data),
         html,

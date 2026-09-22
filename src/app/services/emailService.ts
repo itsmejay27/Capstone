@@ -13,7 +13,7 @@ import { supabase } from '../config/supabaseClient';
  * announcement being posted or an assignment being created.
  */
 
-export type EmailTemplate = 'announcement' | 'assignment' | 'due_reminder' | 'graded';
+export type EmailTemplate = 'announcement' | 'assignment' | 'due_reminder' | 'graded' | 'comment';
 
 export interface EmailResult {
   ok: boolean;
@@ -145,6 +145,26 @@ export async function notifyGraded(
       body: work.feedback,
       ctaUrl: classroomUrl(classroom?.id, 'classwork'),
       ctaLabel: 'See your feedback',
+    },
+  });
+}
+
+/** Tell one person that someone commented on a post they care about. */
+export async function notifyComment(
+  classroom: any,
+  recipientEmail: string,
+  c: { authorName?: string; body?: string; postTitle?: string; isPrivate?: boolean; tab?: string }
+): Promise<EmailResult> {
+  return sendEmail({
+    template: 'comment',
+    to: [recipientEmail],
+    data: {
+      className: classroom?.name,
+      title: c.postTitle,
+      authorName: c.authorName,
+      body: String(c.body || '').slice(0, 600),
+      ctaUrl: classroomUrl(classroom?.id, c.tab),
+      ctaLabel: c.isPrivate ? 'Reply privately' : 'View the comment',
     },
   });
 }

@@ -4,7 +4,7 @@ import { mockUsers, mockClassrooms, mockExams, mockQuestionBank, mockExamAttempt
 import { parseGoogleJwt } from '../utils/authUtils';
 import * as db from '../services/supabaseData';
 import { removeClassroomFile } from '../services/fileStorage';
-import { notifyAnnouncement, notifyAssignment } from '../services/emailService';
+import { notifyAnnouncement, notifyAssignment, notifyComment } from '../services/emailService';
 
 /** Per-assignment detail captured when a template is posted to a class. */
 export interface AssignmentOptions {
@@ -573,7 +573,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const googleEmail = payload.email.toLowerCase();
-    const existingUser = users.find((u) => u.email.toLowerCase() === googleEmail);
+    // One Google account can hold an instructor profile AND a student profile. Match on
+    // the role picked on the login screen too; otherwise choosing "Student" silently signed
+    // back in to the instructor profile created the first time.
+    const existingUser = users.find(
+      (u) => u.email.toLowerCase() === googleEmail && u.role === role
+    );
 
     if (existingUser) {
       const updatedUser: User = {
@@ -589,7 +594,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const newUser: User = {
-      id: `google-${payload.sub || Date.now()}`,
+      // The first profile keeps the original id so existing classes stay linked to it;
+      // a second role for the same Google account gets a role-suffixed id.
+      id: (() => {
+        const base = `google-${payload.sub || Date.now()}`;
+        return users.some((u) => u.id === base) ? `${base}-${role}` : base;
+      })(),
       email: payload.email,
       password: '',
       name: payload.name || payload.email.split('@')[0],
@@ -757,6 +767,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const saveComment = async (comment: any): Promise<MutationResult> => {
+    const isNew = !comments.some((c: any) => c.id === comment.id);
+    if (isNew) {
+      // Email whoever should hear about it: the instructor when a student comments, and the
+      // student when the instructor replies privately. Never the comment's own author.
+      const classroom = classrooms.find((c: any) => c.id === comment.classroomId);
+      if (classroom) {
+        const instructor = users.find((u) => u.id === classroom.instructorId);
+        const recipientId = comment.authorId !== classroom.instructorId
+          ? instructor?.id
+          : comment.visibility === 'private' ? comment.privateWithId : null;
+        const recipient = users.find((u) => u.id === recipientId);
+        if (recipient?.email && recipient.id !== comment.authorId) {
+          const post = comment.postType === 'announcement'
+            ? (announcements[classroom.id] || []).find((a: any) => a.id === comment.postId)
+            : (classwork[classroom.id] || []).find((w: any) => w.id === comment.postId);
+          const postTitle = post?.title
+            || String(post?.bodyHtml || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 70)
+            || 'your post';
+          void notifyComment(classroom, recipient.email, {
+            authorName: comment.authorName,
+            body: comment.body,
+            postTitle,
+            isPrivate: comment.visibility === 'private',
+            tab: comment.postType === 'announcement' ? 'stream' : 'classwork',
+          });
+        }
+      }
+    }
     setComments((prev) => {
       const idx = prev.findIndex((c: any) => c.id === comment.id);
       return idx > -1 ? prev.map((c: any) => (c.id === comment.id ? comment : c)) : [...prev, comment];
