@@ -584,7 +584,123 @@ function parseMatrixTable(rows: string[][]): TOSRow[] {
 /**
  * Parses raw text lines (from PDF, Word, or plain text) into TOS rows.
  */
-function parseRowsFromText(text: string): TOSRow[] {
+/** The three grouped Bloom bands used by the OMSC form, in column order. */
+const PAIRED_BLOOM_COLUMNS = [
+  'Remembering / Understanding',
+  'Applying / Analyzing',
+  'Synthesizing / Evaluating',
+];
+
+/** Columns are delimited by the "\t|\t" marker inserted during PDF extraction. */
+function splitColumns(line: string): string[] {
+  return line.split('\t|\t').map((c) => c.trim()).filter(Boolean);
+}
+
+const INT_CELL = /^\d+$/;
+const PCT_CELL = /^\d+(?:\.\d+)?\s*%$/;
+/** "(1-2)", "(19–28)", "35" — a single item number or an inclusive range. */
+const PLACEMENT_CELL = /^\(?\s*\d+\s*(?:[-–—]\s*\d+\s*)?\)?$/;
+const PLACEMENT_RANGE = /\d+\s*[-–—]\s*\d+/;
+
+/**
+ * A counts row ends with the three cognitive-level tallies and carries a percentage
+ * cell (the topic's share of contact hours), e.g.
+ *   "...Database Integration | 10 | 23% | 14 | 2 | 7 | 4"
+ */
+function isCountsRow(cells: string[]): boolean {
+  if (cells.length < 4) return false;
+  const tail = cells.slice(-3);
+  return tail.every((c) => INT_CELL.test(c)) && cells.some((c) => PCT_CELL.test(c));
+}
+
+/**
+ * The topic title is glued onto the end of the learning-outcome prose when the PDF's
+ * columns are flattened ("...full-stackdevelopment,Database Integration",
+ * "...including frontendMobile Frontend: React Native"). It is the trailing
+ * capitalised phrase, which starts either after a comma or at a lowercase->uppercase
+ * seam where the two columns ran together.
+ */
+function extractTopicName(prose: string): string {
+  const match = prose.match(/(?:^|,\s*|[a-z])([A-Z][A-Za-z0-9 :/&'’.\-]*?)\s*$/);
+  return (match ? match[1] : prose).replace(/[•●]/g, '').trim();
+}
+
+/**
+ * Parses the "Cognitive Levels and Item Placement" matrix of the OMSC TOS form
+ * (OMSC-Form-COL-25) and the Philippine HEI forms that share its shape.
+ *
+ * Each topic spans TWO physical lines once the PDF is flattened to text — the tallies
+ * on one, the item placements they label on the next:
+ *
+ *   "<learning outcomes><Topic> | 10 | 23% | 14 | 2 | 7 | 4"
+ *   "<more outcome prose>       | (1-2) | (3-9) | (10-13)"
+ *
+ * A row-at-a-time parser therefore never joins a tally to its placement. Splitting on
+ * commas as well as the column delimiter compounds this, because the prose in the first
+ * cell is full of commas and shredding it destroys the column alignment entirely.
+ *
+ * The per-topic "Number of Items" column is NOT used: on real forms it disagrees with
+ * the cognitive columns it summarises (this one totals 61 against a stated 60). The
+ * cognitive tallies and their placements agree with each other and with the Total row,
+ * so they are treated as authoritative.
+ */
+function parseOmscMatrixRows(text: string): TOSRow[] {
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const rows: TOSRow[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const cells = splitColumns(lines[i]);
+    if (!isCountsRow(cells)) continue;
+    if (/^total\b/i.test(cells[0])) continue; // the summary row, not a topic
+
+    const topic = extractTopicName(cells[0]);
+    if (!topic || isAdministrativeMetadata(topic)) continue;
+
+    const counts = cells.slice(-3).map(Number);
+
+    // The placements sit on a following line, before the next topic begins.
+    let placements: string[] = [];
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+      const next = splitColumns(lines[j]);
+      if (isCountsRow(next)) break;
+      const candidates = next.filter((c) => PLACEMENT_CELL.test(c));
+      if (candidates.length >= 2 && candidates.some((c) => PLACEMENT_RANGE.test(c))) {
+        placements = candidates.slice(-3);
+        break;
+      }
+    }
+
+    // Align placements to the levels that actually carry items, so a zero-item band
+    // cannot shift every later placement onto the wrong cognitive level.
+    const levelsWithItems = counts.map((n, idx) => ({ n, idx })).filter((c) => c.n > 0);
+    const aligned: (string | undefined)[] = [undefined, undefined, undefined];
+    if (placements.length === counts.length) {
+      placements.forEach((p, idx) => { aligned[idx] = p; });
+    } else {
+      levelsWithItems.forEach((c, k) => { aligned[c.idx] = placements[k]; });
+    }
+
+    counts.forEach((count, idx) => {
+      if (count <= 0) return;
+      rows.push({
+        topic,
+        cognitiveLevel: normaliseCogLevel(PAIRED_BLOOM_COLUMNS[idx]) || PAIRED_BLOOM_COLUMNS[idx],
+        itemCount: count,
+        itemPlacement: aligned[idx],
+        points: 1,
+      });
+    });
+  }
+
+  return rows;
+}
+
+export function parseRowsFromText(text: string): TOSRow[] {
+  // Prefer the structured matrix reader; it understands the two-line topic layout that
+  // the generic cell splitter below cannot represent.
+  const matrixRows = parseOmscMatrixRows(text);
+  if (matrixRows.length > 0) return matrixRows;
+
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const tableRows: string[][] = [];
   for (const line of lines) {
