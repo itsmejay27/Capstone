@@ -358,7 +358,7 @@ export default function ReviewerGenerator() {
                         borderRadius: 3,
                         border: mat.id === selectedMaterialId ? '1px solid var(--c-emerald-400)' : '1px solid var(--c-slate-200)',
                         borderLeft: `6px solid ${mat.id === selectedMaterialId ? 'var(--c-emerald-400)' : 'var(--c-slate-400)'}`,
-                        bgcolor: mat.id === selectedMaterialId ? 'var(--c-purple-50)' : 'white',
+                        bgcolor: mat.id === selectedMaterialId ? 'var(--c-purple-50)' : 'var(--c-surface)',
                         transition: 'all 0.2s ease',
                         '&:hover': {
                           borderColor: 'var(--c-emerald-400)',

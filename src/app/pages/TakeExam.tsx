@@ -201,7 +201,7 @@ export default function TakeExam() {
               borderRadius: 3.5,
               textTransform: 'none',
               fontWeight: 700,
-              background: 'linear-gradient(135deg, var(--c-slate-900) 0%, var(--c-slate-800) 100%)',
+              background: 'linear-gradient(135deg, var(--c-banner-from) 0%, var(--c-banner-to) 100%)',
               boxShadow: '0 10px 25px -5px rgba(15,23,42,0.3)'
             }}
           >
@@ -299,7 +299,7 @@ export default function TakeExam() {
 
       {/* High-End Header Banner */}
       <Box sx={{
-        background: 'linear-gradient(135deg, var(--c-slate-900) 0%, var(--c-slate-800) 100%)',
+        background: 'linear-gradient(135deg, var(--c-banner-from) 0%, var(--c-banner-to) 100%)',
         borderRadius: 4,
         p: { xs: 3, md: 4 },
         mb: 4,

@@ -466,7 +466,7 @@ export default function Reviewer() {
                   sx={{
                     borderRadius: 3,
                     borderColor: isPassed ? 'success.light' : 'primary.light',
-                    bgcolor: isPassed ? 'var(--c-green-50)' : '#ffffff',
+                    bgcolor: isPassed ? 'var(--c-green-50)' : 'var(--c-surface)',
                     transition: 'all 0.2s ease',
                     cursor: 'pointer',
                     '&:hover': {
@@ -596,7 +596,7 @@ export default function Reviewer() {
                       p: 2,
                       borderRadius: 3,
                       border: isActive ? '2px solid var(--c-sky-700)' : '1px solid var(--c-slate-200)',
-                      bgcolor: isActive ? 'var(--c-sky-50)' : isPassed ? 'var(--c-green-50)' : '#ffffff',
+                      bgcolor: isActive ? 'var(--c-sky-50)' : isPassed ? 'var(--c-green-50)' : 'var(--c-surface)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       display: 'flex',
@@ -974,7 +974,7 @@ export default function Reviewer() {
               <Box sx={{ animation: 'fadeIn 0.3s ease' }}>
                 <Paper sx={{
                   p: 4, mb: 3, borderRadius: 4, textAlign: 'center',
-                  background: 'linear-gradient(135deg, var(--c-slate-900) 0%, var(--c-slate-800) 100%)',
+                  background: 'linear-gradient(135deg, var(--c-banner-from) 0%, var(--c-banner-to) 100%)',
                   color: 'white',
                   boxShadow: '0 12px 32px rgba(15,23,42,0.15)',
                 }}>

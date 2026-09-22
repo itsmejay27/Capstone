@@ -30,6 +30,7 @@ import {
   Tooltip,
   CircularProgress,
   Alert,
+  Divider,
 } from '@mui/material';
 import {
   Add,
@@ -60,7 +61,7 @@ import {
   Field,
   FieldRow,
 } from '../components/ui-kit';
-import { palette, radius, font } from '../theme/tokens';
+import { palette, radius, font, tintFor } from '../theme/tokens';
 
 /**
  * Relative "created" line for a template card. `createdAt` arrives as a Date from memory and
@@ -540,7 +541,7 @@ export default function ExamRepository() {
       <Paper sx={{ p: 4, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Quiz sx={{ fontSize: 40, color: 'var(--c-purple-500)', mr: 2 }} />
+            <Quiz sx={{ fontSize: 40, color: 'var(--c-emerald-600)', mr: 2 }} />
             <Box>
               <Typography variant="h4" fontWeight="bold">
                 Exam Repository
@@ -568,9 +569,19 @@ export default function ExamRepository() {
           sx={{ mb: 4 }}
         />
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
+        {/* Folder grid. Each template reads as a labelled folder rather than a full-width
+            row: the tab along the top edge is what makes a card read as "a thing that holds
+            questions", and a grid shows far more templates per screen than stacked rows. */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+            gap: 2.5,
+            width: '100%',
+          }}
+        >
           {filteredExams.length === 0 ? (
-            <Paper sx={{ p: 4, textAlign: 'center', width: '100%' }}>
+            <Paper sx={{ p: 4, textAlign: 'center', width: '100%', gridColumn: '1 / -1' }}>
               <Typography variant="h6" color="text.secondary">
                 No saved exam templates found
               </Typography>
@@ -582,180 +593,169 @@ export default function ExamRepository() {
               </Button>
             </Paper>
           ) : (
-            filteredExams.map((exam) => (
-              <Paper
-                key={exam.id}
-                elevation={0}
-                sx={{
-                  width: '100%',
-                  minHeight: { md: 110 },
-                  bgcolor: 'var(--c-surface)',
-                  borderRadius: 3,
-                  border: '1px solid var(--c-slate-200)',
-                  borderLeft: '6px solid var(--c-purple-500)',
-                  p: 3,
-                  transition: 'all 0.2s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
-                    borderColor: 'var(--c-slate-300)',
-                  },
-                  display: 'flex',
-                  flexDirection: { xs: 'column', md: 'row' },
-                  alignItems: { xs: 'flex-start', md: 'center' },
-                  justifyContent: 'space-between',
-                  gap: 3,
-                  boxSizing: 'border-box',
-                }}
-              >
-                {/* Left Section: Icon + Title & Description */}
-                <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'flex-start', flexGrow: 1, minWidth: 0 }}>
-                  <Box sx={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 2,
-                    background: 'linear-gradient(135deg, var(--c-purple-600) 0%, var(--c-purple-500) 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    color: 'white',
-                    boxShadow: '0 4px 12px rgba(156,39,176,0.2)',
-                  }}>
-                    <Quiz sx={{ fontSize: 24 }} />
-                  </Box>
-                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                    <Typography
-                      variant="h6"
-                      fontWeight={800}
+            filteredExams.map((exam) => {
+              const tint = tintFor(exam.id);
+              const sourceCount = Array.isArray(exam.sourceFiles) ? exam.sourceFiles.length : 0;
+              return (
+                <Box key={exam.id} sx={{ position: 'relative', pt: '13px' }}>
+                  {/* The folder tab. */}
+                  <Box
+                    sx={{
+                      position: 'absolute', top: 0, left: 18, width: 92, height: 14,
+                      borderTopLeftRadius: '10px', borderTopRightRadius: '10px',
+                      background: tint.from,
+                      borderTop: '1px solid var(--c-border)',
+                      borderLeft: '1px solid var(--c-border)',
+                      borderRight: '1px solid var(--c-border)',
+                    }}
+                  />
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      position: 'relative',
+                      height: 'calc(100% - 13px)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      p: 2.25,
+                      borderRadius: '14px',
+                      border: '1px solid var(--c-border)',
+                      bgcolor: 'var(--c-surface)',
+                      boxShadow: 'var(--shadow-xs)',
+                      transition: 'transform .15s ease, box-shadow .15s ease, border-color .15s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: 'var(--shadow-md)',
+                        borderColor: 'var(--c-border-strong)',
+                      },
+                    }}
+                  >
+                    {/* Tinted header band, echoing the folder tab. */}
+                    <Box
                       sx={{
-                        color: 'text.primary',
-                        lineHeight: 1.25,
-                        letterSpacing: '-0.01em',
-                        fontSize: '1.05rem',
-                        mb: 0.5
+                        mx: -2.25, mt: -2.25, mb: 1.75, px: 2.25, py: 1.75,
+                        background: `linear-gradient(160deg, ${tint.from} 0%, ${tint.to} 100%)`,
+                        borderBottom: '1px solid var(--c-border)',
+                        display: 'flex', alignItems: 'center', gap: 1.25,
                       }}
                     >
-                      {exam.title}
-                    </Typography>
-                    {exam.description && (
-                      <Typography
-                        variant="body2"
+                      <Box
                         sx={{
-                          color: 'text.secondary',
-                          fontSize: '0.82rem',
-                          lineHeight: 1.5,
-                          mb: 1.5,
-                          overflow: 'hidden',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
+                          width: 34, height: 34, borderRadius: '9px', flexShrink: 0,
+                          bgcolor: 'var(--c-surface)', border: '1px solid var(--c-border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: tint.ink,
                         }}
                       >
-                        {exam.description}
+                        <Quiz sx={{ fontSize: 19 }} />
+                      </Box>
+                      <Typography
+                        sx={{
+                          fontFamily: font.mono, fontSize: '0.88rem', fontWeight: 600,
+                          color: tint.ink, minWidth: 0,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}
+                        title={exam.title}
+                      >
+                        {exam.title}
                       </Typography>
+                    </Box>
+
+                    {/* Two-line clamp on a plain Box. `-webkit-line-clamp` on the Typography
+                        was being lost: the base stylesheet forces `display: flow-root` on it,
+                        which defeats the `-webkit-box` the clamp requires, leaving the text
+                        cropped mid-line. A wrapper no typography rule targets holds the
+                        height reliably, and the mask fades the cut so it reads as deliberate. */}
+                    {exam.description && (
+                      <Box
+                        sx={{
+                          mb: 1.5,
+                          height: '2.9em',
+                          fontSize: '0.85rem',
+                          lineHeight: 1.45,
+                          color: 'var(--c-ink-secondary)',
+                          overflow: 'hidden',
+                          maskImage: 'linear-gradient(180deg, #000 82%, transparent 100%)',
+                          WebkitMaskImage: 'linear-gradient(180deg, #000 82%, transparent 100%)',
+                        }}
+                        title={exam.description}
+                      >
+                        {exam.description}
+                      </Box>
                     )}
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      <Chip label={`Pool: ${exam.questions.length} items`} size="small" color="secondary" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 700 }} />
-                      <Chip label={`Set: ${exam.activeQuestionCount || exam.questions.length} items`} size="small" color="primary" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 700 }} />
-                      <Chip label={`Points Cap: ${exam.totalPoints} pts`} size="small" variant="outlined" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
-                      {/* A template saved before a duration was captured has none; showing
-                          "undefinedm" is worse than showing nothing. */}
+
+                    <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
+                      <Chip label={`Pool: ${exam.questions.length}`} size="small" color="secondary" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }} />
+                      <Chip label={`Set: ${exam.activeQuestionCount || exam.questions.length}`} size="small" color="primary" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }} />
+                      <Chip label={`${exam.totalPoints} pts`} size="small" variant="outlined" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 600 }} />
                       {Number.isFinite(Number(exam.duration)) && Number(exam.duration) > 0 && (
-                        <Chip label={`Time limit: ${exam.duration}m`} size="small" variant="outlined" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
+                        <Chip label={`${exam.duration}m`} size="small" variant="outlined" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 600 }} />
                       )}
                     </Box>
 
-                    {/* Provenance: the documents this template was generated from. */}
-                    {Array.isArray(exam.sourceFiles) && exam.sourceFiles.length > 0 && (
-                      <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', alignItems: 'center', mt: 1.2 }}>
-                        <Typography variant="caption" sx={{ color: palette.muted, fontWeight: 700 }}>
-                          Generated from:
-                        </Typography>
-                        {exam.sourceFiles.map((f: any, i: number) => (
-                          <Tooltip key={`${f.name}-${i}`} title={`${f.kind}${f.size ? ` · ${(f.size / 1024).toFixed(0)} KB` : ''}`}>
-                            <Chip
-                              icon={<Description sx={{ fontSize: 14 }} />}
-                              label={f.name}
-                              size="small"
-                              variant="outlined"
-                              sx={{ height: 24, fontSize: '0.68rem', fontWeight: 600, maxWidth: 260 }}
-                            />
-                          </Tooltip>
-                        ))}
-                      </Box>
+                    {/* Provenance, collapsed to a count so it cannot push the card out of the
+                        grid; the full list stays available on hover. */}
+                    {sourceCount > 0 && (
+                      <Tooltip
+                        title={exam.sourceFiles.map((f: any) => f.name).join(', ')}
+                        placement="top"
+                      >
+                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.6, mb: 1.5 }}>
+                          <Description sx={{ fontSize: 14, color: 'var(--c-ink-tertiary)' }} />
+                          <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)', fontWeight: 600 }}>
+                            From {sourceCount} source file{sourceCount > 1 ? 's' : ''}
+                          </Typography>
+                        </Box>
+                      </Tooltip>
                     )}
-                  </Box>
+
+                    {/* Actions pin to the bottom so every card in a row lines up. */}
+                    <Box sx={{ flex: 1 }} />
+                    <Divider sx={{ mb: 1.5 }} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="secondary"
+                        startIcon={<CalendarMonth sx={{ fontSize: 16 }} />}
+                        onClick={() => handleOpenAssign(exam.id)}
+                        sx={{ fontWeight: 700, height: 32, flex: 1, minWidth: 0 }}
+                      >
+                        Assign
+                      </Button>
+                      <Tooltip title="Print exam">
+                        <IconButton size="small" onClick={() => setPrintTarget(exam)} sx={{ width: 32, height: 32, border: '1px solid var(--c-border)' }}>
+                          <Print sx={{ fontSize: 17 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit template">
+                        <IconButton size="small" onClick={() => handleOpenEdit(exam)} sx={{ width: 32, height: 32, border: '1px solid var(--c-border)' }}>
+                          <Edit sx={{ fontSize: 17 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete template">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => {
+                            if (confirm('Delete this template from repository?')) {
+                              deleteExamFromRepository(exam.id);
+                            }
+                          }}
+                          sx={{
+                            width: 32, height: 32,
+                            border: '1px solid var(--c-red-100)',
+                            bgcolor: 'var(--c-red-50)',
+                            '&:hover': { bgcolor: 'var(--c-red-100)' },
+                          }}
+                        >
+                          <Delete sx={{ fontSize: 17 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </Paper>
                 </Box>
-
-                {/* Right Section: Print, Edit, Delete, Assign Actions */}
-                <Box sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  flexShrink: 0,
-                  flexWrap: 'wrap',
-                  minWidth: { md: '280px' },
-                  width: { xs: '100%', md: 'auto' },
-                  justifyContent: { xs: 'flex-start', md: 'flex-end' },
-                  borderTop: { xs: '1px solid var(--c-slate-100)', md: 'none' },
-                  pt: { xs: 1.5, md: 0 },
-                  mt: { xs: 1, md: 0 }
-                }}>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<Print />}
-                    onClick={() => setPrintTarget(exam)}
-                    sx={{ fontWeight: 700, height: 32 }}
-                  >
-                    Print Exam
-                  </Button>
-
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<Edit />}
-                    onClick={() => handleOpenEdit(exam)}
-                    sx={{ fontWeight: 700, height: 32 }}
-                  >
-                    Edit Template
-                  </Button>
-
-                  <Button
-                    variant="contained"
-                    size="small"
-                    color="secondary"
-                    startIcon={<CalendarMonth />}
-                    onClick={() => handleOpenAssign(exam.id)}
-                    sx={{ fontWeight: 700, height: 32, px: 2 }}
-                  >
-                    Assign to Class
-                  </Button>
-
-                  <Tooltip title="Delete template">
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => {
-                        if (confirm('Delete this template from repository?')) {
-                          deleteExamFromRepository(exam.id);
-                        }
-                      }}
-                      sx={{
-                        bgcolor: 'var(--c-red-50)',
-                        border: '1px solid var(--c-red-100)',
-                        '&:hover': { bgcolor: 'var(--c-red-100)' },
-                        width: 32,
-                        height: 32,
-                      }}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              </Paper>
-            ))
+              );
+            })
           )}
         </Box>
       </Paper>
