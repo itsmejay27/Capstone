@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import ExamImportDialog from '../components/ExamImportDialog';
 import OllamaConfigControl, { AIEngineType } from '../components/OllamaConfigControl';
 import { DEFAULT_NVIDIA_MODEL } from '../services/geminiService';
 import { generateExamWithOllama, regenerateQuestionWithOllama, regenerateItemsForSpecsOllama } from '../services/ollamaService';
@@ -35,12 +36,15 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Switch,
   Checkbox,
   CircularProgress,
 } from '@mui/material';
 import {
   ArrowBack,
   Upload,
+  UploadFile,
+  Inventory2,
   AutoAwesome,
   Add,
   Delete,
@@ -222,7 +226,7 @@ const getDifficultyBadgeColor = (level?: string) => {
 export default function ExamGenerator() {
   const { toast, ToastHost } = useToast();
   const { classroomId } = useParams();
-  const { currentUser, saveExamToRepository } = useAuth();
+  const { currentUser, saveExamToRepository, questionBank, saveQuestionBankItem } = useAuth();
   const navigate = useNavigate();
 
   const [activeStep, setActiveStep] = useState(0);
@@ -259,6 +263,10 @@ export default function ExamGenerator() {
   const [generatedQuestions, setGeneratedQuestions] = useState<any[]>([]);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [newQuestionType, setNewQuestionType] = useState('multiple-choice');
+  const [importOpen, setImportOpen] = useState(false);
+  // Draw a share of the exam from previously banked questions instead of generating them.
+  const [useBank, setUseBank] = useState(false);
+  const [bankCount, setBankCount] = useState(0);
 
   // AI Engine states
   const [aiEngine, setAiEngine] = useState<AIEngineType>('gemini');
@@ -336,6 +344,86 @@ export default function ExamGenerator() {
     return enforced;
   };
 
+  /**
+   * Adopts an imported paper as the current draft. The parser's own types and points are
+   * kept — the whole point of importing is that the document, not the configuration form,
+   * decides what the exam contains.
+   */
+  const handleImportedExam = (imported: any) => {
+    const mapped = imported.questions.map((q: any, idx: number) => ({
+      id: `imported-${Date.now()}-${idx}`,
+      type: q.type,
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      points: q.points,
+      difficulty: 'medium',
+      topic: topics[0] || 'Imported',
+      itemPlacement: q.itemNumber,
+      createdBy: currentUser?.id,
+      createdAt: new Date(),
+      // Every imported item is unverified: the source paper carries no answer key, so the
+      // editor should prompt a review rather than treat these as finished.
+      needsAuthoring: true,
+    }));
+    setGeneratedQuestions(mapped);
+    if (imported.durationMinutes) setDuration(Number(imported.durationMinutes));
+    setIsPreviewMode(true);
+    setImportOpen(false);
+    toast(`Imported ${mapped.length} questions. Review the answer keys before saving.`);
+  };
+
+  /** Files every generated question into the bank for reuse in later exams. */
+  const handleBankAll = () => {
+    let saved = 0;
+    for (const q of generatedQuestions) {
+      if (!q.question?.trim()) continue;
+      saveQuestionBankItem({
+        ...q,
+        id: `qb-${Date.now()}-${saved}`,
+        createdBy: currentUser?.id,
+        createdAt: new Date(),
+      });
+      saved++;
+    }
+    toast(
+      saved > 0 ? `Saved ${saved} questions to the Question Bank.` : 'Nothing to save yet.',
+      saved > 0 ? 'success' : 'error'
+    );
+  };
+
+  /**
+   * Mixes banked questions into a freshly generated set.
+   *
+   * The bank supplies the first `bankCount` items (drawn at random, deduplicated against
+   * what was generated), and the generated list is trimmed so the exam keeps the length the
+   * instructor asked for rather than growing by however many were reused.
+   */
+  const withBankedQuestions = (generated: any[]): any[] => {
+    const bank = questionBank || [];
+    if (!useBank || bankCount <= 0 || bank.length === 0) return generated;
+
+    const take = Math.min(bankCount, bank.length, generated.length);
+    const shuffled = [...bank].sort(() => Math.random() - 0.5);
+    const generatedStems = new Set(generated.map((q: any) => (q.question || '').trim().toLowerCase()));
+
+    const picked: any[] = [];
+    for (const item of shuffled) {
+      if (picked.length >= take) break;
+      const stem = (item.question || '').trim().toLowerCase();
+      if (!stem || generatedStems.has(stem)) continue;
+      picked.push({
+        ...item,
+        id: `bank-${Date.now()}-${picked.length}`,
+        fromQuestionBank: true,
+      });
+    }
+    if (picked.length === 0) return generated;
+
+    const merged = [...picked, ...generated.slice(0, Math.max(0, generated.length - picked.length))];
+    return merged.map((q: any, i: number) => ({ ...q, itemPlacement: i + 1 }));
+  };
+
   const handleGenerateQuestions = async () => {
     setActiveStep(2);
     setGenerating(true);
@@ -392,7 +480,7 @@ export default function ExamGenerator() {
           const finalQuestions = await runTosEnforcement(questions, effectiveTos, (specs) =>
             regenerateItemsForSpecs(specs, geminiParams)
           );
-          setGeneratedQuestions(finalQuestions);
+          setGeneratedQuestions(withBankedQuestions(finalQuestions));
         } catch (err: any) {
           console.error('Gemini Generation error:', err);
           const fallbackQuestions = buildTopicDrivenQuestions({
@@ -407,7 +495,7 @@ export default function ExamGenerator() {
             generationPrompt: effectivePrompt,
             tosData: effectiveTos,
           });
-          setGeneratedQuestions(fallbackQuestions);
+          setGeneratedQuestions(withBankedQuestions(fallbackQuestions));
           setGenerationError(`Notice: Cloud AI call hit an error (${err.message || err}). Generated using topic-driven engine fallback.`);
         } finally {
           setGenerating(false);
@@ -436,7 +524,7 @@ export default function ExamGenerator() {
           const finalQuestions = await runTosEnforcement(questions, effectiveTos, (specs) =>
             regenerateItemsForSpecsOllama(specs, ollamaParams)
           );
-          setGeneratedQuestions(finalQuestions);
+          setGeneratedQuestions(withBankedQuestions(finalQuestions));
         } catch (err: any) {
           console.error('Ollama Generation error:', err);
           const fallbackQuestions = buildTopicDrivenQuestions({
@@ -451,7 +539,7 @@ export default function ExamGenerator() {
             generationPrompt: effectivePrompt,
             tosData: effectiveTos,
           });
-          setGeneratedQuestions(fallbackQuestions);
+          setGeneratedQuestions(withBankedQuestions(fallbackQuestions));
           setGenerationError(`Notice: Ollama local AI connection issue (${err.message || err}). Generated using topic-driven engine fallback.`);
         } finally {
           setGenerating(false);
@@ -539,7 +627,7 @@ export default function ExamGenerator() {
         topics,
         generationPrompt,
       });
-      setGeneratedQuestions(items);
+      setGeneratedQuestions(withBankedQuestions(items));
       setGenerating(false);
     }, 1200);
   };
@@ -1375,6 +1463,72 @@ export default function ExamGenerator() {
                         >
                           {materials.length > 0 ? `${materials.length} Slides/Files` : 'Add Slides'}
                           <input type="file" hidden multiple accept=".pdf,.doc,.docx,.ppt,.pptx" onChange={(e) => handleFileUpload(e, 'materials')} />
+                        </Button>
+                      </Box>
+
+                      <Divider sx={{ my: 2 }} />
+
+                      {/* Two routes that do not go through generation at all: reuse banked
+                          questions, or convert an existing paper straight into questions. */}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            p: 1.5, borderRadius: 2,
+                            border: '1px solid var(--c-border)', bgcolor: 'var(--c-surface-muted)',
+                          }}
+                        >
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                size="small"
+                                checked={useBank}
+                                disabled={(questionBank || []).length === 0}
+                                onChange={(e) => {
+                                  setUseBank(e.target.checked);
+                                  if (e.target.checked && bankCount === 0) {
+                                    setBankCount(Math.min(5, (questionBank || []).length));
+                                  }
+                                }}
+                              />
+                            }
+                            label={
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                  Reuse questions from the Question Bank
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)' }}>
+                                  {(questionBank || []).length === 0
+                                    ? 'Your bank is empty — save questions from a generated exam first.'
+                                    : `${(questionBank || []).length} banked questions available.`}
+                                </Typography>
+                              </Box>
+                            }
+                            sx={{ alignItems: 'flex-start', m: 0 }}
+                          />
+                          {useBank && (questionBank || []).length > 0 && (
+                            <TextField
+                              type="number"
+                              size="small"
+                              label="How many from the bank"
+                              value={bankCount}
+                              onChange={(e) => setBankCount(
+                                Math.max(0, Math.min((questionBank || []).length, Number(e.target.value) || 0))
+                              )}
+                              inputProps={{ min: 0, max: (questionBank || []).length }}
+                              helperText="Drawn at random; the rest are generated."
+                              sx={{ mt: 1.5, maxWidth: 240 }}
+                            />
+                          )}
+                        </Box>
+
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<UploadFile />}
+                          onClick={() => setImportOpen(true)}
+                          sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.8rem', alignSelf: 'flex-start' }}
+                        >
+                          Import an existing exam file
                         </Button>
                       </Box>
                     </Box>
@@ -2363,7 +2517,17 @@ export default function ExamGenerator() {
                 </Box>
 
                 {/* Bottom save action control */}
-                <Box sx={{ mt: 5, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ mt: 5, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    startIcon={<Inventory2 />}
+                    onClick={handleBankAll}
+                    fullWidth={isMobile}
+                    sx={{ px: { xs: 2.5, sm: 4 }, py: 1.8, borderRadius: 3.5, textTransform: 'none', fontWeight: 700 }}
+                  >
+                    Save questions to bank
+                  </Button>
                   <Button
                     variant="contained"
                     color="success"
@@ -2423,6 +2587,11 @@ export default function ExamGenerator() {
           </Box>
         )}
       </Paper>
+      <ExamImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={handleImportedExam}
+      />
       {ToastHost}
     </Container>
   );

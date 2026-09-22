@@ -179,7 +179,12 @@ async function extractPdfText(file: File): Promise<string> {
   try {
     const pdfjsLib = await import('pdfjs-dist');
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version || '6.3.289'}/build/pdf.worker.min.mjs`;
+      // The worker is bundled rather than pulled from a CDN. Loading it from jsdelivr made
+      // every PDF upload depend on a third-party host being reachable: behind a school
+      // proxy, or on a restricted network, extraction failed with nothing but "no readable
+      // text", which looks like a broken file rather than a blocked request.
+      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
     }
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
