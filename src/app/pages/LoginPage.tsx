@@ -413,7 +413,7 @@ export default function LoginPage() {
       </Box>
 
       {/* ── 4. Section: How It Works (Even 4-Column Step Grid) ── */}
-      <Box id="how-it-works" sx={{ py: 10, px: 3, bgcolor: 'var(--c-slate-900)', borderTop: '1px solid var(--c-border)' }}>
+      <Box id="how-it-works" sx={{ py: 10, px: 3, bgcolor: 'var(--c-banner-from)', borderTop: '1px solid var(--c-border)' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 5 }}>
             <Chip label="STEP-BY-STEP WORKFLOW" size="small" sx={{ bgcolor: 'rgba(56,189,248,0.15)', color: 'var(--c-sky-600)', fontWeight: 800, mb: 1.5 }} />

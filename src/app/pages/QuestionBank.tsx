@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { useConfirm } from '../components/ConfirmDialog';
 import {
   Paper,
   Typography,
@@ -21,6 +22,7 @@ import {
   Add,
   Edit,
   Delete,
+  DeleteSweep,
   LibraryBooks,
   CheckCircle,
 } from '@mui/icons-material';
@@ -43,6 +45,7 @@ import {
 export default function QuestionBank() {
   const { currentUser, questionBank, saveQuestionBankItem, deleteQuestionBankItem } = useAuth();
   const { toast, ToastHost } = useToast();
+  const { confirm, ConfirmHost } = useConfirm();
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -62,14 +65,59 @@ export default function QuestionBank() {
     subject: '',
   };
   const [draft, setDraft] = useState(emptyDraft);
+  /** Set while the dialog is editing an existing item rather than creating a new one. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const handleEditQuestion = (question: any) => {
+    setDraft({
+      question: question.question || '',
+      type: question.type || 'multiple-choice',
+      difficulty: question.difficulty || 'medium',
+      points: question.points ?? 2,
+      topic: question.topic || '',
+      subject: question.subject || '',
+    });
+    setEditingId(question.id);
+    setOpenDialog(true);
+  };
+
+  const handleDeleteQuestion = async (question: any) => {
+    const ok = await confirm({
+      title: 'Delete this question?',
+      message: `"${(question.question || '').slice(0, 120)}" will be removed from the bank. Exams that already use it are not affected.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    deleteQuestionBankItem(question.id);
+    toast('Question deleted.');
+  };
+
+  const handleEmptyBank = async () => {
+    const ok = await confirm({
+      title: `Empty the question bank?`,
+      message: `All ${questionBank.length} questions will be removed. This cannot be undone, and exams already built from them are not affected.`,
+      confirmLabel: 'Delete all',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    // Snapshot the ids first: deleting from the live array while iterating it would skip
+    // every other entry.
+    for (const id of questionBank.map((q: any) => q.id)) deleteQuestionBankItem(id);
+    toast('Question bank emptied.');
+  };
 
   const handleAddQuestion = () => {
     if (!draft.question.trim()) {
       toast('Enter the question first.', 'error');
       return;
     }
+    // An edit keeps the original id, so the upsert replaces the item rather than adding a
+    // near-duplicate beside it.
+    const existing = editingId ? questionBank.find((q: any) => q.id === editingId) : null;
     saveQuestionBankItem({
-      id: `qb-${Date.now()}`,
+      ...(existing || {}),
+      id: editingId || `qb-${Date.now()}`,
       type: draft.type,
       question: draft.question.trim(),
       points: Number(draft.points) || 1,
@@ -79,9 +127,11 @@ export default function QuestionBank() {
       createdBy: currentUser?.id,
       createdAt: new Date().toISOString(),
     });
+    const wasEditing = Boolean(editingId);
     setDraft(emptyDraft);
+    setEditingId(null);
     setOpenDialog(false);
-    toast('Question added to the bank.');
+    toast(wasEditing ? 'Question updated.' : 'Question added to the bank.');
   };
 
   const isInstructor = currentUser?.role === 'instructor';
@@ -145,9 +195,25 @@ export default function QuestionBank() {
         subtitle="Browse, manage, and reuse questions"
         actions={
           isInstructor && (
-            <Button variant="contained" startIcon={<Add />} onClick={() => setOpenDialog(true)}>
-              Add Question
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {questionBank.length > 0 && (
+                <Button
+                  variant="outlined"
+                  startIcon={<DeleteSweep />}
+                  onClick={handleEmptyBank}
+                  sx={{ color: palette.danger, borderColor: palette.border }}
+                >
+                  Empty bank
+                </Button>
+              )}
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => { setDraft(emptyDraft); setEditingId(null); setOpenDialog(true); }}
+              >
+                Add Question
+              </Button>
+            </Box>
           )
         }
       />
@@ -240,10 +306,10 @@ export default function QuestionBank() {
                 </Typography>
                 {isInstructor && (
                   <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
-                    <IconButton size="small" aria-label="Edit question">
+                    <IconButton size="small" aria-label="Edit question" onClick={() => handleEditQuestion(question)}>
                       <Edit sx={{ fontSize: 18, color: palette.inkSecondary }} />
                     </IconButton>
-                    <IconButton size="small" aria-label="Delete question">
+                    <IconButton size="small" aria-label="Delete question" onClick={() => handleDeleteQuestion(question)}>
                       <Delete sx={{ fontSize: 18, color: palette.danger }} />
                     </IconButton>
                   </Stack>
@@ -340,7 +406,7 @@ export default function QuestionBank() {
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle>Add New Question</DialogTitle>
+        <DialogTitle>{editingId ? 'Edit question' : 'Add New Question'}</DialogTitle>
         <DialogContent>
           <Field label="Question" required>
             <TextField
@@ -388,13 +454,16 @@ export default function QuestionBank() {
           </FieldRow>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={() => { setOpenDialog(false); setEditingId(null); setDraft(emptyDraft); }}>
+            Cancel
+          </Button>
           <Button variant="contained" onClick={handleAddQuestion}>
-            Add Question
+            {editingId ? 'Save changes' : 'Add Question'}
           </Button>
         </DialogActions>
       </Dialog>
       {ToastHost}
+      {ConfirmHost}
     </PageContainer>
   );
 }

@@ -69,6 +69,8 @@ export async function fetchClassrooms() {
     section: c.section,
     instructorId: c.instructor_id,
     classCode: c.class_code,
+    level: c.level || '',
+    room: c.room || '',
     students: (c.classroom_students || []).map((s: any) => s.student_id),
     createdAt: c.created_at,
     description: c.description || undefined,
@@ -86,6 +88,8 @@ export async function upsertClassroom(classroom: any) {
       section: classroom.section,
       instructor_id: toDbId(classroom.instructorId),
       class_code: classroom.classCode,
+    level: classroom.level || null,
+    room: classroom.room || null,
       description: classroom.description || null,
       is_archived: !!classroom.isArchived,
     });

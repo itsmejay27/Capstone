@@ -218,7 +218,17 @@ export function createAppTheme(mode: 'light' | 'dark') {
     MuiDivider: { styleOverrides: { root: { borderColor: palette.border } } },
     MuiTooltip: {
       styleOverrides: {
-        tooltip: { backgroundColor: palette.ink, fontSize: '0.75rem', borderRadius: radius.sm, padding: '6px 10px' },
+        tooltip: {
+          // `palette.ink` is a TEXT colour: it inverts to near-white in dark mode, which
+          // left every tooltip white-on-white. Tooltips need a fill that stays dark.
+          backgroundColor: 'var(--c-banner-from)',
+          color: 'var(--c-banner-ink)',
+          border: '1px solid var(--c-banner-to)',
+          fontSize: '0.75rem',
+          borderRadius: radius.sm,
+          padding: '6px 10px',
+        },
+        arrow: { color: 'var(--c-banner-from)' },
       },
     },
     MuiAlert: {

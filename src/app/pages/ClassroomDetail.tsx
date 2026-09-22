@@ -300,10 +300,10 @@ export default function ClassroomDetail() {
           sx={{
             mb: 3,
             borderRadius: 3.5,
-            bgcolor: 'var(--c-slate-800)',
+            bgcolor: 'var(--c-banner-from)',
             color: 'white',
             overflow: 'hidden',
-            border: '1px solid var(--c-slate-700)',
+            border: '1px solid var(--c-banner-to)',
             boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
           }}
         >
@@ -312,7 +312,7 @@ export default function ClassroomDetail() {
               <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: '-0.02em', mb: 0.5, fontSize: { xs: '1.6rem', md: '2.1rem' } }}>
                 {classroom.name}
               </Typography>
-              <Typography variant="subtitle1" sx={{ color: 'var(--c-slate-400)', fontWeight: 600 }}>
+              <Typography variant="subtitle1" sx={{ color: 'var(--c-banner-ink-dim)', fontWeight: 600 }}>
                 {classroom.subject} &bull; Section {classroom.section}
               </Typography>
               {classroom.description && (
@@ -405,7 +405,7 @@ export default function ClassroomDetail() {
             // viewports, leaving the tabs as an undiscoverable horizontal scroll strip.
             allowScrollButtonsMobile
             sx={{
-              bgcolor: 'var(--c-slate-900)',
+              bgcolor: 'var(--c-banner-from)',
               borderTop: '1px solid var(--c-slate-700)',
               px: { xs: 0.5, sm: 2 },
               '& .MuiTab-root': {

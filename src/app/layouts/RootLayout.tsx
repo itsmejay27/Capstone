@@ -38,6 +38,15 @@ export default function RootLayout() {
       )
     : [];
 
+  // A classroom invite link carries ?join=CODE. The redirect below rewrites the URL, so
+  // the code is preserved across sign-in here and picked up again by the dashboard.
+  useEffect(() => {
+    const code = new URLSearchParams(location.search).get('join');
+    if (code) {
+      try { sessionStorage.setItem('pendingJoinCode', code); } catch { /* blocked storage */ }
+    }
+  }, [location.search]);
+
   useEffect(() => {
     if (!isAuthenticated && location.pathname !== '/') {
       navigate('/');

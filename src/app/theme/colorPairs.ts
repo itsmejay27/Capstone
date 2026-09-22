@@ -169,22 +169,42 @@ const EFFECTS_DARK = `  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
 /**
  * Cross-fade between themes.
  *
- * Deliberately gated behind a class the provider adds only for the duration of a switch:
- * a permanent global transition would also animate every hover, focus and route change,
- * which makes the whole app feel laggy. Only the colour properties are transitioned —
- * animating `all` would drag layout properties into the compositor and cause visible jank.
+ * Two mechanisms, cheapest first:
  *
- * Honours prefers-reduced-motion, where an instant swap is the correct behaviour.
+ * 1. View Transitions, where supported. The browser snapshots the page and cross-fades the
+ *    two frames on the compositor — one composited animation regardless of how many
+ *    elements are on screen.
+ * 2. A per-element CSS transition as the fallback. This is the expensive path, so it is
+ *    trimmed to the three properties that actually carry the theme. It previously also
+ *    animated box-shadow, background-image, fill and stroke on every element and
+ *    pseudo-element, which forced a paint of the entire tree and is what made the switch
+ *    stutter on a dense page.
+ *
+ * Both stay gated behind a class the provider adds only for the duration of a switch: a
+ * permanent global transition would also animate every hover and route change.
  */
 const THEME_TRANSITION = `.theme-transition, .theme-transition *, .theme-transition *::before, .theme-transition *::after {
-  transition: background-color 320ms ease, background-image 320ms ease, border-color 320ms ease,
-    color 320ms ease, fill 320ms ease, stroke 320ms ease, box-shadow 320ms ease !important;
+  transition: background-color 180ms linear, border-color 180ms linear, color 180ms linear !important;
+  animation: none !important;
+}
+
+/*
+ * The browser cross-fades a snapshot of the whole page instead of animating thousands of
+ * elements individually, so this path stays smooth on a dense screen where the per-element
+ * transition above cannot.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  mix-blend-mode: normal;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .theme-transition, .theme-transition *, .theme-transition *::before, .theme-transition *::after {
     transition: none !important;
   }
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none !important; }
 }
 `;
 
