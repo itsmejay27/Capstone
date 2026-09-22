@@ -344,8 +344,8 @@ export default function TakeExam() {
                 variant="outlined"
                 sx={{
                   borderRadius: 4,
-                  borderColor: isAnswered ? '#6366f1' : '#e2e8f0',
-                  borderLeft: `6px solid ${isAnswered ? '#6366f1' : '#cbd5e1'}`,
+                  borderColor: isAnswered ? '#10b981' : '#e2e8f0',
+                  borderLeft: `6px solid ${isAnswered ? '#10b981' : '#cbd5e1'}`,
                   boxShadow: '0 4px 15px rgba(0,0,0,0.01)',
                   transition: 'all 0.2s',
                   '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.04)' }
@@ -410,16 +410,16 @@ export default function TakeExam() {
                                 </Box>
                               }
                               sx={{
-                                border: isSelected ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                                bgcolor: isSelected ? 'rgba(99,102,241,0.04)' : 'transparent',
+                                border: isSelected ? '2px solid #10b981' : '1px solid #e2e8f0',
+                                bgcolor: isSelected ? 'rgba(16,185,129,0.04)' : 'transparent',
                                 borderRadius: 3,
                                 mb: 1.5,
                                 mr: 0,
                                 p: 2,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  bgcolor: isSelected ? 'rgba(99,102,241,0.06)' : '#f8fafc',
-                                  borderColor: isSelected ? '#6366f1' : '#cbd5e1',
+                                  bgcolor: isSelected ? 'rgba(16,185,129,0.06)' : '#f8fafc',
+                                  borderColor: isSelected ? '#10b981' : '#cbd5e1',
                                 },
                               }}
                             />
@@ -445,16 +445,16 @@ export default function TakeExam() {
                               control={<Radio />}
                               label={val === 'true' ? 'True (Factual statement)' : 'False (Incorrect statement)'}
                               sx={{
-                                border: isSelected ? '2px solid #6366f1' : '1px solid #e2e8f0',
-                                bgcolor: isSelected ? 'rgba(99,102,241,0.04)' : 'transparent',
+                                border: isSelected ? '2px solid #10b981' : '1px solid #e2e8f0',
+                                bgcolor: isSelected ? 'rgba(16,185,129,0.04)' : 'transparent',
                                 borderRadius: 3,
                                 mb: 1.5,
                                 mr: 0,
                                 p: 2,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  bgcolor: isSelected ? 'rgba(99,102,241,0.06)' : '#f8fafc',
-                                  borderColor: isSelected ? '#6366f1' : '#cbd5e1',
+                                  bgcolor: isSelected ? 'rgba(16,185,129,0.06)' : '#f8fafc',
+                                  borderColor: isSelected ? '#10b981' : '#cbd5e1',
                                 },
                               }}
                             />
@@ -521,8 +521,8 @@ export default function TakeExam() {
                 py: 2,
                 mb: 2,
                 borderRadius: 3,
-                bgcolor: timeRemaining < 300 ? 'rgba(239,68,68,0.05)' : 'rgba(99,102,241,0.04)',
-                border: timeRemaining < 300 ? '1px solid #fecaca' : '1px solid #e0e7ff',
+                bgcolor: timeRemaining < 300 ? 'rgba(239,68,68,0.05)' : 'rgba(16,185,129,0.04)',
+                border: timeRemaining < 300 ? '1px solid #fecaca' : '1px solid #d1fae5',
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -566,7 +566,7 @@ export default function TakeExam() {
                     bgcolor: '#f1f5f9',
                     '& .MuiLinearProgress-bar': {
                       borderRadius: 4,
-                      background: 'linear-gradient(90deg, #6366f1, #4f46e5)',
+                      background: 'linear-gradient(90deg, #10b981, #059669)',
                     }
                   }}
                 />
@@ -623,7 +623,7 @@ export default function TakeExam() {
                 QUESTION INDEX
               </Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: '#6366f1' }} />
+                <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: '#10b981' }} />
                 <Typography variant="caption" color="text.secondary" fontWeight={600}>Done</Typography>
                 <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: '#f1f5f9', border: '1px solid #cbd5e1', ml: 1 }} />
                 <Typography variant="caption" color="text.secondary" fontWeight={600}>Blank</Typography>
@@ -646,7 +646,7 @@ export default function TakeExam() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      bgcolor: isAnswered ? '#6366f1' : '#f1f5f9',
+                      bgcolor: isAnswered ? '#10b981' : '#f1f5f9',
                       color: isAnswered ? 'white' : '#64748b',
                       fontWeight: 800,
                       fontSize: '0.78rem',
@@ -654,9 +654,9 @@ export default function TakeExam() {
                       border: '1.5px solid transparent',
                       transition: 'all 0.15s',
                       '&:hover': {
-                        borderColor: '#6366f1',
+                        borderColor: '#10b981',
                         transform: 'scale(1.1)',
-                        bgcolor: isAnswered ? '#4f46e5' : '#e2e8f0',
+                        bgcolor: isAnswered ? '#059669' : '#e2e8f0',
                       }
                     }}
                   >

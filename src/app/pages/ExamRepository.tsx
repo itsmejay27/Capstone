@@ -1038,7 +1038,7 @@ export default function ExamRepository() {
 
                           {/* Essay choice */}
                           {q.type === 'essay' && (
-                            <Box sx={{ pl: 3, borderLeft: '4px solid #8b5cf6', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <Box sx={{ pl: 3, borderLeft: '4px solid #10b981', display: 'flex', flexDirection: 'column', gap: 1 }}>
                               <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
                                 Essay Grading Rubric & Criteria
                               </Typography>
@@ -1098,7 +1098,7 @@ export default function ExamRepository() {
                           {/* Clean, Unconfusing AI Revision Action Bar */}
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, pt: 1.5, borderTop: '1px solid #f1f5f9' }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <AutoAwesome sx={{ color: '#6366f1', fontSize: 18 }} />
+                              <AutoAwesome sx={{ color: '#10b981', fontSize: 18 }} />
                               <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
                                 AI Revision:
                               </Typography>
@@ -1114,10 +1114,10 @@ export default function ExamRepository() {
                                   borderRadius: 2,
                                   fontWeight: 700,
                                   fontSize: '0.8rem',
-                                  color: '#4338ca',
-                                  borderColor: '#c7d2fe',
-                                  bgcolor: '#eef2ff',
-                                  '&:hover': { bgcolor: '#e0e7ff', borderColor: '#a5b4fc' }
+                                  color: '#047857',
+                                  borderColor: '#a7f3d0',
+                                  bgcolor: '#ecfdf5',
+                                  '&:hover': { bgcolor: '#d1fae5', borderColor: '#a7f3d0' }
                                 }}
                               >
                                 Re-generate with AI
@@ -1133,10 +1133,10 @@ export default function ExamRepository() {
                                     borderRadius: 2,
                                     fontWeight: 700,
                                     fontSize: '0.8rem',
-                                    color: '#6d28d9',
-                                    borderColor: '#ddd6fe',
-                                    bgcolor: '#f5f3ff',
-                                    '&:hover': { bgcolor: '#ede9fe', borderColor: '#c4b5fd' }
+                                    color: '#065f46',
+                                    borderColor: '#a7f3d0',
+                                    bgcolor: '#ecfdf5',
+                                    '&:hover': { bgcolor: '#d1fae5', borderColor: '#6ee7b7' }
                                   }}
                                 >
                                   Shuffle Choices

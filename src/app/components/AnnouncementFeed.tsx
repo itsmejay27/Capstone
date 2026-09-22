@@ -179,9 +179,9 @@ function Composer({
           border: '1px solid #e2e8f0', borderRadius: 2, p: 1.5,
           fontSize: '0.92rem', lineHeight: 1.6, color: '#0f172a',
           outline: 'none', wordBreak: 'break-word',
-          '&:focus': { borderColor: '#2563eb', boxShadow: '0 0 0 3px rgba(37,99,235,0.12)' },
+          '&:focus': { borderColor: '#059669', boxShadow: '0 0 0 3px rgba(5,150,105,0.12)' },
           '& ul': { pl: 3, my: 0.5 },
-          '& a': { color: '#2563eb' },
+          '& a': { color: '#059669' },
           '&:empty::before': {
             content: '"Share an update with your class…"',
             color: '#94a3b8',
@@ -225,7 +225,7 @@ function Composer({
           startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <Send />}
           onClick={submit}
           disabled={!canSubmit}
-          sx={{ bgcolor: '#2563eb', fontWeight: 800, textTransform: 'none', '&:hover': { bgcolor: '#1d4ed8' } }}
+          sx={{ bgcolor: '#059669', fontWeight: 800, textTransform: 'none', '&:hover': { bgcolor: '#047857' } }}
         >
           {initial ? 'Save changes' : 'Post'}
         </Button>
@@ -256,7 +256,7 @@ function AnnouncementCard({
       }}
     >
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-        <Avatar sx={{ bgcolor: '#2563eb', width: 40, height: 40, fontWeight: 800, flexShrink: 0 }}>
+        <Avatar sx={{ bgcolor: '#059669', width: 40, height: 40, fontWeight: 800, flexShrink: 0 }}>
           {(announcement.authorName || '?').charAt(0).toUpperCase()}
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -301,7 +301,7 @@ function AnnouncementCard({
         sx={{
           mt: 1.25, color: '#334155', fontSize: '0.92rem', lineHeight: 1.65, wordBreak: 'break-word',
           '& ul, & ol': { pl: 3, my: 0.5 },
-          '& a': { color: '#2563eb' },
+          '& a': { color: '#059669' },
           '& p': { my: 0.5 },
         }}
         dangerouslySetInnerHTML={{ __html: sanitizeRichText(announcement.bodyHtml, MAX_BODY_LENGTH) }}

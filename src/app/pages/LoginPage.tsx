@@ -134,11 +134,11 @@ export default function LoginPage() {
 
   const isInstructorRole = selectedRole === 'instructor';
   const roleGradient = isInstructorRole
-    ? 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)'
-    : 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)';
+    ? 'linear-gradient(135deg, #047857 0%, #10b981 100%)'
+    : 'linear-gradient(135deg, #0284c7 0%, #059669 100%)';
   const roleShadow = isInstructorRole
-    ? '0 10px 25px rgba(124, 58, 237, 0.4)'
-    : '0 10px 25px rgba(37, 99, 235, 0.4)';
+    ? '0 10px 25px rgba(4, 120, 87, 0.4)'
+    : '0 10px 25px rgba(5, 150, 105, 0.4)';
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#0b0f19', color: '#f8fafc', overflowX: 'hidden' }}>
@@ -148,7 +148,7 @@ export default function LoginPage() {
       {/* ── 2. Hero Intro Banner Section ── */}
       <Box
         sx={{
-          background: 'radial-gradient(circle at 50% 15%, #1e1b4b 0%, #0f172a 60%, #030712 100%)',
+          background: 'radial-gradient(circle at 50% 15%, #022c22 0%, #0f172a 60%, #030712 100%)',
           pt: { xs: 8, md: 12 },
           pb: { xs: 8, md: 11 },
           px: 3,
@@ -157,8 +157,8 @@ export default function LoginPage() {
           textAlign: 'center',
         }}
       >
-        <Box sx={{ position: 'absolute', top: -100, left: '25%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <Box sx={{ position: 'absolute', bottom: -100, right: '25%', width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', top: -100, left: '25%', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(4,120,87,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <Box sx={{ position: 'absolute', bottom: -100, right: '25%', width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(5,150,105,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
           <Box
@@ -175,7 +175,7 @@ export default function LoginPage() {
               mb: 3,
             }}
           >
-            <School sx={{ color: '#a78bfa', fontSize: 20 }} />
+            <School sx={{ color: '#6ee7b7', fontSize: 20 }} />
             <Typography variant="caption" sx={{ color: '#e2e8f0', fontWeight: 800, letterSpacing: '0.06em' }}>
               OCCIDENTAL MINDORO STATE COLLEGE &bull; CAPSTONE SYSTEM
             </Typography>
@@ -220,7 +220,7 @@ export default function LoginPage() {
               startIcon={<LoginIcon />}
               onClick={() => setOpenLoginModal(true)}
               sx={{
-                bgcolor: '#7c3aed',
+                bgcolor: '#047857',
                 color: 'white',
                 fontWeight: 800,
                 px: 4,
@@ -228,8 +228,8 @@ export default function LoginPage() {
                 borderRadius: 3,
                 fontSize: '1.05rem',
                 textTransform: 'none',
-                boxShadow: '0 8px 30px rgba(124,58,237,0.4)',
-                '&:hover': { bgcolor: '#6d28d9', transform: 'translateY(-2px)' },
+                boxShadow: '0 8px 30px rgba(4,120,87,0.4)',
+                '&:hover': { bgcolor: '#065f46', transform: 'translateY(-2px)' },
               }}
             >
               Sign In to System Portal
@@ -267,7 +267,7 @@ export default function LoginPage() {
             }}
           >
             <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-              <Speed sx={{ color: '#c084fc', mb: 0.5, fontSize: 24 }} />
+              <Speed sx={{ color: '#6ee7b7', mb: 0.5, fontSize: 24 }} />
               <Typography variant="caption" sx={{ color: '#cbd5e1', fontWeight: 800, display: 'block' }}>15-Sec Generation</Typography>
             </Paper>
             <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
@@ -290,7 +290,7 @@ export default function LoginPage() {
       <Box id="about" sx={{ py: 10, px: 3, bgcolor: '#0b0f19', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
-            <Chip label="ABOUT THE PLATFORM" size="small" sx={{ bgcolor: 'rgba(124,58,237,0.15)', color: '#c084fc', fontWeight: 800, mb: 1.5 }} />
+            <Chip label="ABOUT THE PLATFORM" size="small" sx={{ bgcolor: 'rgba(4,120,87,0.15)', color: '#6ee7b7', fontWeight: 800, mb: 1.5 }} />
             <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em', mb: 2 }}>
               Revolutionizing Educational Assessments
             </Typography>
@@ -319,8 +319,8 @@ export default function LoginPage() {
                 height: '100%',
               }}
             >
-              <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: 'rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
-                <RecordVoiceOver sx={{ color: '#c084fc', fontSize: 26 }} />
+              <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: 'rgba(4,120,87,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+                <RecordVoiceOver sx={{ color: '#6ee7b7', fontSize: 26 }} />
               </Box>
               <Typography variant="h6" fontWeight={800} sx={{ color: 'white', mb: 1.5 }}>
                 For Educators & Instructors
@@ -341,7 +341,7 @@ export default function LoginPage() {
                 height: '100%',
               }}
             >
-              <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: 'rgba(37,99,235,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
+              <Box sx={{ width: 48, height: 48, borderRadius: 3, bgcolor: 'rgba(5,150,105,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5 }}>
                 <Person sx={{ color: '#38bdf8', fontSize: 26 }} />
               </Box>
               <Typography variant="h6" fontWeight={800} sx={{ color: 'white', mb: 1.5 }}>
@@ -411,7 +411,7 @@ export default function LoginPage() {
                     border: 'none !important',
                   },
                   '& .Mui-selected': {
-                    bgcolor: activeWorkflowTab === 'instructor' ? '#7c3aed !important' : '#2563eb !important',
+                    bgcolor: activeWorkflowTab === 'instructor' ? '#047857 !important' : '#059669 !important',
                     color: 'white !important',
                   },
                 }}
@@ -441,25 +441,25 @@ export default function LoginPage() {
                   step="01"
                   title="Create Classroom"
                   description="Click '+ Create Classroom' in your instructor dashboard. Enter your subject title and section to receive a unique Class Code."
-                  icon={<GroupAdd sx={{ color: '#c084fc' }} />}
+                  icon={<GroupAdd sx={{ color: '#6ee7b7' }} />}
                 />
                 <StepItem
                   step="02"
                   title="Provide Course Topics"
                   description="Open the AI Exam Generator. Input your lecture topics, paste syllabus text, or upload reference files for the AI engine."
-                  icon={<AutoStories sx={{ color: '#c084fc' }} />}
+                  icon={<AutoStories sx={{ color: '#6ee7b7' }} />}
                 />
                 <StepItem
                   step="03"
                   title="Set Bloom's Taxonomy"
                   description="Select your target question distribution across Remembering, Understanding, Applying, and Analyzing cognitive levels."
-                  icon={<Psychology sx={{ color: '#c084fc' }} />}
+                  icon={<Psychology sx={{ color: '#6ee7b7' }} />}
                 />
                 <StepItem
                   step="04"
                   title="Publish & Auto-Grade"
                   description="Publish the exam to your classroom. Enrolled students take the test online, and scores are automatically calculated with item analytics."
-                  icon={<AssignmentTurnedIn sx={{ color: '#c084fc' }} />}
+                  icon={<AssignmentTurnedIn sx={{ color: '#6ee7b7' }} />}
                 />
               </>
             ) : (
@@ -519,7 +519,7 @@ export default function LoginPage() {
             <FeatureItem
               title="Instant AI Question Generator"
               description="Supports Multiple Choice, Identification, True or False, and Essay question formats generated in seconds."
-              icon={<AutoAwesome sx={{ color: '#c084fc' }} />}
+              icon={<AutoAwesome sx={{ color: '#6ee7b7' }} />}
             />
             <FeatureItem
               title="Bloom's Cognitive Taxonomy"
@@ -544,7 +544,7 @@ export default function LoginPage() {
             <FeatureItem
               title="Central Exam Repository"
               description="Save, manage, export, and republish past examinations across academic terms."
-              icon={<Quiz sx={{ color: '#a78bfa' }} />}
+              icon={<Quiz sx={{ color: '#6ee7b7' }} />}
             />
           </Box>
         </Container>
@@ -555,7 +555,7 @@ export default function LoginPage() {
         sx={{
           py: 10,
           px: 3,
-          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
+          background: 'linear-gradient(135deg, #022c22 0%, #064e3b 50%, #047857 100%)',
           textAlign: 'center',
           position: 'relative',
           overflow: 'hidden',
@@ -568,7 +568,7 @@ export default function LoginPage() {
           <Typography variant="h3" fontWeight={900} sx={{ color: 'white', letterSpacing: '-0.02em', mb: 2, fontSize: { xs: '2rem', md: '2.8rem' } }}>
             Ready to Access the OMSC AI Portal?
           </Typography>
-          <Typography variant="body1" sx={{ color: '#c7d2fe', fontSize: '1.1rem', mb: 4, maxWidth: 600, mx: 'auto' }}>
+          <Typography variant="body1" sx={{ color: '#a7f3d0', fontSize: '1.1rem', mb: 4, maxWidth: 600, mx: 'auto' }}>
             Click below to sign in with your Instructor or Student account, join classrooms, and generate AI exams.
           </Typography>
 
@@ -579,7 +579,7 @@ export default function LoginPage() {
             onClick={() => setOpenLoginModal(true)}
             sx={{
               bgcolor: 'white',
-              color: '#312e81',
+              color: '#064e3b',
               fontWeight: 900,
               px: 4.5,
               py: 1.8,
@@ -745,7 +745,7 @@ export default function LoginPage() {
           <Box sx={{ pt: 2.5, borderTop: '1px dashed #e2e8f0' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
               <Typography variant="caption" sx={{ fontWeight: 800, color: '#475569', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.72rem' }}>
-                <AutoAwesome sx={{ fontSize: 14, color: '#7c3aed' }} /> Quick Demo Sign-In
+                <AutoAwesome sx={{ fontSize: 14, color: '#047857' }} /> Quick Demo Sign-In
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
                 Click to auto-login
@@ -774,8 +774,8 @@ export default function LoginPage() {
                       borderColor: '#e2e8f0',
                       transition: 'all 0.15s ease',
                       '&:hover': {
-                        borderColor: isInstructorUser ? '#7c3aed' : '#2563eb',
-                        bgcolor: isInstructorUser ? '#f5f3ff' : '#eff6ff',
+                        borderColor: isInstructorUser ? '#047857' : '#059669',
+                        bgcolor: isInstructorUser ? '#ecfdf5' : '#ecfdf5',
                         transform: 'translateY(-1px)',
                       },
                     }}
@@ -787,7 +787,7 @@ export default function LoginPage() {
                         height: 28,
                         fontSize: '0.75rem',
                         fontWeight: 800,
-                        bgcolor: isInstructorUser ? '#7c3aed' : '#2563eb',
+                        bgcolor: isInstructorUser ? '#047857' : '#059669',
                       }}
                     >
                       {u.name.charAt(0)}
@@ -803,8 +803,8 @@ export default function LoginPage() {
                           height: 15,
                           fontSize: '0.55rem',
                           fontWeight: 800,
-                          bgcolor: isInstructorUser ? '#ede9fe' : '#dbeafe',
-                          color: isInstructorUser ? '#6d28d9' : '#1d4ed8',
+                          bgcolor: isInstructorUser ? '#d1fae5' : '#d1fae5',
+                          color: isInstructorUser ? '#065f46' : '#047857',
                           p: 0,
                           mt: 0.2,
                         }}
@@ -839,7 +839,7 @@ function AppBarNav({ onOpenLogin, onScrollTo }: { onOpenLogin: () => void; onScr
       <Container maxWidth="xl">
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <Box sx={{ width: 38, height: 38, borderRadius: 2.5, bgcolor: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 900 }}>
+            <Box sx={{ width: 38, height: 38, borderRadius: 2.5, bgcolor: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 900 }}>
               <School sx={{ fontSize: 22 }} />
             </Box>
             <Box>
@@ -869,7 +869,7 @@ function AppBarNav({ onOpenLogin, onScrollTo }: { onOpenLogin: () => void; onScr
             startIcon={<LoginIcon />}
             onClick={onOpenLogin}
             sx={{
-              bgcolor: '#7c3aed',
+              bgcolor: '#047857',
               color: 'white',
               fontWeight: 800,
               borderRadius: 2.5,
@@ -877,8 +877,8 @@ function AppBarNav({ onOpenLogin, onScrollTo }: { onOpenLogin: () => void; onScr
               py: 0.8,
               fontSize: '0.85rem',
               textTransform: 'none',
-              boxShadow: '0 4px 14px rgba(124,58,237,0.3)',
-              '&:hover': { bgcolor: '#6d28d9' },
+              boxShadow: '0 4px 14px rgba(4,120,87,0.3)',
+              '&:hover': { bgcolor: '#065f46' },
             }}
           >
             Sign In / Register

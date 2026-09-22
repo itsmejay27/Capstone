@@ -124,7 +124,7 @@ export default function OllamaConfigControl({
           {/* Engine Status Badge */}
           {engine === 'gemini' ? (
             <Chip
-              icon={<AutoAwesome sx={{ color: '#9333ea !important' }} />}
+              icon={<AutoAwesome sx={{ color: '#059669 !important' }} />}
               label="Google Gemini Cloud AI"
               color="secondary"
               variant="outlined"
@@ -186,7 +186,7 @@ export default function OllamaConfigControl({
                   cursor: 'pointer',
                   borderWidth: 2,
                   borderColor: engine === 'gemini' ? 'secondary.main' : '#e2e8f0',
-                  bgcolor: engine === 'gemini' ? 'rgba(147, 51, 234, 0.04)' : 'inherit',
+                  bgcolor: engine === 'gemini' ? 'rgba(5, 150, 105, 0.04)' : 'inherit',
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
@@ -248,7 +248,7 @@ export default function OllamaConfigControl({
                   cursor: 'pointer',
                   borderWidth: 2,
                   borderColor: engine === 'ollama' ? 'primary.main' : '#e2e8f0',
-                  bgcolor: engine === 'ollama' ? 'rgba(99, 102, 241, 0.04)' : 'inherit',
+                  bgcolor: engine === 'ollama' ? 'rgba(16, 185, 129, 0.04)' : 'inherit',
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',

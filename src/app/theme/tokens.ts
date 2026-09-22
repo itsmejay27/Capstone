@@ -3,7 +3,7 @@
  *
  * Single source of truth for colour, radius, shadow and spacing across the app. Pages should
  * read from here (or from the MUI theme built on top of it) rather than hard-coding hex
- * values — the existing pages are full of one-off '#2563eb' / '#e2e8f0' literals, which is
+ * values — the existing pages are full of one-off '#059669' / '#e2e8f0' literals, which is
  * why nothing lines up.
  *
  * The palette is a light, low-chroma "workspace" scheme: near-white canvas, white surfaces,
@@ -29,14 +29,14 @@ export const palette = {
   inkDisabled: '#b4b4c0',
 
   // Brand / action
-  primary: '#4f46e5',
-  primaryHover: '#4338ca',
-  primarySoft: '#eef2ff',
-  primaryBorder: '#c7d2fe',
+  primary: '#059669',
+  primaryHover: '#047857',
+  primarySoft: '#ecfdf5',
+  primaryBorder: '#a7f3d0',
 
   // Role accents
-  instructor: '#7c3aed',
-  instructorSoft: '#f5f3ff',
+  instructor: '#047857',
+  instructorSoft: '#ecfdf5',
   student: '#0284c7',
   studentSoft: '#e0f2fe',
 
@@ -56,8 +56,8 @@ export const palette = {
  * Indexed deterministically by entity id so a class keeps its colour between renders.
  */
 export const cardTints = [
-  { from: '#ede9fe', to: '#f5f3ff', ink: '#5b21b6' }, // lavender
-  { from: '#dbeafe', to: '#eff6ff', ink: '#1e40af' }, // blue
+  { from: '#d1fae5', to: '#ecfdf5', ink: '#065f46' }, // lavender
+  { from: '#d1fae5', to: '#ecfdf5', ink: '#065f46' }, // blue
   { from: '#ffedd5', to: '#fff7ed', ink: '#9a3412' }, // peach
   { from: '#dcfce7', to: '#f0fdf4', ink: '#166534' }, // mint
   { from: '#fce7f3', to: '#fdf2f8', ink: '#9d174d' }, // rose

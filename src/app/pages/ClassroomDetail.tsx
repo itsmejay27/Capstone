@@ -107,7 +107,7 @@ function convertToTransmutedOMSCGrade(score: number, total: number) {
 function getMaterialIcon(filename: string) {
   const ext = filename.split('.').pop()?.toLowerCase();
   if (ext === 'pdf') return <PictureAsPdf sx={{ fontSize: 28, color: '#dc2626' }} />;
-  if (ext === 'doc' || ext === 'docx') return <Description sx={{ fontSize: 28, color: '#2563eb' }} />;
+  if (ext === 'doc' || ext === 'docx') return <Description sx={{ fontSize: 28, color: '#059669' }} />;
   return <InsertDriveFile sx={{ fontSize: 28, color: '#64748b' }} />;
 }
 
@@ -175,7 +175,7 @@ export default function ClassroomDetail() {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             The requested classroom may have been removed or archived.
           </Typography>
-          <Button variant="contained" onClick={() => navigate('/dashboard')} sx={{ bgcolor: '#2563eb', fontWeight: 700 }}>
+          <Button variant="contained" onClick={() => navigate('/dashboard')} sx={{ bgcolor: '#059669', fontWeight: 700 }}>
             Back to Dashboard
           </Button>
         </Paper>
@@ -357,7 +357,7 @@ export default function ClassroomDetail() {
 
                 {instructor && (
                   <Chip
-                    avatar={<Avatar sx={{ width: 20, height: 20, bgcolor: '#3b82f6', fontSize: '0.65rem', color: 'white' }}>{instructor.name.charAt(0)}</Avatar>}
+                    avatar={<Avatar sx={{ width: 20, height: 20, bgcolor: '#10b981', fontSize: '0.65rem', color: 'white' }}>{instructor.name.charAt(0)}</Avatar>}
                     label={`Instructor: ${instructor.name}`}
                     sx={{
                       bgcolor: 'rgba(255,255,255,0.08)',
@@ -378,15 +378,15 @@ export default function ClassroomDetail() {
                   startIcon={<Add />}
                   onClick={() => navigate(`/exam-generator/${classroomId}`)}
                   sx={{
-                    bgcolor: '#2563eb',
+                    bgcolor: '#059669',
                     color: 'white',
                     fontWeight: 800,
                     px: 3,
                     py: 1.2,
                     borderRadius: 2.5,
                     textTransform: 'none',
-                    boxShadow: '0 4px 14px rgba(37,99,235,0.4)',
-                    '&:hover': { bgcolor: '#1d4ed8' },
+                    boxShadow: '0 4px 14px rgba(5,150,105,0.4)',
+                    '&:hover': { bgcolor: '#047857' },
                   }}
                 >
                   Create Exam for Class
@@ -421,7 +421,7 @@ export default function ClassroomDetail() {
                 color: '#ffffff !important',
               },
               '& .MuiTabs-indicator': {
-                bgcolor: '#3b82f6',
+                bgcolor: '#10b981',
                 height: 3,
               },
             }}
@@ -489,7 +489,7 @@ export default function ClassroomDetail() {
                 </Typography>
                 {isInstructor && (
                   <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
-                    <Button variant="contained" onClick={() => navigate(`/exam-generator/${classroomId}`)} sx={{ bgcolor: '#2563eb', fontWeight: 700, textTransform: 'none' }}>
+                    <Button variant="contained" onClick={() => navigate(`/exam-generator/${classroomId}`)} sx={{ bgcolor: '#059669', fontWeight: 700, textTransform: 'none' }}>
                       Generate Exam
                     </Button>
                     <Button variant="outlined" onClick={() => navigate('/exam-repository')} sx={{ fontWeight: 700, textTransform: 'none' }}>
@@ -530,7 +530,7 @@ export default function ClassroomDetail() {
                     >
                       {/* Left: Icon + Title + Due Date */}
                       <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', minWidth: 0, flexGrow: 1 }}>
-                        <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', flexShrink: 0 }}>
+                        <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', flexShrink: 0 }}>
                           <Assignment sx={{ fontSize: 24 }} />
                         </Box>
                         <Box sx={{ minWidth: 0 }}>
@@ -579,14 +579,14 @@ export default function ClassroomDetail() {
                               variant="contained"
                               onClick={() => navigate(`/exam/${exam.id}/take`)}
                               sx={{
-                                bgcolor: '#2563eb',
+                                bgcolor: '#059669',
                                 color: 'white',
                                 fontWeight: 800,
                                 px: 3,
                                 py: 1,
                                 borderRadius: 2,
                                 textTransform: 'none',
-                                '&:hover': { bgcolor: '#1d4ed8' },
+                                '&:hover': { bgcolor: '#047857' },
                               }}
                             >
                               Take Exam
@@ -630,7 +630,7 @@ export default function ClassroomDetail() {
                   component="label"
                   variant="contained"
                   startIcon={<Upload />}
-                  sx={{ bgcolor: '#2563eb', fontWeight: 800, textTransform: 'none', borderRadius: 2.5 }}
+                  sx={{ bgcolor: '#059669', fontWeight: 800, textTransform: 'none', borderRadius: 2.5 }}
                 >
                   {uploading ? 'Uploading…' : 'Upload Study Material'}
                   <input type="file" hidden disabled={uploading} onChange={handleMaterialUpload} accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.xlsx,.csv" />
@@ -727,7 +727,7 @@ export default function ClassroomDetail() {
               </Typography>
               {instructor && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Avatar sx={{ width: 44, height: 44, bgcolor: '#7c3aed', fontWeight: 800 }}>
+                  <Avatar sx={{ width: 44, height: 44, bgcolor: '#047857', fontWeight: 800 }}>
                     {instructor.name.charAt(0)}
                   </Avatar>
                   <Box>
@@ -738,7 +738,7 @@ export default function ClassroomDetail() {
                       {instructor.email}
                     </Typography>
                   </Box>
-                  <Chip label="Instructor" size="small" sx={{ ml: 'auto', bgcolor: '#f5f3ff', color: '#7c3aed', fontWeight: 800 }} />
+                  <Chip label="Instructor" size="small" sx={{ ml: 'auto', bgcolor: '#ecfdf5', color: '#047857', fontWeight: 800 }} />
                 </Box>
               )}
             </Paper>
@@ -761,7 +761,7 @@ export default function ClassroomDetail() {
                     <Box key={student.id}>
                       <ListItem sx={{ px: 1, py: 1.5 }}>
                         <ListItemAvatar>
-                          <Avatar sx={{ width: 36, height: 36, bgcolor: '#2563eb', fontWeight: 700, fontSize: '0.85rem' }}>
+                          <Avatar sx={{ width: 36, height: 36, bgcolor: '#059669', fontWeight: 700, fontSize: '0.85rem' }}>
                             {student.name.charAt(0)}
                           </Avatar>
                         </ListItemAvatar>

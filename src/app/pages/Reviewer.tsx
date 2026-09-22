@@ -644,7 +644,7 @@ export default function Reviewer() {
           {/* LESSON PHASE WORKSPACE */}
           {phase === 'lesson' && currentModule && (
             <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', border: '1px solid #e2e8f0' }}>
-              <Box sx={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', p: 3, color: 'white' }}>
+              <Box sx={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #10b981 100%)', p: 3, color: 'white' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <Box sx={{ width: 44, height: 44, borderRadius: 2.5, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <MenuBook sx={{ fontSize: 24 }} />
@@ -690,10 +690,10 @@ export default function Reviewer() {
 
                   {/* Option 1: Study Flashcards */}
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', transition: 'all 0.2s', '&:hover': { borderColor: '#6366f1', bgcolor: 'rgba(99,102,241,0.02)' } }}>
+                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', transition: 'all 0.2s', '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16,185,129,0.02)' } }}>
                       <CardActionArea sx={{ p: 2.5 }} onClick={() => { setPhase('flashcards'); setFlashcardIdx(0); setIsFlipped(false); }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                          <IconButton size="small" sx={{ bgcolor: 'rgba(99, 102, 241, 0.08)', color: '#6366f1' }}>
+                          <IconButton size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
                             <SwapHoriz fontSize="small" />
                           </IconButton>
                           <Typography variant="subtitle1" fontWeight="bold">Interactive Flashcards</Typography>
@@ -733,7 +733,7 @@ export default function Reviewer() {
             const q = questions[flashcardIdx];
             return (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, animation: 'fadeIn 0.3s ease' }}>
-                <Paper sx={{ p: 3, borderRadius: 4, bgcolor: '#fbfbfe', border: '1px solid #e0e7ff' }}>
+                <Paper sx={{ p: 3, borderRadius: 4, bgcolor: '#fbfbfe', border: '1px solid #d1fae5' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', mb: 0.5 }}>
                     FLASHCARDS STUDY WORKSPACE
                   </Typography>
@@ -750,8 +750,8 @@ export default function Reviewer() {
                       minHeight: 320,
                       cursor: 'pointer',
                       borderRadius: 5,
-                      border: isFlipped ? '2px solid #10b981' : '2px solid #6366f1',
-                      boxShadow: isFlipped ? '0 12px 25px rgba(16,185,129,0.05)' : '0 12px 25px rgba(99,102,241,0.05)',
+                      border: isFlipped ? '2px solid #10b981' : '2px solid #10b981',
+                      boxShadow: isFlipped ? '0 12px 25px rgba(16,185,129,0.05)' : '0 12px 25px rgba(16,185,129,0.05)',
                       background: isFlipped
                         ? 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)'
                         : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
@@ -775,7 +775,7 @@ export default function Reviewer() {
 
                     {!isFlipped ? (
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <HelpOutline sx={{ fontSize: 44, color: '#6366f1' }} />
+                        <HelpOutline sx={{ fontSize: 44, color: '#10b981' }} />
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary', tracking: '0.1em' }}>
                           QUESTION {flashcardIdx + 1} OF {questions.length}
                         </Typography>
@@ -850,7 +850,7 @@ export default function Reviewer() {
           {/* Practice quiz workspace */}
           {phase === 'quiz' && currentModule && (
             <Box sx={{ animation: 'fadeIn 0.3s ease' }}>
-              <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3, background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', color: 'white' }}>
+              <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3, background: 'linear-gradient(135deg, #1e3a8a, #10b981)', color: 'white' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                   <Typography fontWeight="bold">{currentModule.title} — Quiz</Typography>
                   <Typography variant="body2" sx={{ opacity: 0.9 }}>
@@ -870,7 +870,7 @@ export default function Reviewer() {
                     <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
                       <Box sx={{
                         minWidth: 30, height: 30, borderRadius: 2, flexShrink: 0, mt: 0.25,
-                        background: answers[q.id] !== undefined ? 'linear-gradient(135deg,#1e3a8a,#3b82f6)' : '#f1f5f9',
+                        background: answers[q.id] !== undefined ? 'linear-gradient(135deg,#1e3a8a,#10b981)' : '#f1f5f9',
                         color: answers[q.id] !== undefined ? 'white' : '#64748b',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem',
                       }}>
@@ -879,7 +879,7 @@ export default function Reviewer() {
                       <Box sx={{ flexGrow: 1 }}>
                         <Chip
                           size="small" label={q.type === 'true-false' ? 'True / False' : q.type === 'multiple-choice' ? 'Multiple Choice' : 'Identification'}
-                          sx={{ mb: 1, bgcolor: q.type === 'identification' ? '#fef3c7' : '#eff6ff', color: q.type === 'identification' ? '#92400e' : '#1e40af', fontWeight: 600, fontSize: '0.7rem' }}
+                          sx={{ mb: 1, bgcolor: q.type === 'identification' ? '#fef3c7' : '#ecfdf5', color: q.type === 'identification' ? '#92400e' : '#065f46', fontWeight: 600, fontSize: '0.7rem' }}
                         />
                         <Typography variant="body1" fontWeight={600} sx={{ lineHeight: 1.5 }}>{q.question}</Typography>
                       </Box>
@@ -899,8 +899,8 @@ export default function Reviewer() {
                               label={<Typography sx={{ fontWeight: answers[q.id] === val ? 700 : 400 }}>{val === 'true' ? 'True' : 'False'}</Typography>}
                               sx={{
                                 mb: 1, p: 1.5, borderRadius: 2, mr: 0,
-                                border: answers[q.id] === val ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                                bgcolor: answers[q.id] === val ? '#eff6ff' : 'transparent',
+                                border: answers[q.id] === val ? '2px solid #10b981' : '1px solid #e2e8f0',
+                                bgcolor: answers[q.id] === val ? '#ecfdf5' : 'transparent',
                                 transition: 'all 0.15s ease',
                                 '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' },
                               }}
@@ -924,8 +924,8 @@ export default function Reviewer() {
                               label={<Typography sx={{ fontWeight: answers[q.id] === i ? 700 : 400 }}>{String.fromCharCode(65 + i)}. {opt}</Typography>}
                               sx={{
                                 mb: 1, p: 1.5, borderRadius: 2, mr: 0,
-                                border: answers[q.id] === i ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                                bgcolor: answers[q.id] === i ? '#eff6ff' : 'transparent',
+                                border: answers[q.id] === i ? '2px solid #10b981' : '1px solid #e2e8f0',
+                                bgcolor: answers[q.id] === i ? '#ecfdf5' : 'transparent',
                                 transition: 'all 0.15s ease',
                                 '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' },
                               }}
@@ -957,7 +957,7 @@ export default function Reviewer() {
                   variant="contained" size="large"
                   onClick={submitQuiz}
                   disabled={Object.keys(answers).length === 0}
-                  sx={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', fontWeight: 'bold', px: 4 }}
+                  sx={{ background: 'linear-gradient(135deg, #1e3a8a, #10b981)', fontWeight: 'bold', px: 4 }}
                 >
                   Submit Quiz ({Object.keys(answers).length}/{totalQ} answered)
                 </Button>
@@ -1034,7 +1034,7 @@ export default function Reviewer() {
                   {!isLastModule && (
                     <Button
                       variant="contained" endIcon={<ArrowForward />} onClick={goToNextModule}
-                      sx={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', fontWeight: 'bold' }}
+                      sx={{ background: 'linear-gradient(135deg, #1e3a8a, #10b981)', fontWeight: 'bold' }}
                     >
                       Next Module
                     </Button>
@@ -1042,7 +1042,7 @@ export default function Reviewer() {
                   {(allDone || isLastModule) && (
                     <Button
                       variant="contained" startIcon={<EmojiEvents />} onClick={exitModuleSession}
-                      sx={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', fontWeight: 'bold' }}
+                      sx={{ background: 'linear-gradient(135deg, #1e3a8a, #10b981)', fontWeight: 'bold' }}
                     >
                       Finish — Back to Modules
                     </Button>

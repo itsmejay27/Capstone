@@ -99,8 +99,8 @@ function ItemRow({ item, isMobile }: { item: ItemStat; isMobile: boolean }) {
             {item.questionText || '(no question text)'}
           </Typography>
           <Stack direction="row" spacing={0.75} sx={{ mt: 0.5, flexWrap: 'wrap', gap: 0.5 }}>
-            {item.topic && <Chip label={item.topic} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: '#eff6ff', color: '#1d4ed8', fontWeight: 700 }} />}
-            {item.cognitiveLevel && <Chip label={item.cognitiveLevel} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: '#f5f3ff', color: '#7c3aed', fontWeight: 700 }} />}
+            {item.topic && <Chip label={item.topic} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: '#ecfdf5', color: '#047857', fontWeight: 700 }} />}
+            {item.cognitiveLevel && <Chip label={item.cognitiveLevel} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: '#ecfdf5', color: '#047857', fontWeight: 700 }} />}
             {item.degradedOptionMapping && (
               <Tooltip title="Some attempts had no saved option order, so their choices were matched against the master order. Treat this item's distractor split as approximate.">
                 <Chip icon={<WarningAmber sx={{ fontSize: '0.7rem !important' }} />} label="approx." size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: '#fef3c7', color: '#92400e', fontWeight: 700 }} />
@@ -239,7 +239,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
               label="Avg. time"
               value={formatDuration(analysis.timing.meanSeconds)}
               hint={analysis.timing.allottedMinutes ? `of ${analysis.timing.allottedMinutes} min allotted` : 'no time limit set'}
-              color="#1d4ed8"
+              color="#047857"
             />
             <StatTile
               label="Over time"
@@ -252,7 +252,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
           {/* Timing detail */}
           <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#fff' }}>
             <Typography sx={{ fontWeight: 900, color: '#0f172a', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Timer sx={{ fontSize: 20, color: '#1d4ed8' }} /> Time to completion
+              <Timer sx={{ fontSize: 20, color: '#047857' }} /> Time to completion
             </Typography>
             {analysis.timing.timedAttempts === 0 ? (
               <Typography variant="body2" sx={{ color: '#64748b' }}>
@@ -290,7 +290,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                       sx={{
                         height: 10, borderRadius: 5, bgcolor: '#f1f5f9',
                         '& .MuiLinearProgress-bar': {
-                          bgcolor: (analysis.timing.utilization || 0) > 0.95 ? '#dc2626' : '#2563eb',
+                          bgcolor: (analysis.timing.utilization || 0) > 0.95 ? '#dc2626' : '#059669',
                           borderRadius: 5,
                         },
                       }}
