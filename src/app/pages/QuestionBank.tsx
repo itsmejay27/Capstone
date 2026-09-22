@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useAuth, mockQuestionBank } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import {
   Paper,
   Typography,
@@ -40,7 +41,8 @@ import {
 } from '../components/ui-kit';
 
 export default function QuestionBank() {
-  const { currentUser } = useAuth();
+  const { currentUser, questionBank, saveQuestionBankItem, deleteQuestionBankItem } = useAuth();
+  const { toast, ToastHost } = useToast();
   const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -48,9 +50,43 @@ export default function QuestionBank() {
   const [filterSubject, setFilterSubject] = useState('all');
   const [openDialog, setOpenDialog] = useState(false);
 
+  // The dialog's fields were uncontrolled and its confirm button only called
+  // setOpenDialog(false), so a typed question was discarded on submit. They are backed by
+  // real state now and saved through the context.
+  const emptyDraft = {
+    question: '',
+    type: 'multiple-choice',
+    difficulty: 'medium',
+    points: 2,
+    topic: '',
+    subject: '',
+  };
+  const [draft, setDraft] = useState(emptyDraft);
+
+  const handleAddQuestion = () => {
+    if (!draft.question.trim()) {
+      toast('Enter the question first.', 'error');
+      return;
+    }
+    saveQuestionBankItem({
+      id: `qb-${Date.now()}`,
+      type: draft.type,
+      question: draft.question.trim(),
+      points: Number(draft.points) || 1,
+      difficulty: draft.difficulty,
+      topic: draft.topic.trim() || undefined,
+      subject: draft.subject.trim() || undefined,
+      createdBy: currentUser?.id,
+      createdAt: new Date().toISOString(),
+    });
+    setDraft(emptyDraft);
+    setOpenDialog(false);
+    toast('Question added to the bank.');
+  };
+
   const isInstructor = currentUser?.role === 'instructor';
 
-  const filteredQuestions = mockQuestionBank.filter((q) => {
+  const filteredQuestions = questionBank.filter((q: any) => {
     const matchesSearch = q.question.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || q.type === filterType;
     const matchesDifficulty = filterDifficulty === 'all' || q.difficulty === filterDifficulty;
@@ -58,7 +94,7 @@ export default function QuestionBank() {
     return matchesSearch && matchesType && matchesDifficulty && matchesSubject;
   });
 
-  const subjects = Array.from(new Set(mockQuestionBank.map((q) => q.subject).filter(Boolean)));
+  const subjects = Array.from(new Set(questionBank.map((q: any) => q.subject).filter(Boolean)));
 
   const getTypeColor = (type: string) => {
     const colors: Record<string, any> = {
@@ -307,12 +343,18 @@ export default function QuestionBank() {
         <DialogTitle>Add New Question</DialogTitle>
         <DialogContent>
           <Field label="Question" required>
-            <TextField multiline rows={3} placeholder="Type the question stem…" />
+            <TextField
+              multiline
+              rows={3}
+              placeholder="Type the question stem…"
+              value={draft.question}
+              onChange={(e) => setDraft({ ...draft, question: e.target.value })}
+            />
           </Field>
 
           <FieldRow>
             <Field label="Question Type">
-              <Select defaultValue="multiple-choice" fullWidth>
+              <Select value={draft.type} fullWidth onChange={(e) => setDraft({ ...draft, type: e.target.value })}>
                 <MenuItem value="multiple-choice">Multiple Choice</MenuItem>
                 <MenuItem value="true-false">True/False</MenuItem>
                 <MenuItem value="short-answer">Short Answer</MenuItem>
@@ -320,7 +362,7 @@ export default function QuestionBank() {
               </Select>
             </Field>
             <Field label="Difficulty">
-              <Select defaultValue="medium" fullWidth>
+              <Select value={draft.difficulty} fullWidth onChange={(e) => setDraft({ ...draft, difficulty: e.target.value })}>
                 <MenuItem value="easy">Easy</MenuItem>
                 <MenuItem value="medium">Medium</MenuItem>
                 <MenuItem value="hard">Hard</MenuItem>
@@ -330,20 +372,29 @@ export default function QuestionBank() {
 
           <FieldRow>
             <Field label="Points">
-              <TextField type="number" />
+              <TextField
+                type="number"
+                value={draft.points}
+                onChange={(e) => setDraft({ ...draft, points: Number(e.target.value) })}
+              />
             </Field>
             <Field label="Topic">
-              <TextField placeholder="e.g. SQL Basics" />
+              <TextField
+                placeholder="e.g. SQL Basics"
+                value={draft.topic}
+                onChange={(e) => setDraft({ ...draft, topic: e.target.value })}
+              />
             </Field>
           </FieldRow>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => setOpenDialog(false)}>
+          <Button variant="contained" onClick={handleAddQuestion}>
             Add Question
           </Button>
         </DialogActions>
       </Dialog>
+      {ToastHost}
     </PageContainer>
   );
 }

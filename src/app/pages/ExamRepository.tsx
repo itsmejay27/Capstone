@@ -43,6 +43,7 @@ import {
   Print,
   MoreVert,
   ArrowBack,
+  Description,
 } from '@mui/icons-material';
 import PrintableExam, { PrintPortal } from '../components/PrintableExam';
 import type { PrintPaperSize, PrintMode } from '../types';
@@ -664,6 +665,26 @@ export default function ExamRepository() {
                         <Chip label={`Time limit: ${exam.duration}m`} size="small" variant="outlined" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
                       )}
                     </Box>
+
+                    {/* Provenance: the documents this template was generated from. */}
+                    {Array.isArray(exam.sourceFiles) && exam.sourceFiles.length > 0 && (
+                      <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap', alignItems: 'center', mt: 1.2 }}>
+                        <Typography variant="caption" sx={{ color: palette.muted, fontWeight: 700 }}>
+                          Generated from:
+                        </Typography>
+                        {exam.sourceFiles.map((f: any, i: number) => (
+                          <Tooltip key={`${f.name}-${i}`} title={`${f.kind}${f.size ? ` · ${(f.size / 1024).toFixed(0)} KB` : ''}`}>
+                            <Chip
+                              icon={<Description sx={{ fontSize: 14 }} />}
+                              label={f.name}
+                              size="small"
+                              variant="outlined"
+                              sx={{ height: 24, fontSize: '0.68rem', fontWeight: 600, maxWidth: 260 }}
+                            />
+                          </Tooltip>
+                        ))}
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 

@@ -836,6 +836,13 @@ export default function ExamGenerator() {
       duration: duration,
       createdBy: currentUser?.id || 'instructor',
       createdAt: new Date().toISOString(),
+      // Which documents this exam was generated from. Recorded at save time because the
+      // File objects live only in this page's state and are gone once it unmounts.
+      sourceFiles: [
+        ...(tos ? [{ name: tos.name, size: tos.size, kind: 'Table of Specifications' }] : []),
+        ...(syllabus ? [{ name: syllabus.name, size: syllabus.size, kind: 'Syllabus' }] : []),
+        ...materials.map((f) => ({ name: f.name, size: f.size, kind: 'Course material' })),
+      ],
       // Persisted so the repository can show how the exam measured up when it was generated.
       tosCompliance: tosReport
         ? {
