@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { commentActivityFor, getCommentsSeenAt, unreadCount } from '../services/commentActivity';
 import { Box } from '@mui/material';
 import AppShell from '../components/shell/AppShell';
 
@@ -24,6 +25,7 @@ export default function RootLayout() {
     classrooms,
     exams,
     examAttempts,
+    comments,
   } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,7 +62,17 @@ export default function RootLayout() {
    * Instructors see submissions awaiting review; students see published exams they have
    * not yet submitted.
    */
-  const notificationCount = (() => {
+  // Re-read the "seen" marker when the notifications page clears it.
+  const [seenAt, setSeenAt] = useState(() => getCommentsSeenAt(currentUser?.id));
+  useEffect(() => {
+    setSeenAt(getCommentsSeenAt(currentUser?.id));
+    const onSeen = () => setSeenAt(getCommentsSeenAt(currentUser?.id));
+    window.addEventListener('comments-seen', onSeen);
+    return () => window.removeEventListener('comments-seen', onSeen);
+  }, [currentUser?.id]);
+  const unreadComments = unreadCount(commentActivityFor(currentUser, classrooms || [], comments || []), seenAt);
+
+  const workCount = (() => {
     if (!currentUser) return 0;
     const myClassIds = new Set(userClassrooms.map((c: any) => c.id));
     const myExams = (exams || []).filter((e: any) => myClassIds.has(e.classroomId));
@@ -76,6 +88,7 @@ export default function RootLayout() {
       );
     }).length;
   })();
+  const notificationCount = workCount + unreadComments;
 
   const handleLogout = () => {
     logout();
