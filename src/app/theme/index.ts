@@ -1,5 +1,5 @@
 import { createTheme } from '@mui/material/styles';
-import { palette, gradient, radius, shadow, layout, font } from './tokens';
+import { palette, muiPalette, gradient, radius, shadow, layout, font } from './tokens';
 
 /**
  * The application theme.
@@ -15,18 +15,24 @@ import { palette, gradient, radius, shadow, layout, font } from './tokens';
  * - Controls default to `fullWidth` so a grid cell governs the width, not the control.
  * - Labels are shrunk-by-default outlined labels; no floating-label jump.
  */
-export const theme = createTheme({
+export function createAppTheme(mode: 'light' | 'dark') {
+  const mui = muiPalette(mode);
+  // In dark mode the brand greens are light (they have to be, to read on navy), so text
+  // sitting ON the brand must be near-black rather than white — otherwise every contained
+  // button and `color="secondary"` chip is white-on-mint.
+  const onBrand = mode === 'dark' ? '#04211a' : '#ffffff';
+  return createTheme({
   palette: {
-    mode: 'dark',
-    primary: { main: palette.primary, dark: palette.primaryHover, light: palette.primaryHover, contrastText: '#04211a' },
-    secondary: { main: '#22d3ee', light: '#67e8f9', contrastText: '#04211a' },
-    success: { main: palette.success, light: palette.successSoft },
-    warning: { main: palette.warning, light: palette.warningSoft },
-    error: { main: palette.danger, light: palette.dangerSoft },
-    info: { main: palette.info, light: palette.infoSoft },
-    background: { default: palette.canvas, paper: palette.surface },
-    text: { primary: palette.ink, secondary: palette.inkSecondary, disabled: palette.inkDisabled },
-    divider: palette.border,
+    mode,
+    primary: { main: mui.primary, dark: mui.primaryHover, light: mui.primaryHover, contrastText: onBrand },
+    secondary: { main: mui.instructor, light: mui.primarySoft, contrastText: onBrand },
+    success: { main: mui.success, light: mui.successSoft },
+    warning: { main: mui.warning, light: mui.warningSoft },
+    error: { main: mui.danger, light: mui.dangerSoft },
+    info: { main: mui.info, light: mui.infoSoft },
+    background: { default: mui.canvas, paper: mui.surface },
+    text: { primary: mui.ink, secondary: mui.inkSecondary, disabled: mui.inkDisabled },
+    divider: mui.border,
   },
 
   shape: { borderRadius: radius.md },
@@ -53,7 +59,6 @@ export const theme = createTheme({
         body: {
           backgroundColor: palette.canvas,
           color: palette.ink,
-          colorScheme: 'dark',
           // No page-level horizontal scroll, ever. Wide content scrolls in its own container.
           overflowX: 'hidden',
         },
@@ -133,8 +138,8 @@ export const theme = createTheme({
         contained: { boxShadow: 'none', '&:hover': { boxShadow: shadow.sm } },
         containedPrimary: {
           background: gradient.brand,
-          color: '#04211a',
-          '&:hover': { background: gradient.brand, filter: 'brightness(1.08)', boxShadow: shadow.brandGlow },
+          color: onBrand,
+          '&:hover': { background: gradient.brand, filter: 'brightness(1.06)', boxShadow: shadow.md },
           '&.Mui-disabled': { background: palette.surfaceSunken, color: palette.inkDisabled },
         },
         outlined: {
@@ -179,8 +184,6 @@ export const theme = createTheme({
           borderRadius: radius.lg,
           border: `1px solid ${palette.border}`,
           boxShadow: shadow.xs,
-          backgroundColor: palette.surface,
-          // The reference's signature: a 2px gradient rule capping every card.
           position: 'relative',
           overflow: 'hidden',
           '&::before': {
@@ -215,19 +218,11 @@ export const theme = createTheme({
     MuiDivider: { styleOverrides: { root: { borderColor: palette.border } } },
     MuiTooltip: {
       styleOverrides: {
-        tooltip: { backgroundColor: palette.surfaceSunken, color: palette.ink, border: `1px solid ${palette.border}`, fontSize: '0.75rem', borderRadius: radius.sm, padding: '6px 10px' },
+        tooltip: { backgroundColor: palette.ink, fontSize: '0.75rem', borderRadius: radius.sm, padding: '6px 10px' },
       },
     },
     MuiAlert: {
-      styleOverrides: {
-        root: { borderRadius: radius.lg, fontSize: '0.85rem', alignItems: 'flex-start' },
-        // MUI's dark-mode standard Alert derives a very low-contrast fill from the palette;
-        // pin each severity to an explicit tint + bright ink so the text stays readable.
-        standardInfo: { backgroundColor: palette.infoSoft, color: palette.info, border: `1px solid ${palette.info}33` },
-        standardSuccess: { backgroundColor: palette.successSoft, color: palette.success, border: `1px solid ${palette.success}33` },
-        standardWarning: { backgroundColor: palette.warningSoft, color: palette.warning, border: `1px solid ${palette.warning}33` },
-        standardError: { backgroundColor: palette.dangerSoft, color: palette.danger, border: `1px solid ${palette.danger}33` },
-      },
+      styleOverrides: { root: { borderRadius: radius.lg, fontSize: '0.85rem', alignItems: 'flex-start' } },
     },
 
     // ── Tabs ──
@@ -268,7 +263,7 @@ export const theme = createTheme({
           position: 'relative',
           '&.Mui-selected': {
             backgroundColor: palette.primarySoft,
-            color: palette.primary,
+            color: palette.primaryHover,
             '&:hover': { backgroundColor: palette.primarySoft },
             '&::after': {
               content: '""',
@@ -290,7 +285,12 @@ export const theme = createTheme({
       styleOverrides: { root: { borderRadius: radius.pill, backgroundColor: palette.surfaceSunken, height: 8 } },
     },
   },
-});
+  });
+}
+
+/** Default instance, kept for modules that import the theme directly. */
+export const theme = createAppTheme('light');
 
 export default theme;
 export * from './tokens';
+export * from './colorPairs';

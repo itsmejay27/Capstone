@@ -1,80 +1,104 @@
+import { cssVar, lightHex, darkHex } from './colorPairs';
+
 /**
  * Design tokens.
  *
  * Single source of truth for colour, radius, shadow and spacing across the app. Pages should
  * read from here (or from the MUI theme built on top of it) rather than hard-coding hex
- * values.
+ * values — the existing pages are full of one-off '#059669' / '#e2e8f0' literals, which is
+ * why nothing lines up.
  *
- * The palette is a dark "console" scheme: a deep navy canvas, slightly lifted navy surfaces,
- * hairline borders that read as a subtle lift rather than a line, and an emerald→cyan
- * gradient reserved for brand moments (headings, primary actions, card accent strips).
+ * The palette is a light, low-chroma "workspace" scheme: near-white canvas, white surfaces,
+ * hairline borders, and colour reserved for meaning (state, role, action) rather than
+ * decoration.
  */
 
+/**
+ * The palette every `sx` block reads. Each entry is a CSS custom property, so switching
+ * `data-theme` on <html> re-themes the app without React re-rendering a single component.
+ * MUI itself needs real colours for its alpha/darken maths, so {@link muiPalette} below
+ * resolves the same names to hex per mode.
+ */
 export const palette = {
-  // Canvas and surfaces
-  canvas: '#0b1120',
-  surface: '#131b2e',
-  surfaceMuted: '#18223a',
-  surfaceSunken: '#1c2740',
+  canvas: cssVar('canvas'),
+  surface: cssVar('surface'),
+  surfaceMuted: cssVar('surface-muted'),
+  surfaceSunken: cssVar('surface-sunken'),
 
-  // Hairlines
-  border: '#25304a',
-  borderStrong: '#33415c',
+  border: cssVar('border'),
+  borderStrong: cssVar('border-strong'),
 
-  // Ink
-  ink: '#e8edf7',
-  inkSecondary: '#a3b0c7',
-  inkTertiary: '#7482a0',
-  inkDisabled: '#55627d',
+  ink: cssVar('ink'),
+  inkSecondary: cssVar('ink-secondary'),
+  inkTertiary: cssVar('ink-tertiary'),
+  inkDisabled: cssVar('ink-disabled'),
 
-  // Brand / action
-  primary: '#10b981',
-  primaryHover: '#34d399',
-  primarySoft: 'rgba(16, 185, 129, 0.13)',
-  primaryBorder: 'rgba(16, 185, 129, 0.38)',
+  primary: cssVar('emerald-600'),
+  primaryHover: cssVar('emerald-700'),
+  primarySoft: cssVar('emerald-50'),
+  primaryBorder: cssVar('emerald-200'),
 
-  // Role accents
-  instructor: '#34d399',
-  instructorSoft: 'rgba(52, 211, 153, 0.13)',
-  student: '#38bdf8',
-  studentSoft: 'rgba(56, 189, 248, 0.13)',
+  instructor: cssVar('emerald-700'),
+  instructorSoft: cssVar('emerald-50'),
+  student: cssVar('sky-600'),
+  studentSoft: cssVar('sky-100'),
 
-  // Status
-  success: '#4ade80',
-  successSoft: 'rgba(74, 222, 128, 0.13)',
-  warning: '#fbbf24',
-  warningSoft: 'rgba(251, 191, 36, 0.13)',
-  danger: '#f87171',
-  dangerSoft: 'rgba(248, 113, 113, 0.13)',
-  info: '#38bdf8',
-  infoSoft: 'rgba(56, 189, 248, 0.13)',
+  success: cssVar('green-700'),
+  successSoft: cssVar('green-100'),
+  warning: cssVar('amber-700'),
+  warningSoft: cssVar('amber-100'),
+  danger: cssVar('red-700'),
+  dangerSoft: cssVar('red-100'),
+  info: cssVar('sky-700'),
+  infoSoft: cssVar('sky-100'),
 } as const;
 
+/** The same names resolved to real hex, for the MUI theme factory. */
+export function muiPalette(mode: 'light' | 'dark') {
+  const h = mode === 'dark' ? darkHex : lightHex;
+  return {
+    canvas: h['canvas'], surface: h['surface'], surfaceMuted: h['surface-muted'],
+    surfaceSunken: h['surface-sunken'], border: h['border'], borderStrong: h['border-strong'],
+    ink: h['ink'], inkSecondary: h['ink-secondary'], inkTertiary: h['ink-tertiary'],
+    inkDisabled: h['ink-disabled'],
+    primary: h['emerald-600'], primaryHover: h['emerald-700'],
+    primarySoft: h['emerald-50'], primaryBorder: h['emerald-200'],
+    instructor: h['emerald-700'], student: h['sky-600'],
+    success: h['green-700'], successSoft: h['green-100'],
+    warning: h['amber-700'], warningSoft: h['amber-100'],
+    danger: h['red-700'], dangerSoft: h['red-100'],
+    info: h['sky-700'], infoSoft: h['sky-100'],
+  };
+}
+
 /**
- * The brand gradient. Used for the wordmark, page titles, primary buttons and the accent
+ * The brand gradient, used for the wordmark, page titles, primary buttons and the accent
  * strip along the top of a card — the handful of places that carry brand, never as a
  * background for text the user has to read at length.
+ *
+ * On a light canvas the stops are held at emerald 600 / teal 600 rather than the brighter
+ * 500s, so white text on a gradient button still clears the contrast floor.
  */
 export const gradient = {
-  brand: `linear-gradient(90deg, ${palette.primary} 0%, #22d3ee 100%)`,
-  brandDiagonal: `linear-gradient(135deg, ${palette.primary} 0%, #22d3ee 100%)`,
-  /** Full-bleed glow behind the landing hero. */
+  brand: `linear-gradient(90deg, ${palette.primary} 0%, ${cssVar('teal-600')} 100%)`,
+  brandDiagonal: `linear-gradient(135deg, ${palette.primary} 0%, ${cssVar('teal-600')} 100%)`,
+  /** Full-bleed tint behind the landing hero. */
   heroGlow:
-    'radial-gradient(900px 480px at 15% -10%, rgba(16, 185, 129, 0.20), transparent 60%),' +
-    'radial-gradient(760px 420px at 88% 8%, rgba(34, 211, 238, 0.16), transparent 62%)',
+    'radial-gradient(900px 480px at 15% -10%, var(--glow-a), transparent 60%),' +
+    'radial-gradient(760px 420px at 88% 8%, var(--glow-b), transparent 62%)',
 } as const;
 
 /**
- * Tinted gradients for folder/class cards. Indexed deterministically by entity id so a
- * class keeps its colour between renders.
+ * Pastel gradients for folder/class cards, matching the reference's soft tinted tiles.
+ * Indexed deterministically by entity id so a class keeps its colour between renders.
  */
 export const cardTints = [
-  { from: 'rgba(16, 185, 129, 0.16)', to: 'rgba(16, 185, 129, 0.04)', ink: '#6ee7b7' },
-  { from: 'rgba(34, 211, 238, 0.16)', to: 'rgba(34, 211, 238, 0.04)', ink: '#67e8f9' },
-  { from: 'rgba(251, 191, 36, 0.14)', to: 'rgba(251, 191, 36, 0.04)', ink: '#fcd34d' },
-  { from: 'rgba(74, 222, 128, 0.15)', to: 'rgba(74, 222, 128, 0.04)', ink: '#86efac' },
-  { from: 'rgba(244, 114, 182, 0.14)', to: 'rgba(244, 114, 182, 0.04)', ink: '#f9a8d4' },
-  { from: 'rgba(56, 189, 248, 0.15)', to: 'rgba(56, 189, 248, 0.04)', ink: '#7dd3fc' },
+  { from: cssVar('emerald-100'), to: cssVar('emerald-50'), ink: cssVar('emerald-800') },
+  { from: cssVar('sky-100'), to: cssVar('sky-50'), ink: cssVar('sky-800') },
+  { from: cssVar('orange-100'), to: cssVar('orange-50'), ink: cssVar('orange-800') },
+  { from: cssVar('green-100'), to: cssVar('green-50'), ink: cssVar('green-800') },
+  { from: cssVar('pink-100'), to: cssVar('pink-50'), ink: cssVar('pink-800') },
+  { from: cssVar('cyan-100'), to: cssVar('cyan-50'), ink: cssVar('cyan-800') },
 ] as const;
 
 /** Stable tint for an entity, so a card does not change colour on re-render. */
@@ -94,19 +118,16 @@ export const radius = {
 } as const;
 
 /**
- * On a dark canvas a drop shadow is nearly invisible, so depth comes from the border and a
- * faint inner highlight. The shadows stay for focus rings and floating surfaces (menus,
- * dialogs) where a real cast shadow still separates layers.
+ * Soft, short shadows. The reference has almost no elevation — depth comes from hairline
+ * borders, not drop shadows, so these stay deliberately subtle.
  */
 export const shadow = {
   none: 'none',
-  xs: '0 1px 2px rgba(0, 0, 0, 0.30)',
-  sm: '0 1px 3px rgba(0, 0, 0, 0.36), 0 1px 2px rgba(0, 0, 0, 0.24)',
-  md: '0 4px 14px rgba(0, 0, 0, 0.40)',
-  lg: '0 18px 40px rgba(0, 0, 0, 0.55)',
-  focus: `0 0 0 3px ${palette.primarySoft}`,
-  /** The soft coloured halo under a gradient button. */
-  brandGlow: '0 6px 20px rgba(16, 185, 129, 0.30)',
+  xs: 'var(--shadow-xs)',
+  sm: 'var(--shadow-sm)',
+  md: 'var(--shadow-md)',
+  lg: 'var(--shadow-lg)',
+  focus: '0 0 0 3px var(--shadow-focus-ring)',
 } as const;
 
 /** Fixed measurements the shell and pages agree on. */
@@ -122,6 +143,6 @@ export const layout = {
 
 export const font = {
   sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  /** Entity titles are set in a mono face; used for card/section titles. */
+  /** The reference sets entity titles in a mono face; used for card/section titles. */
   mono: "'JetBrains Mono', 'SF Mono', ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace",
 } as const;

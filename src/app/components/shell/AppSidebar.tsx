@@ -7,6 +7,7 @@ import {
 import {
   Home, School, AutoAwesome, LibraryBooks, Quiz, MenuBook, Notifications,
   ExpandLess, ExpandMore, Star, StarBorder, ChevronLeft, ChevronRight, Inventory2,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { palette, radius, layout, font } from '../../theme/tokens';
 import { visibleTabSlugs, CLASSROOM_TAB_LABELS } from '../../constants/classroomTabs';
@@ -148,6 +149,7 @@ export default function AppSidebar({
 
       <List sx={{ px: 1, py: 0 }}>
         {navButton({ label: 'Notifications', icon: <Notifications fontSize="small" />, path: '/notifications', badge: notificationCount })}
+        {navButton({ label: 'Settings', icon: <SettingsIcon fontSize="small" />, path: '/settings' })}
       </List>
 
       {/* Favourites */}
@@ -170,7 +172,7 @@ export default function AppSidebar({
                     </Avatar>
                   </ListItemIcon>
                   <ListItemText primary={cls.name} primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: 600, noWrap: true }} />
-                  <Star sx={{ fontSize: 15, color: '#f59e0b', flexShrink: 0 }} />
+                  <Star sx={{ fontSize: 15, color: 'var(--c-amber-500)', flexShrink: 0 }} />
                 </ListItemButton>
               </ListItem>
             ))}
@@ -213,7 +215,7 @@ export default function AppSidebar({
                         size="small"
                         onClick={(e) => { e.stopPropagation(); onToggleFavourite(cls.id); }}
                         aria-label={fav ? `Unfavourite ${cls.name}` : `Favourite ${cls.name}`}
-                        sx={{ color: fav ? '#f59e0b' : palette.inkDisabled }}
+                        sx={{ color: fav ? 'var(--c-amber-500)' : palette.inkDisabled }}
                       >
                         {fav ? <Star sx={{ fontSize: 15 }} /> : <StarBorder sx={{ fontSize: 15 }} />}
                       </IconButton>

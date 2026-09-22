@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router';
 import {
   Box, Drawer, IconButton, Avatar, Menu, MenuItem, Typography, Divider, Chip, Tooltip,
 } from '@mui/material';
-import { Menu as MenuIcon, AccountCircle, ExitToApp, SwapHoriz } from '@mui/icons-material';
+import {
+  Menu as MenuIcon, AccountCircle, ExitToApp, SwapHoriz,
+  LightMode, DarkMode, Settings as SettingsIcon,
+} from '@mui/icons-material';
 import AppSidebar from './AppSidebar';
 import { SearchField } from '../ui-kit';
 import { palette, layout, radius } from '../../theme/tokens';
 import { useIsMobile } from '../../hooks/useResponsive';
+import { useThemeMode } from '../../context/ThemeModeContext';
 
 const FAVOURITES_KEY = 'classroomFavourites';
 const COLLAPSED_KEY = 'sidebarCollapsed';
@@ -53,6 +57,7 @@ export default function AppShell({
 }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { mode, toggle } = useThemeMode();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => readStored(COLLAPSED_KEY, false));
   const [favourites, setFavourites] = useState<string[]>(() => readStored<string[]>(FAVOURITES_KEY, []));
@@ -143,6 +148,17 @@ export default function AppShell({
 
           <Box sx={{ flex: 1 }} />
 
+          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton
+              onClick={toggle}
+              size="small"
+              aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              sx={{ color: palette.inkSecondary }}
+            >
+              {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+
           {currentUser && (
             <>
               <Chip
@@ -180,6 +196,11 @@ export default function AppShell({
                     </Box>
                   </MenuItem>
                 ))}
+                <Divider sx={{ my: 0.5 }} />
+                <MenuItem onClick={() => { navigate('/settings'); setAnchorEl(null); }}>
+                  <SettingsIcon fontSize="small" sx={{ mr: 1, color: palette.inkTertiary }} />
+                  <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Settings</Typography>
+                </MenuItem>
                 <Divider sx={{ my: 0.5 }} />
                 <MenuItem onClick={() => { onLogout(); setAnchorEl(null); }} sx={{ color: palette.danger }}>
                   <ExitToApp fontSize="small" sx={{ mr: 1 }} /> Sign out

@@ -17,25 +17,25 @@ import { useIsMobile } from '../hooks/useResponsive';
  * time-to-completion. Presentational — all statistics come from the pure analyzeExam module.
  */
 
-function StatTile({ label, value, hint, color = '#e8edf7' }: {
+function StatTile({ label, value, hint, color = 'var(--c-slate-900)' }: {
   label: string; value: string; hint?: string; color?: string;
 }) {
   return (
     <Paper
       elevation={0}
       sx={{
-        p: 2, borderRadius: 2.5, border: '1px solid #25304a', bgcolor: '#131b2e',
+        p: 2, borderRadius: 2.5, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)',
         flex: '1 1 150px', minWidth: 0,
       }}
     >
-      <Typography variant="caption" sx={{ color: '#a3b0c7', fontWeight: 700, display: 'block' }}>
+      <Typography variant="caption" sx={{ color: 'var(--c-slate-500)', fontWeight: 700, display: 'block' }}>
         {label}
       </Typography>
       <Typography sx={{ color, fontWeight: 900, fontSize: '1.4rem', lineHeight: 1.2, mt: 0.5 }}>
         {value}
       </Typography>
       {hint && (
-        <Typography variant="caption" sx={{ color: '#7482a0', display: 'block', mt: 0.25 }}>
+        <Typography variant="caption" sx={{ color: 'var(--c-slate-400)', display: 'block', mt: 0.25 }}>
           {hint}
         </Typography>
       )}
@@ -44,8 +44,8 @@ function StatTile({ label, value, hint, color = '#e8edf7' }: {
 }
 
 function OptionBar({ option, isMobile }: { option: OptionStat; isMobile: boolean }) {
-  const color = option.isKey ? '#4ade80' : option.isTopDistractor ? '#f87171' : '#7482a0';
-  const bg = option.isKey ? 'rgba(74, 222, 128, 0.16)' : option.isTopDistractor ? 'rgba(248, 113, 113, 0.14)' : '#1a2338';
+  const color = option.isKey ? 'var(--c-green-600)' : option.isTopDistractor ? 'var(--c-red-600)' : 'var(--c-slate-400)';
+  const bg = option.isKey ? 'var(--c-green-100)' : option.isTopDistractor ? 'var(--c-red-100)' : 'var(--c-slate-100)';
   return (
     <Box sx={{ mb: 1.25 }}>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
@@ -59,7 +59,7 @@ function OptionBar({ option, isMobile }: { option: OptionStat; isMobile: boolean
         <Typography
           variant="body2"
           sx={{
-            flex: 1, minWidth: 0, color: option.isOmitted || option.isOther ? '#7482a0' : '#dbe3f0',
+            flex: 1, minWidth: 0, color: option.isOmitted || option.isOther ? 'var(--c-slate-400)' : 'var(--c-slate-700)',
             fontStyle: option.isOmitted || option.isOther ? 'italic' : 'normal',
             fontWeight: option.isKey ? 700 : 400,
             wordBreak: 'break-word',
@@ -68,17 +68,17 @@ function OptionBar({ option, isMobile }: { option: OptionStat; isMobile: boolean
         >
           {option.label}
         </Typography>
-        <Typography variant="caption" sx={{ color: '#c3cddf', fontWeight: 800, whiteSpace: 'nowrap' }}>
+        <Typography variant="caption" sx={{ color: 'var(--c-slate-600)', fontWeight: 800, whiteSpace: 'nowrap' }}>
           {option.count} · {formatPercent(option.share)}
         </Typography>
-        {option.isKey && <Chip label="KEY" size="small" sx={{ bgcolor: 'rgba(74, 222, 128, 0.16)', color: '#86efac', fontWeight: 900, height: 18, fontSize: '0.6rem' }} />}
-        {option.isTopDistractor && <Chip label="TOP DISTRACTOR" size="small" sx={{ bgcolor: 'rgba(248, 113, 113, 0.14)', color: '#fca5a5', fontWeight: 900, height: 18, fontSize: '0.6rem' }} />}
+        {option.isKey && <Chip label="KEY" size="small" sx={{ bgcolor: 'var(--c-green-100)', color: 'var(--c-green-800)', fontWeight: 900, height: 18, fontSize: '0.6rem' }} />}
+        {option.isTopDistractor && <Chip label="TOP DISTRACTOR" size="small" sx={{ bgcolor: 'var(--c-red-100)', color: 'var(--c-red-800)', fontWeight: 900, height: 18, fontSize: '0.6rem' }} />}
       </Box>
       <LinearProgress
         variant="determinate"
         value={Math.min(100, option.share * 100)}
         sx={{
-          height: 8, borderRadius: 4, bgcolor: '#1a2338',
+          height: 8, borderRadius: 4, bgcolor: 'var(--c-slate-100)',
           '& .MuiLinearProgress-bar': { bgcolor: color, borderRadius: 4 },
         }}
       />
@@ -93,29 +93,29 @@ function ItemRow({ item, isMobile }: { item: ItemStat; isMobile: boolean }) {
   return (
     <>
       <TableRow hover sx={{ '& > td': { borderBottom: open ? 'none' : undefined } }}>
-        <TableCell sx={{ fontWeight: 800, color: '#e8edf7', width: 48 }}>{item.order}</TableCell>
+        <TableCell sx={{ fontWeight: 800, color: 'var(--c-slate-900)', width: 48 }}>{item.order}</TableCell>
         <TableCell sx={{ minWidth: isMobile ? 160 : 260 }}>
-          <Typography variant="body2" sx={{ color: '#e8edf7', fontWeight: 600, wordBreak: 'break-word' }}>
+          <Typography variant="body2" sx={{ color: 'var(--c-slate-900)', fontWeight: 600, wordBreak: 'break-word' }}>
             {item.questionText || '(no question text)'}
           </Typography>
           <Stack direction="row" spacing={0.75} sx={{ mt: 0.5, flexWrap: 'wrap', gap: 0.5 }}>
-            {item.topic && <Chip label={item.topic} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: 'rgba(16, 185, 129, 0.13)', color: '#34d399', fontWeight: 700 }} />}
-            {item.cognitiveLevel && <Chip label={item.cognitiveLevel} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: 'rgba(16, 185, 129, 0.13)', color: '#34d399', fontWeight: 700 }} />}
+            {item.topic && <Chip label={item.topic} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: 'var(--c-emerald-50)', color: 'var(--c-emerald-700)', fontWeight: 700 }} />}
+            {item.cognitiveLevel && <Chip label={item.cognitiveLevel} size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: 'var(--c-emerald-50)', color: 'var(--c-emerald-700)', fontWeight: 700 }} />}
             {item.degradedOptionMapping && (
               <Tooltip title="Some attempts had no saved option order, so their choices were matched against the master order. Treat this item's distractor split as approximate.">
-                <Chip icon={<WarningAmber sx={{ fontSize: '0.7rem !important' }} />} label="approx." size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: 'rgba(251, 191, 36, 0.14)', color: '#fcd34d', fontWeight: 700 }} />
+                <Chip icon={<WarningAmber sx={{ fontSize: '0.7rem !important' }} />} label="approx." size="small" sx={{ height: 18, fontSize: '0.62rem', bgcolor: 'var(--c-amber-100)', color: 'var(--c-amber-800)', fontWeight: 700 }} />
               </Tooltip>
             )}
           </Stack>
         </TableCell>
         <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
-          <Typography sx={{ fontWeight: 900, color: '#e8edf7' }}>{formatPercent(item.missRate)}</Typography>
-          <Typography variant="caption" sx={{ color: '#a3b0c7' }}>
+          <Typography sx={{ fontWeight: 900, color: 'var(--c-slate-900)' }}>{formatPercent(item.missRate)}</Typography>
+          <Typography variant="caption" sx={{ color: 'var(--c-slate-500)' }}>
             {item.incorrect}/{item.administered}
           </Typography>
         </TableCell>
         <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
-          <Typography sx={{ fontWeight: 800, color: '#dbe3f0' }}>
+          <Typography sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>
             {item.difficultyIndex === null ? '—' : item.difficultyIndex.toFixed(2)}
           </Typography>
           {band && (
@@ -124,7 +124,7 @@ function ItemRow({ item, isMobile }: { item: ItemStat; isMobile: boolean }) {
         </TableCell>
         {!isMobile && (
           <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
-            <Typography sx={{ fontWeight: 800, color: '#dbe3f0' }}>
+            <Typography sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>
               {item.discriminationIndex === null ? '—' : item.discriminationIndex.toFixed(2)}
             </Typography>
           </TableCell>
@@ -139,10 +139,10 @@ function ItemRow({ item, isMobile }: { item: ItemStat; isMobile: boolean }) {
       </TableRow>
       {item.hasOptionBreakdown && (
         <TableRow>
-          <TableCell colSpan={isMobile ? 5 : 6} sx={{ py: 0, bgcolor: '#0f1626' }}>
+          <TableCell colSpan={isMobile ? 5 : 6} sx={{ py: 0, bgcolor: 'var(--c-slate-50)' }}>
             <Collapse in={open} timeout="auto" unmountOnExit>
               <Box sx={{ py: 2, px: { xs: 0.5, sm: 2 } }}>
-                <Typography variant="caption" sx={{ fontWeight: 900, color: '#c3cddf', display: 'block', mb: 1.25 }}>
+                <Typography variant="caption" sx={{ fontWeight: 900, color: 'var(--c-slate-600)', display: 'block', mb: 1.25 }}>
                   RESPONSE DISTRIBUTION
                 </Typography>
                 {item.options.map((o) => (
@@ -176,10 +176,10 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
 
   if (exams.length === 0) {
     return (
-      <Paper elevation={0} sx={{ p: { xs: 3, sm: 6 }, textAlign: 'center', borderRadius: 3, border: '1px solid #25304a', bgcolor: '#131b2e' }}>
-        <InfoOutlined sx={{ fontSize: 44, color: '#7482a0', mb: 1 }} />
-        <Typography variant="h6" fontWeight={800} color="#e8edf7">No exams to analyse</Typography>
-        <Typography variant="body2" sx={{ color: '#a3b0c7' }}>
+      <Paper elevation={0} sx={{ p: { xs: 3, sm: 6 }, textAlign: 'center', borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
+        <InfoOutlined sx={{ fontSize: 44, color: 'var(--c-slate-400)', mb: 1 }} />
+        <Typography variant="h6" fontWeight={800} color="var(--c-slate-900)">No exams to analyse</Typography>
+        <Typography variant="body2" sx={{ color: 'var(--c-slate-500)' }}>
           Assign an exam to this class and item analysis will appear once students submit.
         </Typography>
       </Paper>
@@ -193,7 +193,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
   return (
     <Box>
       {/* Exam picker */}
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, borderRadius: 3, border: '1px solid #25304a', bgcolor: '#131b2e' }}>
+      <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
         <TextField
           select fullWidth size="small" label="Exam" value={exam.id}
           onChange={(e) => setExamId(e.target.value)}
@@ -239,23 +239,23 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
               label="Avg. time"
               value={formatDuration(analysis.timing.meanSeconds)}
               hint={analysis.timing.allottedMinutes ? `of ${analysis.timing.allottedMinutes} min allotted` : 'no time limit set'}
-              color="#34d399"
+              color="var(--c-emerald-700)"
             />
             <StatTile
               label="Over time"
               value={String(analysis.timing.overTimeCount)}
               hint={analysis.timing.allottedMinutes ? 'exceeded the limit' : 'no limit to exceed'}
-              color={analysis.timing.overTimeCount > 0 ? '#f87171' : '#e8edf7'}
+              color={analysis.timing.overTimeCount > 0 ? 'var(--c-red-700)' : 'var(--c-slate-900)'}
             />
           </Stack>
 
           {/* Timing detail */}
-          <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, borderRadius: 3, border: '1px solid #25304a', bgcolor: '#131b2e' }}>
-            <Typography sx={{ fontWeight: 900, color: '#e8edf7', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Timer sx={{ fontSize: 20, color: '#34d399' }} /> Time to completion
+          <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
+            <Typography sx={{ fontWeight: 900, color: 'var(--c-slate-900)', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Timer sx={{ fontSize: 20, color: 'var(--c-emerald-700)' }} /> Time to completion
             </Typography>
             {analysis.timing.timedAttempts === 0 ? (
-              <Typography variant="body2" sx={{ color: '#a3b0c7' }}>
+              <Typography variant="body2" sx={{ color: 'var(--c-slate-500)' }}>
                 No usable timing data
                 {analysis.timing.untimedAttempts > 0 && ` (${analysis.timing.untimedAttempts} attempt(s) had missing or implausible timestamps)`}.
               </Typography>
@@ -269,18 +269,18 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                     ['Slowest', formatDuration(analysis.timing.slowestSeconds)],
                   ].map(([l, v]) => (
                     <Box key={l}>
-                      <Typography variant="caption" sx={{ color: '#a3b0c7', fontWeight: 700, display: 'block' }}>{l}</Typography>
-                      <Typography sx={{ fontWeight: 800, color: '#e8edf7' }}>{v}</Typography>
+                      <Typography variant="caption" sx={{ color: 'var(--c-slate-500)', fontWeight: 700, display: 'block' }}>{l}</Typography>
+                      <Typography sx={{ fontWeight: 800, color: 'var(--c-slate-900)' }}>{v}</Typography>
                     </Box>
                   ))}
                 </Stack>
                 {analysis.timing.utilization !== null && (
                   <>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption" sx={{ color: '#c3cddf', fontWeight: 700 }}>
+                      <Typography variant="caption" sx={{ color: 'var(--c-slate-600)', fontWeight: 700 }}>
                         Average use of the allotted {analysis.timing.allottedMinutes} minutes
                       </Typography>
-                      <Typography variant="caption" sx={{ color: '#c3cddf', fontWeight: 800 }}>
+                      <Typography variant="caption" sx={{ color: 'var(--c-slate-600)', fontWeight: 800 }}>
                         {formatPercent(analysis.timing.utilization)}
                       </Typography>
                     </Box>
@@ -288,9 +288,9 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                       variant="determinate"
                       value={Math.min(100, (analysis.timing.utilization || 0) * 100)}
                       sx={{
-                        height: 10, borderRadius: 5, bgcolor: '#1a2338',
+                        height: 10, borderRadius: 5, bgcolor: 'var(--c-slate-100)',
                         '& .MuiLinearProgress-bar': {
-                          bgcolor: (analysis.timing.utilization || 0) > 0.95 ? '#f87171' : '#10b981',
+                          bgcolor: (analysis.timing.utilization || 0) > 0.95 ? 'var(--c-red-600)' : 'var(--c-emerald-600)',
                           borderRadius: 5,
                         },
                       }}
@@ -298,7 +298,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                   </>
                 )}
                 {analysis.timing.untimedAttempts > 0 && (
-                  <Typography variant="caption" sx={{ color: '#7482a0', display: 'block', mt: 1 }}>
+                  <Typography variant="caption" sx={{ color: 'var(--c-slate-400)', display: 'block', mt: 1 }}>
                     {analysis.timing.untimedAttempts} attempt(s) excluded for missing or implausible timestamps.
                   </Typography>
                 )}
@@ -307,12 +307,12 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
           </Paper>
 
           {/* Most missed + full item table */}
-          <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #25304a', bgcolor: '#131b2e', overflow: 'hidden' }}>
-            <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: '1px solid #25304a' }}>
-              <Typography sx={{ fontWeight: 900, color: '#e8edf7', display: 'flex', alignItems: 'center', gap: 1 }}>
-                <TrendingDown sx={{ fontSize: 20, color: '#f87171' }} /> Most missed questions
+          <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)', overflow: 'hidden' }}>
+            <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: '1px solid var(--c-slate-200)' }}>
+              <Typography sx={{ fontWeight: 900, color: 'var(--c-slate-900)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TrendingDown sx={{ fontSize: 20, color: 'var(--c-red-600)' }} /> Most missed questions
               </Typography>
-              <Typography variant="caption" sx={{ color: '#a3b0c7' }}>
+              <Typography variant="caption" sx={{ color: 'var(--c-slate-500)' }}>
                 Ranked by failure rate across the cohort. Expand a row for its distractor breakdown.
                 {!analysis.discriminationAvailable &&
                   ` Discrimination needs at least ${MIN_N_FOR_DISCRIMINATION} submissions (currently ${analysis.submittedAttempts}).`}
@@ -321,24 +321,24 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
 
             {analysis.mostMissed.length === 0 ? (
               <Box sx={{ p: 4, textAlign: 'center' }}>
-                <CheckCircle sx={{ fontSize: 40, color: '#4ade80', mb: 1 }} />
-                <Typography variant="body2" sx={{ color: '#c3cddf', fontWeight: 700 }}>
+                <CheckCircle sx={{ fontSize: 40, color: 'var(--c-green-600)', mb: 1 }} />
+                <Typography variant="body2" sx={{ color: 'var(--c-slate-600)', fontWeight: 700 }}>
                   Every analysable item was answered correctly by the whole cohort.
                 </Typography>
               </Box>
             ) : (
               <TableContainer sx={{ overflowX: 'auto' }}>
                 <Table size="small" sx={{ minWidth: isMobile ? 0 : 720 }}>
-                  <TableHead sx={{ bgcolor: '#0f1626' }}>
+                  <TableHead sx={{ bgcolor: 'var(--c-slate-50)' }}>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 800, color: '#dbe3f0' }}>#</TableCell>
-                      <TableCell sx={{ fontWeight: 800, color: '#dbe3f0' }}>Question</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 800, color: '#dbe3f0' }}>Missed</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 800, color: '#dbe3f0' }}>
+                      <TableCell sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>#</TableCell>
+                      <TableCell sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>Question</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>Missed</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>
                         <Tooltip title="Difficulty index p = proportion answering correctly. Higher p means an easier item."><span>p / band</span></Tooltip>
                       </TableCell>
                       {!isMobile && (
-                        <TableCell align="center" sx={{ fontWeight: 800, color: '#dbe3f0' }}>
+                        <TableCell align="center" sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>
                           <Tooltip title={`Discrimination D = (correct in top 27% − correct in bottom 27%) / group size. Requires n ≥ ${MIN_N_FOR_DISCRIMINATION}.`}><span>D</span></Tooltip>
                         </TableCell>
                       )}
@@ -358,7 +358,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
               <>
                 <Divider />
                 <Box sx={{ p: { xs: 2, sm: 3 } }}>
-                  <Typography variant="caption" sx={{ fontWeight: 900, color: '#c3cddf', display: 'block', mb: 1 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 900, color: 'var(--c-slate-600)', display: 'block', mb: 1 }}>
                     NOT ANALYSABLE ({analysis.excludedItems.length})
                   </Typography>
                   <Stack spacing={0.75}>
@@ -371,15 +371,15 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                                 : 'no attempts'
                           }
                           size="small"
-                          sx={{ bgcolor: '#1a2338', color: '#c3cddf', fontWeight: 700, height: 20, fontSize: '0.65rem' }}
+                          sx={{ bgcolor: 'var(--c-slate-100)', color: 'var(--c-slate-600)', fontWeight: 700, height: 20, fontSize: '0.65rem' }}
                         />
-                        <Typography variant="body2" sx={{ color: '#a3b0c7', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
+                        <Typography variant="body2" sx={{ color: 'var(--c-slate-500)', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
                           {i.order}. {i.questionText || '(no question text)'}
                         </Typography>
                       </Box>
                     ))}
                   </Stack>
-                  <Typography variant="caption" sx={{ color: '#7482a0', display: 'block', mt: 1.25 }}>
+                  <Typography variant="caption" sx={{ color: 'var(--c-slate-400)', display: 'block', mt: 1.25 }}>
                     Essay items are awarded a flat credit on submission rather than being graded
                     against a key, so including them would report the answer rate as if it were
                     correctness.

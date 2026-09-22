@@ -13,6 +13,10 @@ interface AuthContextType {
   loginWithGoogle: (credential: string, role?: UserRole) => boolean;
   logout: () => void;
   switchAccount: (userId: string) => void;
+  /** Updates the signed-in user's display name and/or avatar. */
+  updateProfile: (changes: { name?: string; avatar?: string }) => Promise<MutationResult>;
+  /** Changes the signed-in user's password after verifying the current one. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<MutationResult>;
   isAuthenticated: boolean;
 
   // Reactive state, hydrated from Supabase when available and mirrored to localStorage as a fallback cache
@@ -485,6 +489,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     safeSetItem('questionBank', questionBank);
   }, [questionBank]);
 
+  /**
+   * Applies a change to the signed-in user across all three places a user is held: the
+   * `users` list, the `currentUser` slot, and Supabase. Missing any one of them is what
+   * makes a profile edit appear to work and then revert on the next page load.
+   */
+  const applyUserChange = async (changes: Partial<User>): Promise<MutationResult> => {
+    if (!currentUser) return { ok: false, error: 'Not signed in.' };
+    const updated: User = { ...currentUser, ...changes };
+    setCurrentUser(updated);
+    setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+    try {
+      await db.upsertUser(updated);
+      return { ok: true };
+    } catch (err: any) {
+      // The local state above already reflects the change and localStorage will cache it,
+      // so the edit is not lost — but say plainly that it did not reach the server.
+      return { ok: false, error: err?.message || 'Saved locally, but the server rejected the update.' };
+    }
+  };
+
+  const updateProfile = async (changes: { name?: string; avatar?: string }): Promise<MutationResult> => {
+    const name = changes.name?.trim();
+    if (changes.name !== undefined && !name) {
+      return { ok: false, error: 'Name cannot be empty.' };
+    }
+    const patch: Partial<User> = {};
+    if (name) patch.name = name;
+    if (changes.avatar !== undefined) patch.avatar = changes.avatar;
+    return applyUserChange(patch);
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<MutationResult> => {
+    if (!currentUser) return { ok: false, error: 'Not signed in.' };
+    // A Google-provisioned account has no local password to verify against.
+    if (!currentUser.password) {
+      return { ok: false, error: 'This account signs in with Google and has no password to change.' };
+    }
+    if (currentUser.password !== currentPassword) {
+      return { ok: false, error: 'Current password is incorrect.' };
+    }
+    if (newPassword.length < 8) {
+      return { ok: false, error: 'New password must be at least 8 characters.' };
+    }
+    if (newPassword === currentPassword) {
+      return { ok: false, error: 'New password must differ from the current one.' };
+    }
+    return applyUserChange({ password: newPassword });
+  };
+
   const login = (email: string, password: string): boolean => {
     const user = users.find(
       (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
@@ -894,6 +947,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         users,
         login,
         loginWithGoogle,
+        updateProfile,
+        changePassword,
         logout,
         switchAccount,
         isAuthenticated: !!currentUser,
