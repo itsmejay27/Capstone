@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -8,7 +8,8 @@ import {
 } from '@mui/material';
 import {
   Add, Login, MoreVert, ContentCopy, Archive, Unarchive, School, Quiz,
-  People, AutoAwesome, LibraryBooks, Bolt,
+  People,
+  Link as LinkIcon, AutoAwesome, LibraryBooks, Bolt,
 } from '@mui/icons-material';
 import {
   PageContainer, PageHeader, SectionHeading, SearchField, FilterBar, FilterPill,
@@ -69,12 +70,33 @@ export default function Dashboard() {
   const [section, setSection] = useState('');
   const [description, setDescription] = useState('');
   const [classCode, setClassCode] = useState('');
+  const [level, setLevel] = useState('');
+  const [room, setRoom] = useState('');
   const [joinError, setJoinError] = useState('');
+
+
 
   const [copySnackbar, setCopySnackbar] = useState({ open: false, code: '' });
 
   const favourites = readFavourites();
   const isInstructor = currentUser?.role === 'instructor';
+
+  // An invite link carries ?join=CODE. Opening it lands a student on the join form with
+  // the code already filled in, rather than leaving them to find the form themselves.
+  useEffect(() => {
+    if (isInstructor) return;
+    // An unauthenticated visitor is bounced to the login screen first, which drops the
+    // query string, so the code is stashed on the way past and read back here.
+    let stashed: string | null = null;
+    try { stashed = sessionStorage.getItem('pendingJoinCode'); } catch { /* blocked storage */ }
+    const code = new URLSearchParams(window.location.search).get('join') || stashed;
+    if (!code) return;
+    try { sessionStorage.removeItem('pendingJoinCode'); } catch { /* blocked storage */ }
+    setClassCode(code);
+    setOpenJoinDialog(true);
+    // Drop the parameter so a refresh does not reopen the dialog after joining.
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [isInstructor]);
 
   const userClassrooms = classrooms.filter((classroom) =>
     isInstructor
@@ -129,14 +151,19 @@ export default function Dashboard() {
   }, [currentUser, isInstructor, exams, examAttempts, userClassrooms]);
 
   const handleCreateClassroom = () => {
-    if (!className || !subject || !section) return;
+    // Only the class name is required, as in Google Classroom. The join code is derived
+    // from whichever identifier the instructor did give, so it stays recognisable.
+    if (!className.trim()) return;
+    const codeSeed = (subject || className).replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 8) || 'CLASS';
     const newClassroom = {
       id: `class-${Date.now()}`,
-      name: className,
-      subject,
-      section,
+      name: className.trim(),
+      subject: subject.trim(),
+      section: section.trim(),
+      level: level.trim(),
+      room: room.trim(),
       instructorId: currentUser?.id || '',
-      classCode: `${subject.replace(/\s+/g, '').toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      classCode: `${codeSeed}-${Math.floor(1000 + Math.random() * 9000)}`,
       students: [],
       createdAt: new Date().toISOString(),
       description,
@@ -146,6 +173,8 @@ export default function Dashboard() {
     setClassName('');
     setSubject('');
     setSection('');
+    setLevel('');
+    setRoom('');
     setDescription('');
     setOpenCreateDialog(false);
   };
@@ -170,6 +199,16 @@ export default function Dashboard() {
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopySnackbar({ open: true, code });
+  };
+
+  /**
+   * Copies a shareable invite link. The code alone means a student has to find the join
+   * form first; the link drops them straight onto it with the code already filled in.
+   */
+  const handleCopyInviteLink = (classroom: any) => {
+    const url = `${window.location.origin}/?join=${encodeURIComponent(classroom.classCode)}`;
+    navigator.clipboard.writeText(url);
+    setCopySnackbar({ open: true, code: 'link' });
   };
 
   const handleOpenMenu = (e: React.MouseEvent<HTMLElement>, classroomId: string) => {
@@ -418,6 +457,12 @@ export default function Dashboard() {
           <ListItemText>Open class</ListItemText>
         </MenuItem>
         {isInstructor && selectedClassroom && (
+          <MenuItem onClick={() => { handleCopyInviteLink(selectedClassroom); handleCloseMenu(); }}>
+            <ListItemIcon><LinkIcon fontSize="small" /></ListItemIcon>
+            <ListItemText>Copy invite link</ListItemText>
+          </MenuItem>
+        )}
+        {isInstructor && selectedClassroom && (
           <MenuItem onClick={() => { handleCopyCode(selectedClassroom.classCode); handleCloseMenu(); }}>
             <ListItemIcon><ContentCopy fontSize="small" /></ListItemIcon>
             <ListItemText>Copy class code</ListItemText>
@@ -455,11 +500,19 @@ export default function Dashboard() {
             />
           </Field>
           <FieldRow>
-            <Field label="Subject code" required>
+            <Field label="Section">
+              <TextField value={section} onChange={(e) => setSection(e.target.value)} placeholder="e.g. BSIT 3A" />
+            </Field>
+            <Field label="Level(s)">
+              <TextField value={level} onChange={(e) => setLevel(e.target.value)} placeholder="e.g. 3rd Year" />
+            </Field>
+          </FieldRow>
+          <FieldRow>
+            <Field label="Subject">
               <TextField value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. IPT2" />
             </Field>
-            <Field label="Section" required>
-              <TextField value={section} onChange={(e) => setSection(e.target.value)} placeholder="e.g. BSIT 3A" />
+            <Field label="Room">
+              <TextField value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g. Lab 2" />
             </Field>
           </FieldRow>
           <Field label="Description" hint="Optional — a short overview students will see on the class page.">
@@ -477,7 +530,7 @@ export default function Dashboard() {
           <Button
             variant="contained"
             onClick={handleCreateClassroom}
-            disabled={!className || !subject || !section}
+            disabled={!className.trim()}
           >
             Create class
           </Button>
@@ -525,7 +578,9 @@ export default function Dashboard() {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert severity="success" onClose={() => setCopySnackbar({ open: false, code: '' })}>
-          Class code <strong>{copySnackbar.code}</strong> copied.
+          {copySnackbar.code === 'link'
+            ? 'Invite link copied — share it with your students.'
+            : <>Class code <strong>{copySnackbar.code}</strong> copied.</>}
         </Alert>
       </Snackbar>
     </PageContainer>

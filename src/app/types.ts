@@ -16,6 +16,10 @@ export interface Classroom {
   section: string;
   instructorId: string;
   classCode: string;
+  /** Year level, e.g. "BSCS 3". Optional, mirroring Google Classroom. */
+  level?: string;
+  /** Physical or virtual room. Optional. */
+  room?: string;
   students: string[];
   createdAt: Date;
   description?: string;

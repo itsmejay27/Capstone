@@ -13,7 +13,7 @@ const STORAGE_KEY = 'themePreference';
 const STYLE_ELEMENT_ID = 'omsc-theme-vars';
 const TRANSITION_CLASS = 'theme-transition';
 /** Must match the duration in the transition rule, plus a little slack. */
-const TRANSITION_MS = 380;
+const TRANSITION_MS = 240;
 
 interface ThemeModeContextValue {
   /** The user's choice, including 'system'. */
@@ -95,8 +95,21 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
       root.setAttribute('data-theme', mode);
       return;
     }
+    const applyTheme = () => root.setAttribute('data-theme', mode);
+
+    // View Transitions cross-fade a snapshot of the page on the compositor, which stays
+    // smooth however many elements are on screen. The per-element CSS transition is the
+    // fallback, and is only worth paying for when the browser cannot do the cheap thing.
+    const startViewTransition = (document as any).startViewTransition?.bind(document);
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (startViewTransition && !reduceMotion) {
+      startViewTransition(applyTheme);
+      return;
+    }
+
     root.classList.add(TRANSITION_CLASS);
-    root.setAttribute('data-theme', mode);
+    applyTheme();
     const timer = window.setTimeout(() => root.classList.remove(TRANSITION_CLASS), TRANSITION_MS);
     return () => {
       window.clearTimeout(timer);

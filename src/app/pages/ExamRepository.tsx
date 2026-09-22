@@ -50,6 +50,7 @@ import {
   ArrowBack,
   Description,
   Search as SearchIcon,
+  Inventory2,
 } from '@mui/icons-material';
 import PrintableExam, { PrintPortal } from '../components/PrintableExam';
 import type { PrintPaperSize, PrintMode } from '../types';
@@ -222,6 +223,8 @@ export default function ExamRepository() {
     updateExamInRepository,
     deleteExamFromRepository,
     topics,
+    saveQuestionBankItem,
+    questionBank,
   } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -325,6 +328,40 @@ export default function ExamRepository() {
     setPoolFilter('');
     setPoolPage(0);
   }, [editingExam?.id]);
+
+  /**
+   * Files a whole template's questions into the Question Bank so later exams can draw on
+   * them. Items already in the bank (same stem) are skipped rather than duplicated, so
+   * banking the same template twice is harmless.
+   */
+  const handleBankTemplate = async (exam: any) => {
+    const existingStems = new Set(
+      (questionBank || []).map((q: any) => (q.question || '').trim().toLowerCase())
+    );
+    const fresh = (exam.questions || []).filter(
+      (q: any) => q.question?.trim() && !existingStems.has(q.question.trim().toLowerCase())
+    );
+    if (fresh.length === 0) {
+      toast('Every question in this template is already in the bank.', 'error');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Add to Question Bank?',
+      message: `${fresh.length} of ${exam.questions.length} questions from "${exam.title}" will be added. The rest are already banked.`,
+      confirmLabel: `Add ${fresh.length}`,
+    });
+    if (!ok) return;
+    fresh.forEach((q: any, i: number) => {
+      saveQuestionBankItem({
+        ...q,
+        id: `qb-${Date.now()}-${i}`,
+        subject: q.subject || exam.title,
+        createdBy: currentUser?.id,
+        createdAt: new Date().toISOString(),
+      });
+    });
+    toast(`Added ${fresh.length} questions to the Question Bank.`);
+  };
 
   const handleOpenAssign = (examId: string) => {
     setSelectedExamId(examId);
@@ -803,6 +840,11 @@ export default function ExamRepository() {
                       >
                         Assign
                       </Button>
+                      <Tooltip title="Add these questions to the Question Bank">
+                        <IconButton size="small" onClick={() => handleBankTemplate(exam)} sx={{ width: 32, height: 32, border: '1px solid var(--c-border)' }}>
+                          <Inventory2 sx={{ fontSize: 17 }} />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Print exam">
                         <IconButton size="small" onClick={() => setPrintTarget(exam)} sx={{ width: 32, height: 32, border: '1px solid var(--c-border)' }}>
                           <Print sx={{ fontSize: 17 }} />
