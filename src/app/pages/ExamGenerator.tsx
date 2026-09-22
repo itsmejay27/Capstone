@@ -454,7 +454,11 @@ export default function ExamGenerator() {
 
       if (aiEngine === 'gemini' || aiEngine === 'nvidia') {
         try {
-          setGenerationStatusText(`Connecting to Google Gemini AI (${geminiModel}) for ${isTosActive ? 'TOS-aligned' : 'topic-driven'} generation on "${primarySubject}"...`);
+          // This banner named Gemini even when NVIDIA was the selected engine, so an
+          // instructor watching the progress text had no way to tell which engine was
+          // actually running.
+          const engineLabel = aiEngine === 'nvidia' ? `NVIDIA Cloud (${nvidiaModel})` : `Google Gemini AI (${geminiModel})`;
+          setGenerationStatusText(`Connecting to ${engineLabel} for ${isTosActive ? 'TOS-aligned' : 'topic-driven'} generation on "${primarySubject}"...`);
 
           const geminiParams = {
             provider: aiEngine === 'nvidia' ? 'nvidia' as const : 'gemini' as const,
