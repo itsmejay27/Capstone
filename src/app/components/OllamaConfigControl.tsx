@@ -25,9 +25,9 @@ import {
   AutoAwesome,
 } from '@mui/icons-material';
 import { checkOllamaConnection, OllamaConnectionState } from '../services/ollamaService';
-import { GEMINI_MODELS } from '../services/geminiService';
+import { GEMINI_MODELS, NVIDIA_MODELS } from '../services/geminiService';
 
-export type AIEngineType = 'gemini' | 'ollama';
+export type AIEngineType = 'gemini' | 'nvidia' | 'ollama';
 
 interface OllamaConfigControlProps {
   engine: AIEngineType;
@@ -38,6 +38,8 @@ interface OllamaConfigControlProps {
   onUrlChange?: (url: string) => void;
   geminiModel?: string;
   onGeminiModelChange?: (model: string) => void;
+  nvidiaModel?: string;
+  onNvidiaModelChange?: (model: string) => void;
   onConnectionStatusChange?: (connected: boolean) => void;
 }
 
@@ -49,6 +51,8 @@ export default function OllamaConfigControl({
   ollamaUrl = '/api/ollama',
   geminiModel = 'gemini-3.5-flash-lite',
   onGeminiModelChange,
+  nvidiaModel = 'meta/llama-3.3-70b-instruct',
+  onNvidiaModelChange,
   onConnectionStatusChange,
 }: OllamaConfigControlProps) {
   const [loading, setLoading] = useState(false);
@@ -97,6 +101,15 @@ export default function OllamaConfigControl({
               icon={<AutoAwesome sx={{ color: '#9333ea !important' }} />}
               label="Google Gemini Cloud AI"
               color="secondary"
+              variant="outlined"
+              size="small"
+              sx={{ fontWeight: 'bold' }}
+            />
+          ) : engine === 'nvidia' ? (
+            <Chip
+              icon={<AutoAwesome sx={{ color: '#16a34a !important' }} />}
+              label="Llama via NVIDIA Cloud"
+              color="success"
               variant="outlined"
               size="small"
               sx={{ fontWeight: 'bold' }}
@@ -167,6 +180,37 @@ export default function OllamaConfigControl({
               </Paper>
             </Grid>
 
+            {/* NVIDIA NIM (cloud Llama) Option */}
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <Paper
+                variant="outlined"
+                onClick={() => onEngineChange('nvidia')}
+                sx={{
+                  p: 1.5,
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                  borderWidth: 2,
+                  borderColor: engine === 'nvidia' ? 'success.main' : '#e2e8f0',
+                  bgcolor: engine === 'nvidia' ? 'rgba(22, 163, 74, 0.04)' : 'inherit',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}
+              >
+                <Radio value="nvidia" checked={engine === 'nvidia'} color="success" size="small" />
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                    <AutoAwesome fontSize="small" color="success" />
+                    <Typography variant="body2" fontWeight="bold" color="#15803d">Llama (NVIDIA Cloud)</Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.75rem' }}>
+                    Hosted Llama 3.3 — works on the deployed site
+                  </Typography>
+                </Box>
+              </Paper>
+            </Grid>
+
             {/* Local Ollama Option */}
             <Grid size={{ xs: 12, sm: 6 }}>
               <Paper
@@ -200,8 +244,24 @@ export default function OllamaConfigControl({
           </Grid>
         </RadioGroup>
 
-        {/* Model Selector Dropdown (Gemini or Ollama) */}
-        {engine === 'gemini' ? (
+        {engine === 'nvidia' && (
+          <FormControl fullWidth size="small">
+            <InputLabel id="nvidia-model-label">Select Llama Model</InputLabel>
+            <Select
+              labelId="nvidia-model-label"
+              value={nvidiaModel}
+              label="Select Llama Model"
+              onChange={(e) => onNvidiaModelChange?.(e.target.value)}
+            >
+              {NVIDIA_MODELS.map((m) => (
+                <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        {/* Model Selector Dropdown (Gemini or Ollama; NVIDIA has its own above) */}
+        {engine === 'nvidia' ? null : engine === 'gemini' ? (
           <FormControl fullWidth size="small">
             <InputLabel id="gemini-model-label">Select Gemini Model</InputLabel>
             <Select

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import OllamaConfigControl, { AIEngineType } from '../components/OllamaConfigControl';
+import { DEFAULT_NVIDIA_MODEL } from '../services/geminiService';
 import { generateExamWithOllama, regenerateQuestionWithOllama, regenerateItemsForSpecsOllama } from '../services/ollamaService';
 import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey, regenerateItemsForSpecs } from '../services/geminiService';
 import { parseTOSFile, extractFilesContentEnhanced, TOSData, BLOOM_LEVELS } from '../services/tosParser';
@@ -261,6 +262,7 @@ export default function ExamGenerator() {
 
   // AI Engine states
   const [aiEngine, setAiEngine] = useState<AIEngineType>('gemini');
+  const [nvidiaModel, setNvidiaModel] = useState(DEFAULT_NVIDIA_MODEL);
   const [geminiModel, setGeminiModel] = useState('gemini-3.6-flash');
   const [ollamaModel, setOllamaModel] = useState('llama3.2:latest');
   const [ollamaUrl, setOllamaUrl] = useState('/api/ollama');
@@ -362,12 +364,13 @@ export default function ExamGenerator() {
       const effectiveTopics = Array.from(new Set([primarySubject, ...topics.filter((t) => t && t !== 'General Subject Matter')]));
       const effectivePrompt = generationPrompt.trim() || primarySubject;
 
-      if (aiEngine === 'gemini') {
+      if (aiEngine === 'gemini' || aiEngine === 'nvidia') {
         try {
           setGenerationStatusText(`Connecting to Google Gemini AI (${geminiModel}) for ${isTosActive ? 'TOS-aligned' : 'topic-driven'} generation on "${primarySubject}"...`);
 
           const geminiParams = {
-            model: geminiModel,
+            provider: aiEngine === 'nvidia' ? 'nvidia' as const : 'gemini' as const,
+            model: aiEngine === 'nvidia' ? nvidiaModel : geminiModel,
             mcCount,
             tfCount,
             saCount,
@@ -631,7 +634,7 @@ export default function ExamGenerator() {
     const q = generatedQuestions[index];
     setRegeneratingMap((prev) => ({ ...prev, [q.id]: true }));
 
-    if (aiEngine === 'gemini') {
+    if (aiEngine === 'gemini' || aiEngine === 'nvidia') {
       try {
         const updatedQ = await regenerateQuestionWithGemini(q, mode, undefined, geminiModel);
         setGeneratedQuestions((prevQuestions) => {
@@ -1031,6 +1034,8 @@ export default function ExamGenerator() {
                     <Box sx={{ mt: 1 }}>
                       <OllamaConfigControl
                         engine={aiEngine}
+                        nvidiaModel={nvidiaModel}
+                        onNvidiaModelChange={setNvidiaModel}
                         onEngineChange={setAiEngine}
                         selectedModel={ollamaModel}
                         onModelChange={setOllamaModel}
@@ -1629,7 +1634,7 @@ export default function ExamGenerator() {
                   }}
                 />
                 <Typography variant="h5" gutterBottom fontWeight="black" sx={{ color: '#0f172a', letterSpacing: '-0.02em' }}>
-                  {aiEngine === 'gemini' ? `Google Gemini (${geminiModel}) Generating Exam...` : `Ollama (${ollamaModel}) AI Generating Exam...`}
+                  {aiEngine === 'gemini' ? `Google Gemini (${geminiModel}) Generating Exam...` : aiEngine === 'nvidia' ? `Llama (${nvidiaModel}) Generating Exam...` : `Ollama (${ollamaModel}) AI Generating Exam...`}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 4, maxWidth: 550, mx: 'auto', px: 2 }}>
                   {generationStatusText || `Analyzing source files and building ${totalGeneratedCount} high-fidelity items (${activeQuestionCount} active drawer items, ${extraCount} extra anti-cheat items).`}
