@@ -1,5 +1,5 @@
 import { createTheme } from '@mui/material/styles';
-import { palette, radius, shadow, layout, font } from './tokens';
+import { palette, gradient, radius, shadow, layout, font } from './tokens';
 
 /**
  * The application theme.
@@ -17,9 +17,9 @@ import { palette, radius, shadow, layout, font } from './tokens';
  */
 export const theme = createTheme({
   palette: {
-    mode: 'light',
-    primary: { main: palette.primary, dark: palette.primaryHover, light: palette.primarySoft, contrastText: '#ffffff' },
-    secondary: { main: palette.instructor, light: palette.instructorSoft, contrastText: '#ffffff' },
+    mode: 'dark',
+    primary: { main: palette.primary, dark: palette.primaryHover, light: palette.primaryHover, contrastText: '#04211a' },
+    secondary: { main: '#22d3ee', light: '#67e8f9', contrastText: '#04211a' },
     success: { main: palette.success, light: palette.successSoft },
     warning: { main: palette.warning, light: palette.warningSoft },
     error: { main: palette.danger, light: palette.dangerSoft },
@@ -53,6 +53,7 @@ export const theme = createTheme({
         body: {
           backgroundColor: palette.canvas,
           color: palette.ink,
+          colorScheme: 'dark',
           // No page-level horizontal scroll, ever. Wide content scrolls in its own container.
           overflowX: 'hidden',
         },
@@ -130,6 +131,12 @@ export const theme = createTheme({
         sizeSmall: { minHeight: layout.controlHeightSmall, padding: '4px 12px', fontSize: '0.8rem' },
         sizeLarge: { minHeight: 48, padding: '12px 22px', fontSize: '0.92rem' },
         contained: { boxShadow: 'none', '&:hover': { boxShadow: shadow.sm } },
+        containedPrimary: {
+          background: gradient.brand,
+          color: '#04211a',
+          '&:hover': { background: gradient.brand, filter: 'brightness(1.08)', boxShadow: shadow.brandGlow },
+          '&.Mui-disabled': { background: palette.surfaceSunken, color: palette.inkDisabled },
+        },
         outlined: {
           borderColor: palette.border,
           color: palette.ink,
@@ -168,7 +175,23 @@ export const theme = createTheme({
     MuiCard: {
       defaultProps: { elevation: 0 },
       styleOverrides: {
-        root: { borderRadius: radius.lg, border: `1px solid ${palette.border}`, boxShadow: shadow.xs },
+        root: {
+          borderRadius: radius.lg,
+          border: `1px solid ${palette.border}`,
+          boxShadow: shadow.xs,
+          backgroundColor: palette.surface,
+          // The reference's signature: a 2px gradient rule capping every card.
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            insetInline: 0,
+            top: 0,
+            height: 2,
+            background: gradient.brand,
+          },
+        },
       },
     },
     MuiDialog: {
@@ -192,11 +215,19 @@ export const theme = createTheme({
     MuiDivider: { styleOverrides: { root: { borderColor: palette.border } } },
     MuiTooltip: {
       styleOverrides: {
-        tooltip: { backgroundColor: palette.ink, fontSize: '0.75rem', borderRadius: radius.sm, padding: '6px 10px' },
+        tooltip: { backgroundColor: palette.surfaceSunken, color: palette.ink, border: `1px solid ${palette.border}`, fontSize: '0.75rem', borderRadius: radius.sm, padding: '6px 10px' },
       },
     },
     MuiAlert: {
-      styleOverrides: { root: { borderRadius: radius.lg, fontSize: '0.85rem', alignItems: 'flex-start' } },
+      styleOverrides: {
+        root: { borderRadius: radius.lg, fontSize: '0.85rem', alignItems: 'flex-start' },
+        // MUI's dark-mode standard Alert derives a very low-contrast fill from the palette;
+        // pin each severity to an explicit tint + bright ink so the text stays readable.
+        standardInfo: { backgroundColor: palette.infoSoft, color: palette.info, border: `1px solid ${palette.info}33` },
+        standardSuccess: { backgroundColor: palette.successSoft, color: palette.success, border: `1px solid ${palette.success}33` },
+        standardWarning: { backgroundColor: palette.warningSoft, color: palette.warning, border: `1px solid ${palette.warning}33` },
+        standardError: { backgroundColor: palette.dangerSoft, color: palette.danger, border: `1px solid ${palette.danger}33` },
+      },
     },
 
     // ── Tabs ──
@@ -204,7 +235,7 @@ export const theme = createTheme({
       defaultProps: { variant: 'scrollable', scrollButtons: 'auto', allowScrollButtonsMobile: true },
       styleOverrides: {
         root: { minHeight: 44 },
-        indicator: { height: 2, borderRadius: 2 },
+        indicator: { height: 2, borderRadius: 2, background: gradient.brand },
       },
     },
     MuiTab: {
@@ -234,9 +265,21 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: radius.md,
+          position: 'relative',
           '&.Mui-selected': {
-            backgroundColor: palette.surfaceSunken,
-            '&:hover': { backgroundColor: palette.surfaceSunken },
+            backgroundColor: palette.primarySoft,
+            color: palette.primary,
+            '&:hover': { backgroundColor: palette.primarySoft },
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              right: 0,
+              top: 6,
+              bottom: 6,
+              width: 3,
+              borderRadius: 3,
+              background: gradient.brand,
+            },
           },
         },
       },

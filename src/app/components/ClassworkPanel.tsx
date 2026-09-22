@@ -314,7 +314,7 @@ export default function ClassworkPanel({
                 <Paper
                   key={work.id}
                   sx={{
-                    mb: 1.25, borderRadius: radius.lg, overflow: 'hidden',
+                    mb: 1.25, borderRadius: '14px', overflow: 'hidden',
                     border: `1px solid ${overdue && !isInstructor ? palette.dangerSoft : palette.border}`,
                   }}
                 >
@@ -711,7 +711,7 @@ function GradeRow({
       <Collapse in={open} unmountOnExit>
         <Divider sx={{ my: 1.5 }} />
         {submission?.textAnswer && (
-          <Typography variant="body2" sx={{ color: palette.inkSecondary, whiteSpace: 'pre-wrap', mb: 1.5, p: 1.25, bgcolor: palette.surfaceMuted, borderRadius: radius.md }}>
+          <Typography variant="body2" sx={{ color: palette.inkSecondary, whiteSpace: 'pre-wrap', mb: 1.5, p: 1.25, bgcolor: palette.surfaceMuted, borderRadius: '10px' }}>
             {submission.textAnswer}
           </Typography>
         )}

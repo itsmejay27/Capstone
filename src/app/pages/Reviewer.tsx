@@ -181,9 +181,9 @@ export default function Reviewer() {
   const passRequired = Math.ceil(totalQ * PASS_THRESHOLD);
 
   const diffColor: Record<string, any> = {
-    easy: { bg: '#dcfce7', color: '#16a34a', border: '#86efac' },
+    easy: { bg: 'rgba(74, 222, 128, 0.16)', color: '#4ade80', border: 'rgba(74, 222, 128, 0.45)' },
     normal: { bg: '#fef9c3', color: '#ca8a04', border: '#fde047' },
-    hard: { bg: '#fee2e2', color: '#dc2626', border: '#fca5a5' },
+    hard: { bg: 'rgba(248, 113, 113, 0.14)', color: '#f87171', border: 'rgba(248, 113, 113, 0.42)' },
   };
 
   // ══════════════════════════════════════════
@@ -198,7 +198,7 @@ export default function Reviewer() {
 
         {/* Header */}
         <Paper sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 8px 30px rgba(3,105,161,0.12)' }}>
-          <Box sx={{ background: 'linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%)', p: { xs: 3, md: 4 }, color: 'white' }}>
+          <Box sx={{ background: 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)', p: { xs: 3, md: 4 }, color: 'white' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ width: 56, height: 56, borderRadius: 3, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -221,11 +221,11 @@ export default function Reviewer() {
               </Button>
             </Box>
           </Box>
-          <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: '#f0f9ff', borderTop: '1px solid rgba(3,105,161,0.1)' }}>
+          <Box sx={{ p: { xs: 2, md: 3 }, bgcolor: 'rgba(56, 189, 248, 0.08)', borderTop: '1px solid rgba(3,105,161,0.1)' }}>
             <TextField
               fullWidth placeholder="Search reviewers by title or subject..."
               value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              size="small" sx={{ bgcolor: 'white', borderRadius: 2 }}
+              size="small" sx={{ bgcolor: '#131b2e', borderRadius: 2 }}
             />
           </Box>
         </Paper>
@@ -233,7 +233,7 @@ export default function Reviewer() {
         {filteredReviewers.length === 0 ? (
           <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
             <Box sx={{ width: 80, height: 80, borderRadius: '50%', bgcolor: 'rgba(3,105,161,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 2 }}>
-              <School sx={{ fontSize: 40, color: '#0369a1' }} />
+              <School sx={{ fontSize: 40, color: '#38bdf8' }} />
             </Box>
             <Typography variant="h6" fontWeight="bold" gutterBottom>No reviewers yet</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -260,16 +260,16 @@ export default function Reviewer() {
                   sx={{
                     width: '100%',
                     minHeight: { md: 110 },
-                    bgcolor: 'white',
+                    bgcolor: '#131b2e',
                     borderRadius: 3,
-                    border: isCompleted ? '1px solid #86efac' : '1px solid #e2e8f0',
+                    border: isCompleted ? '1px solid rgba(74, 222, 128, 0.45)' : '1px solid #25304a',
                     borderLeft: `6px solid ${dc.color}`,
                     p: 3,
                     transition: 'all 0.2s ease',
                     '&:hover': {
                       transform: 'translateY(-2px)',
                       boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
-                      borderColor: isCompleted ? '#86efac' : '#cbd5e1',
+                      borderColor: isCompleted ? 'rgba(74, 222, 128, 0.45)' : '#33415c',
                     },
                     display: 'flex',
                     flexDirection: { xs: 'column', md: 'row' },
@@ -285,7 +285,7 @@ export default function Reviewer() {
                       width: 46,
                       height: 46,
                       borderRadius: 2,
-                      background: isCompleted ? 'linear-gradient(135deg, #16a34a, #22c55e)' : 'linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%)',
+                      background: isCompleted ? 'linear-gradient(135deg, #4ade80, #22c55e)' : 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -335,10 +335,10 @@ export default function Reviewer() {
                       sx={{
                         height: 8,
                         borderRadius: 4,
-                        bgcolor: '#f1f5f9',
-                        border: '1px solid #e2e8f0',
+                        bgcolor: '#1a2338',
+                        border: '1px solid #25304a',
                         '& .MuiLinearProgress-bar': {
-                          background: isCompleted ? 'linear-gradient(90deg, #16a34a, #22c55e)' : 'linear-gradient(90deg, #0369a1, #0ea5e9)'
+                          background: isCompleted ? 'linear-gradient(90deg, #4ade80, #22c55e)' : 'linear-gradient(90deg, #38bdf8, #0ea5e9)'
                         }
                       }}
                     />
@@ -353,7 +353,7 @@ export default function Reviewer() {
                     minWidth: { md: '300px' },
                     width: { xs: '100%', md: 'auto' },
                     justifyContent: { xs: 'space-between', md: 'flex-end' },
-                    borderTop: { xs: '1px solid #f1f5f9', md: 'none' },
+                    borderTop: { xs: '1px solid #1a2338', md: 'none' },
                     pt: { xs: 1.5, md: 0 },
                     mt: { xs: 1, md: 0 }
                   }}>
@@ -377,8 +377,8 @@ export default function Reviewer() {
                           height: 32,
                           minWidth: 120,
                           ...(isCompleted
-                            ? { color: '#16a34a', borderColor: '#16a34a' }
-                            : { background: 'linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%)' }
+                            ? { color: '#4ade80', borderColor: '#4ade80' }
+                            : { background: 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)' }
                           )
                         }}
                       >
@@ -390,9 +390,9 @@ export default function Reviewer() {
                           color="error"
                           onClick={() => setDeleteConfirmId(rev.id)}
                           sx={{
-                            bgcolor: '#fef2f2',
-                            border: '1px solid #fee2e2',
-                            '&:hover': { bgcolor: '#fee2e2' },
+                            bgcolor: 'rgba(248, 113, 113, 0.08)',
+                            border: '1px solid rgba(248, 113, 113, 0.14)',
+                            '&:hover': { bgcolor: 'rgba(248, 113, 113, 0.14)' },
                             width: 32,
                             height: 32,
                           }}
@@ -439,7 +439,7 @@ export default function Reviewer() {
 
         {/* Reviewer Header */}
         <Paper sx={{ mb: 4, borderRadius: 4, overflow: 'hidden', boxShadow: '0 8px 30px rgba(3,105,161,0.12)' }}>
-          <Box sx={{ background: 'linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%)', p: { xs: 3, md: 4 }, color: 'white' }}>
+          <Box sx={{ background: 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%)', p: { xs: 3, md: 4 }, color: 'white' }}>
             <Typography variant="overline" sx={{ opacity: 0.8, letterSpacing: '0.1em' }}>AI STUDY REVIEWER</Typography>
             <Typography variant="h4" fontWeight="bold" gutterBottom>{activeReviewer?.title}</Typography>
             <Typography variant="body2" sx={{ opacity: 0.9 }}>
@@ -466,7 +466,7 @@ export default function Reviewer() {
                   sx={{
                     borderRadius: 3,
                     borderColor: isPassed ? 'success.light' : 'primary.light',
-                    bgcolor: isPassed ? '#f0fdf4' : '#ffffff',
+                    bgcolor: isPassed ? 'rgba(74, 222, 128, 0.09)' : '#ffffff',
                     transition: 'all 0.2s ease',
                     cursor: 'pointer',
                     '&:hover': {
@@ -493,7 +493,7 @@ export default function Reviewer() {
                     <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
                       <Box sx={{
                         width: 40, height: 40, borderRadius: '50%',
-                        background: isPassed ? 'linear-gradient(135deg,#16a34a,#22c55e)' : 'linear-gradient(135deg,#0369a1,#0ea5e9)',
+                        background: isPassed ? 'linear-gradient(135deg,#4ade80,#22c55e)' : 'linear-gradient(135deg,#38bdf8,#0ea5e9)',
                         color: 'white',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: 'bold', mr: 2.5, flexShrink: 0
@@ -573,7 +573,7 @@ export default function Reviewer() {
 
         {/* Left Side: Strictly Vertical Modules Navigation Sidebar */}
         <Grid size={{ xs: 12, md: 3.5 }}>
-          <Paper sx={{ p: 2.5, borderRadius: 4, border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.02)', position: 'sticky', top: 24 }}>
+          <Paper sx={{ p: 2.5, borderRadius: 4, border: '1px solid #25304a', boxShadow: '0 4px 15px rgba(0,0,0,0.02)', position: 'sticky', top: 24 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary', mb: 2, letterSpacing: '0.05em' }}>
               MODULES PROGRESSION
             </Typography>
@@ -595,16 +595,16 @@ export default function Reviewer() {
                     sx={{
                       p: 2,
                       borderRadius: 3,
-                      border: isActive ? '2px solid #0369a1' : '1px solid #e2e8f0',
-                      bgcolor: isActive ? '#f0f9ff' : isPassed ? '#f0fdf4' : '#ffffff',
+                      border: isActive ? '2px solid #38bdf8' : '1px solid #25304a',
+                      bgcolor: isActive ? 'rgba(56, 189, 248, 0.08)' : isPassed ? 'rgba(74, 222, 128, 0.09)' : '#ffffff',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1.5,
                       '&:hover': {
-                        borderColor: '#0369a1',
-                        bgcolor: '#f8fafc',
+                        borderColor: '#38bdf8',
+                        bgcolor: '#0f1626',
                       }
                     }}
                   >
@@ -612,7 +612,7 @@ export default function Reviewer() {
                       width: 28,
                       height: 28,
                       borderRadius: '50%',
-                      bgcolor: isActive ? '#0369a1' : isPassed ? '#10b981' : '#64748b',
+                      bgcolor: isActive ? '#38bdf8' : isPassed ? '#10b981' : '#a3b0c7',
                       color: 'white',
                       display: 'flex',
                       alignItems: 'center',
@@ -624,7 +624,7 @@ export default function Reviewer() {
                       {isPassed ? <CheckCircle sx={{ fontSize: 16 }} /> : i + 1}
                     </Box>
                     <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                      <Typography variant="body2" fontWeight={isActive ? 800 : 600} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isActive ? '#0369a1' : 'text.primary' }}>
+                      <Typography variant="body2" fontWeight={isActive ? 800 : 600} sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isActive ? '#38bdf8' : 'text.primary' }}>
                         {m.topic}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
@@ -643,8 +643,8 @@ export default function Reviewer() {
 
           {/* LESSON PHASE WORKSPACE */}
           {phase === 'lesson' && currentModule && (
-            <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', border: '1px solid #e2e8f0' }}>
-              <Box sx={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)', p: 3, color: 'white' }}>
+            <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', border: '1px solid #25304a' }}>
+              <Box sx={{ background: 'linear-gradient(135deg, #bfdbfe 0%, #10b981 100%)', p: 3, color: 'white' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <Box sx={{ width: 44, height: 44, borderRadius: 2.5, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <MenuBook sx={{ fontSize: 24 }} />
@@ -661,7 +661,7 @@ export default function Reviewer() {
                   const trimmed = line.trim();
                   if (!trimmed) return <Box key={i} sx={{ mb: 1 }} />;
                   if (trimmed.startsWith('**') && trimmed.endsWith('**') && !trimmed.slice(2, -2).includes('**')) {
-                    return <Typography key={i} variant="h6" fontWeight="bold" sx={{ mt: 2, mb: 1, color: '#1e3a8a' }}>{trimmed.slice(2, -2)}</Typography>;
+                    return <Typography key={i} variant="h6" fontWeight="bold" sx={{ mt: 2, mb: 1, color: '#bfdbfe' }}>{trimmed.slice(2, -2)}</Typography>;
                   }
                   if (trimmed === '---') return <Divider key={i} sx={{ my: 2 }} />;
                   if (trimmed.startsWith('•')) {
@@ -690,10 +690,10 @@ export default function Reviewer() {
 
                   {/* Option 1: Study Flashcards */}
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', transition: 'all 0.2s', '&:hover': { borderColor: '#6366f1', bgcolor: 'rgba(99,102,241,0.02)' } }}>
+                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #25304a', transition: 'all 0.2s', '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16,185,129,0.02)' } }}>
                       <CardActionArea sx={{ p: 2.5 }} onClick={() => { setPhase('flashcards'); setFlashcardIdx(0); setIsFlipped(false); }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                          <IconButton size="small" sx={{ bgcolor: 'rgba(99, 102, 241, 0.08)', color: '#6366f1' }}>
+                          <IconButton size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
                             <SwapHoriz fontSize="small" />
                           </IconButton>
                           <Typography variant="subtitle1" fontWeight="bold">Interactive Flashcards</Typography>
@@ -707,7 +707,7 @@ export default function Reviewer() {
 
                   {/* Option 2: Take Quiz */}
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', transition: 'all 0.2s', '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16,185,129,0.02)' } }}>
+                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #25304a', transition: 'all 0.2s', '&:hover': { borderColor: '#10b981', bgcolor: 'rgba(16,185,129,0.02)' } }}>
                       <CardActionArea sx={{ p: 2.5 }} onClick={startQuiz}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
                           <IconButton size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
@@ -733,7 +733,7 @@ export default function Reviewer() {
             const q = questions[flashcardIdx];
             return (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5, animation: 'fadeIn 0.3s ease' }}>
-                <Paper sx={{ p: 3, borderRadius: 4, bgcolor: '#fbfbfe', border: '1px solid #e0e7ff' }}>
+                <Paper sx={{ p: 3, borderRadius: 4, bgcolor: '#fbfbfe', border: '1px solid rgba(16, 185, 129, 0.18)' }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', mb: 0.5 }}>
                     FLASHCARDS STUDY WORKSPACE
                   </Typography>
@@ -750,11 +750,11 @@ export default function Reviewer() {
                       minHeight: 320,
                       cursor: 'pointer',
                       borderRadius: 5,
-                      border: isFlipped ? '2px solid #10b981' : '2px solid #6366f1',
-                      boxShadow: isFlipped ? '0 12px 25px rgba(16,185,129,0.05)' : '0 12px 25px rgba(99,102,241,0.05)',
+                      border: isFlipped ? '2px solid #10b981' : '2px solid #10b981',
+                      boxShadow: isFlipped ? '0 12px 25px rgba(16,185,129,0.05)' : '0 12px 25px rgba(16,185,129,0.05)',
                       background: isFlipped
-                        ? 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)'
-                        : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                        ? 'linear-gradient(135deg, rgba(74, 222, 128, 0.09) 0%, rgba(16, 185, 129, 0.13) 100%)'
+                        : 'linear-gradient(135deg, #0f1626 0%, #1a2338 100%)',
                       transition: 'all 0.25s ease',
                       display: 'flex',
                       flexDirection: 'column',
@@ -775,11 +775,11 @@ export default function Reviewer() {
 
                     {!isFlipped ? (
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <HelpOutline sx={{ fontSize: 44, color: '#6366f1' }} />
+                        <HelpOutline sx={{ fontSize: 44, color: '#10b981' }} />
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary', tracking: '0.1em' }}>
                           QUESTION {flashcardIdx + 1} OF {questions.length}
                         </Typography>
-                        <Typography variant="h5" fontWeight="bold" sx={{ px: 2, lineHeight: 1.5, color: '#1e293b' }}>
+                        <Typography variant="h5" fontWeight="bold" sx={{ px: 2, lineHeight: 1.5, color: '#e8edf7' }}>
                           {q.question}
                         </Typography>
 
@@ -800,7 +800,7 @@ export default function Reviewer() {
                           CORRECT ANSWER
                         </Typography>
 
-                        <Typography variant="h5" fontWeight="black" sx={{ color: '#065f46', mb: 1 }}>
+                        <Typography variant="h5" fontWeight="black" sx={{ color: '#6ee7b7', mb: 1 }}>
                           {q.type === 'multiple-choice' && q.options
                             ? `${String.fromCharCode(65 + q.correctAnswer)}. ${q.options[q.correctAnswer]}`
                             : String(q.correctAnswer).toUpperCase()}
@@ -808,7 +808,7 @@ export default function Reviewer() {
 
                         <Divider sx={{ width: '80%', my: 1, borderColor: 'rgba(16,185,129,0.15)' }} />
 
-                        <Typography variant="body2" sx={{ color: '#374151', fontStyle: 'italic', px: 3, lineHeight: 1.6 }}>
+                        <Typography variant="body2" sx={{ color: '#dbe3f0', fontStyle: 'italic', px: 3, lineHeight: 1.6 }}>
                           <strong>Explanation:</strong> {q.explanation || 'No detailed explanation provided for this conceptual item.'}
                         </Typography>
                       </Box>
@@ -850,7 +850,7 @@ export default function Reviewer() {
           {/* Practice quiz workspace */}
           {phase === 'quiz' && currentModule && (
             <Box sx={{ animation: 'fadeIn 0.3s ease' }}>
-              <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3, background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', color: 'white' }}>
+              <Paper sx={{ p: 2.5, mb: 3, borderRadius: 3, background: 'linear-gradient(135deg, #bfdbfe, #10b981)', color: 'white' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                   <Typography fontWeight="bold">{currentModule.title} — Quiz</Typography>
                   <Typography variant="body2" sx={{ opacity: 0.9 }}>
@@ -870,8 +870,8 @@ export default function Reviewer() {
                     <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
                       <Box sx={{
                         minWidth: 30, height: 30, borderRadius: 2, flexShrink: 0, mt: 0.25,
-                        background: answers[q.id] !== undefined ? 'linear-gradient(135deg,#1e3a8a,#3b82f6)' : '#f1f5f9',
-                        color: answers[q.id] !== undefined ? 'white' : '#64748b',
+                        background: answers[q.id] !== undefined ? 'linear-gradient(135deg,#bfdbfe,#10b981)' : '#1a2338',
+                        color: answers[q.id] !== undefined ? 'white' : '#a3b0c7',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem',
                       }}>
                         {idx + 1}
@@ -879,7 +879,7 @@ export default function Reviewer() {
                       <Box sx={{ flexGrow: 1 }}>
                         <Chip
                           size="small" label={q.type === 'true-false' ? 'True / False' : q.type === 'multiple-choice' ? 'Multiple Choice' : 'Identification'}
-                          sx={{ mb: 1, bgcolor: q.type === 'identification' ? '#fef3c7' : '#eff6ff', color: q.type === 'identification' ? '#92400e' : '#1e40af', fontWeight: 600, fontSize: '0.7rem' }}
+                          sx={{ mb: 1, bgcolor: q.type === 'identification' ? 'rgba(251, 191, 36, 0.14)' : 'rgba(16, 185, 129, 0.13)', color: q.type === 'identification' ? '#fcd34d' : '#6ee7b7', fontWeight: 600, fontSize: '0.7rem' }}
                         />
                         <Typography variant="body1" fontWeight={600} sx={{ lineHeight: 1.5 }}>{q.question}</Typography>
                       </Box>
@@ -899,10 +899,10 @@ export default function Reviewer() {
                               label={<Typography sx={{ fontWeight: answers[q.id] === val ? 700 : 400 }}>{val === 'true' ? 'True' : 'False'}</Typography>}
                               sx={{
                                 mb: 1, p: 1.5, borderRadius: 2, mr: 0,
-                                border: answers[q.id] === val ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                                bgcolor: answers[q.id] === val ? '#eff6ff' : 'transparent',
+                                border: answers[q.id] === val ? '2px solid #10b981' : '1px solid #25304a',
+                                bgcolor: answers[q.id] === val ? 'rgba(16, 185, 129, 0.13)' : 'transparent',
                                 transition: 'all 0.15s ease',
-                                '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' },
+                                '&:hover': { bgcolor: '#0f1626', borderColor: '#7482a0' },
                               }}
                             />
                           ))}
@@ -924,10 +924,10 @@ export default function Reviewer() {
                               label={<Typography sx={{ fontWeight: answers[q.id] === i ? 700 : 400 }}>{String.fromCharCode(65 + i)}. {opt}</Typography>}
                               sx={{
                                 mb: 1, p: 1.5, borderRadius: 2, mr: 0,
-                                border: answers[q.id] === i ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                                bgcolor: answers[q.id] === i ? '#eff6ff' : 'transparent',
+                                border: answers[q.id] === i ? '2px solid #10b981' : '1px solid #25304a',
+                                bgcolor: answers[q.id] === i ? 'rgba(16, 185, 129, 0.13)' : 'transparent',
                                 transition: 'all 0.15s ease',
-                                '&:hover': { bgcolor: '#f8fafc', borderColor: '#94a3b8' },
+                                '&:hover': { bgcolor: '#0f1626', borderColor: '#7482a0' },
                               }}
                             />
                           ))}
@@ -957,7 +957,7 @@ export default function Reviewer() {
                   variant="contained" size="large"
                   onClick={submitQuiz}
                   disabled={Object.keys(answers).length === 0}
-                  sx={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', fontWeight: 'bold', px: 4 }}
+                  sx={{ background: 'linear-gradient(135deg, #bfdbfe, #10b981)', fontWeight: 'bold', px: 4 }}
                 >
                   Submit Quiz ({Object.keys(answers).length}/{totalQ} answered)
                 </Button>
@@ -974,7 +974,7 @@ export default function Reviewer() {
               <Box sx={{ animation: 'fadeIn 0.3s ease' }}>
                 <Paper sx={{
                   p: 4, mb: 3, borderRadius: 4, textAlign: 'center',
-                  background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                  background: 'linear-gradient(135deg, #16213a 0%, #0f1b2e 55%, #0c2a2a 100%)',
                   color: 'white',
                   boxShadow: '0 12px 32px rgba(15,23,42,0.15)',
                 }}>
@@ -1004,9 +1004,9 @@ export default function Reviewer() {
                           isCorrect = sa.length > 0 && (sa.includes(ka) || ka.includes(sa));
                         }
                         return (
-                          <Box key={q.id} sx={{ p: 2, borderRadius: 2.5, border: `1.5px solid ${isCorrect ? '#86efac' : '#fca5a5'}`, bgcolor: isCorrect ? '#f0fdf4' : '#fff5f5' }}>
+                          <Box key={q.id} sx={{ p: 2, borderRadius: 2.5, border: `1.5px solid ${isCorrect ? 'rgba(74, 222, 128, 0.45)' : 'rgba(248, 113, 113, 0.42)'}`, bgcolor: isCorrect ? 'rgba(74, 222, 128, 0.09)' : '#fff5f5' }}>
                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mb: 1 }}>
-                              {isCorrect ? <CheckCircle sx={{ color: '#16a34a', mt: 0.25, flexShrink: 0 }} /> : <Cancel sx={{ color: '#dc2626', mt: 0.25, flexShrink: 0 }} />}
+                              {isCorrect ? <CheckCircle sx={{ color: '#4ade80', mt: 0.25, flexShrink: 0 }} /> : <Cancel sx={{ color: '#f87171', mt: 0.25, flexShrink: 0 }} />}
                               <Typography variant="body2" fontWeight={600}>{i + 1}. {q.question}</Typography>
                             </Box>
                             <Typography variant="caption" color={isCorrect ? 'success.main' : 'error.main'} display="block" sx={{ ml: 3.5 }}>
@@ -1034,7 +1034,7 @@ export default function Reviewer() {
                   {!isLastModule && (
                     <Button
                       variant="contained" endIcon={<ArrowForward />} onClick={goToNextModule}
-                      sx={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', fontWeight: 'bold' }}
+                      sx={{ background: 'linear-gradient(135deg, #bfdbfe, #10b981)', fontWeight: 'bold' }}
                     >
                       Next Module
                     </Button>
@@ -1042,7 +1042,7 @@ export default function Reviewer() {
                   {(allDone || isLastModule) && (
                     <Button
                       variant="contained" startIcon={<EmojiEvents />} onClick={exitModuleSession}
-                      sx={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', fontWeight: 'bold' }}
+                      sx={{ background: 'linear-gradient(135deg, #bfdbfe, #10b981)', fontWeight: 'bold' }}
                     >
                       Finish — Back to Modules
                     </Button>

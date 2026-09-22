@@ -91,7 +91,7 @@ export function SectionHeading({
       {count !== undefined && (
         <Box
           sx={{
-            minWidth: 24, height: 22, px: 0.75, borderRadius: radius.pill,
+            minWidth: 24, height: 22, px: 0.75, borderRadius: '999px',
             bgcolor: palette.surfaceSunken, color: palette.inkSecondary,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '0.75rem', fontWeight: 700,
@@ -137,7 +137,7 @@ export function SearchField({
           <InputAdornment position="end">
             <Box
               sx={{
-                px: 0.75, py: 0.25, borderRadius: radius.sm, border: `1px solid ${palette.border}`,
+                px: 0.75, py: 0.25, borderRadius: '8px', border: `1px solid ${palette.border}`,
                 bgcolor: palette.surface, fontSize: '0.68rem', fontWeight: 700,
                 color: palette.inkTertiary, fontFamily: font.mono,
               }}
@@ -170,7 +170,7 @@ export function FilterPill<T extends string>({
         sx={{
           minHeight: layout.controlHeightSmall,
           px: 1.5,
-          borderRadius: radius.pill,
+          borderRadius: '999px',
           border: `1px solid ${palette.border}`,
           bgcolor: palette.surface,
           color: palette.inkSecondary,
@@ -256,7 +256,7 @@ export function FolderCard({
       <Box
         sx={{
           position: 'absolute', top: 0, left: 14, width: 78, height: 14,
-          borderTopLeftRadius: radius.md, borderTopRightRadius: radius.md,
+          borderTopLeftRadius: '10px', borderTopRightRadius: '10px',
           background: tint.from,
         }}
       />
@@ -264,7 +264,7 @@ export function FolderCard({
         onClick={onClick}
         sx={{
           position: 'relative',
-          p: 2, borderRadius: radius.lg,
+          p: 2, borderRadius: '14px',
           background: `linear-gradient(160deg, ${tint.from} 0%, ${tint.to} 100%)`,
           border: `1px solid ${palette.border}`,
           cursor: onClick ? 'pointer' : 'default',
@@ -319,7 +319,7 @@ export function EntityCard({
     <Paper
       onClick={onClick}
       sx={{
-        borderRadius: radius.lg,
+        borderRadius: '14px',
         border: `1px solid ${palette.border}`,
         overflow: 'hidden',
         cursor: onClick ? 'pointer' : 'default',
@@ -419,7 +419,7 @@ export function StatTile({
     info: palette.info, neutral: palette.ink,
   }[tone];
   return (
-    <Paper sx={{ p: 2, borderRadius: radius.lg, border: `1px solid ${palette.border}`, flex: '1 1 160px', minWidth: 0 }}>
+    <Paper sx={{ p: 2, borderRadius: '14px', border: `1px solid ${palette.border}`, flex: '1 1 160px', minWidth: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
         {icon}
         <Typography variant="caption" sx={{ color: palette.inkSecondary, fontWeight: 700 }}>{label}</Typography>
@@ -438,7 +438,7 @@ export function EmptyState({
   return (
     <Paper
       sx={{
-        p: { xs: 3, sm: 6 }, textAlign: 'center', borderRadius: radius.lg,
+        p: { xs: 3, sm: 6 }, textAlign: 'center', borderRadius: '14px',
         border: `1px dashed ${palette.borderStrong}`, bgcolor: palette.surfaceMuted,
       }}
     >

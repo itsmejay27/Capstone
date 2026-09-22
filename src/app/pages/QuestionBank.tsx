@@ -212,7 +212,7 @@ export default function QuestionBank() {
               key={question.id}
               sx={{
                 p: { xs: 2, sm: 2.5 },
-                borderRadius: radius.lg,
+                borderRadius: '14px',
                 border: `1px solid ${palette.border}`,
                 minWidth: 0,
               }}
@@ -263,7 +263,7 @@ export default function QuestionBank() {
                           gap: 1,
                           px: 1.25,
                           py: 0.75,
-                          borderRadius: radius.sm,
+                          borderRadius: '8px',
                           bgcolor: isCorrect ? palette.successSoft : palette.surfaceMuted,
                           border: `1px solid ${isCorrect ? palette.successSoft : palette.border}`,
                           minWidth: 0,
