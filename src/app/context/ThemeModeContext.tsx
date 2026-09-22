@@ -1,5 +1,5 @@
 import {
-  createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback,
+  createContext, useContext, useEffect, useMemo, useRef, useState, ReactNode, useCallback,
 } from 'react';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { createAppTheme, buildThemeStylesheet } from '../theme';
@@ -11,6 +11,9 @@ export type ResolvedMode = 'light' | 'dark';
 
 const STORAGE_KEY = 'themePreference';
 const STYLE_ELEMENT_ID = 'omsc-theme-vars';
+const TRANSITION_CLASS = 'theme-transition';
+/** Must match the duration in the transition rule, plus a little slack. */
+const TRANSITION_MS = 380;
 
 interface ThemeModeContextValue {
   /** The user's choice, including 'system'. */
@@ -80,9 +83,25 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
     return () => query.removeEventListener('change', onChange);
   }, []);
 
-  // The attribute is what actually swaps the palette.
+  // The attribute is what actually swaps the palette. The transition class is added just
+  // for the swap and taken off again, so the cross-fade never applies to ordinary hovers
+  // or route changes. It is skipped on the very first paint — there is nothing to fade
+  // from, and fading in from the wrong theme is exactly the flash we are avoiding.
+  const firstPaint = useRef(true);
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', mode);
+    const root = document.documentElement;
+    if (firstPaint.current) {
+      firstPaint.current = false;
+      root.setAttribute('data-theme', mode);
+      return;
+    }
+    root.classList.add(TRANSITION_CLASS);
+    root.setAttribute('data-theme', mode);
+    const timer = window.setTimeout(() => root.classList.remove(TRANSITION_CLASS), TRANSITION_MS);
+    return () => {
+      window.clearTimeout(timer);
+      root.classList.remove(TRANSITION_CLASS);
+    };
   }, [mode]);
 
   const setPreference = useCallback((next: ThemePreference) => {

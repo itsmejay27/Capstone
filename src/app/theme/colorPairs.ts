@@ -121,16 +121,22 @@ export const COLOR_PAIRS: ColorPair[] = [
   { name: 'pink-50', light: '#fdf2f8', dark: 'rgba(244, 114, 182, 0.08)' },
   { name: 'pink-800', light: '#9d174d', dark: '#f9a8d4' },
 
+  // ── Panels that stay dark in both themes (white text sits on them) ──
+  { name: 'banner-from', light: '#1e293b', dark: '#18243c' },
+  { name: 'banner-to', light: '#0f172a', dark: '#0d1526' },
+  { name: 'banner-ink', light: '#ffffff', dark: '#e8edf7' },
+  { name: 'banner-ink-dim', light: '#c3cddf', dark: '#a3b0c7' },
+
   // ── Neutral surfaces the token palette is built from ──
-  { name: 'canvas', light: '#f6f6f8', dark: '#0b1120' },
+  { name: 'canvas', light: '#eceef3', dark: '#0b1120' },
   { name: 'surface', light: '#ffffff', dark: '#131b2e' },
-  { name: 'surface-muted', light: '#fafafb', dark: '#18223a' },
-  { name: 'surface-sunken', light: '#f2f2f5', dark: '#1c2740' },
-  { name: 'border', light: '#e8e8ed', dark: '#25304a' },
-  { name: 'border-strong', light: '#dcdce3', dark: '#33415c' },
+  { name: 'surface-muted', light: '#f6f7fa', dark: '#18223a' },
+  { name: 'surface-sunken', light: '#e4e7ee', dark: '#1c2740' },
+  { name: 'border', light: '#d5d9e2', dark: '#25304a' },
+  { name: 'border-strong', light: '#bcc2d0', dark: '#33415c' },
   { name: 'ink', light: '#16161d', dark: '#e8edf7' },
   { name: 'ink-secondary', light: '#5c5c6b', dark: '#a3b0c7' },
-  { name: 'ink-tertiary', light: '#8e8e9e', dark: '#7482a0' },
+  { name: 'ink-tertiary', light: '#7a7a8c', dark: '#7482a0' },
   { name: 'ink-disabled', light: '#b4b4c0', dark: '#55627d' },
 ];
 
@@ -144,10 +150,10 @@ export const cssVar = (name: string) => `var(${varName(name)})`;
  * shadow reads as a lift, while on a dark one the same shadow is invisible and has to be
  * both darker and longer.
  */
-const EFFECTS_LIGHT = `  --shadow-xs: 0 1px 2px rgba(22, 22, 29, 0.04);
-  --shadow-sm: 0 1px 3px rgba(22, 22, 29, 0.06), 0 1px 2px rgba(22, 22, 29, 0.04);
-  --shadow-md: 0 4px 12px rgba(22, 22, 29, 0.06);
-  --shadow-lg: 0 12px 28px rgba(22, 22, 29, 0.10);
+const EFFECTS_LIGHT = `  --shadow-xs: 0 1px 2px rgba(22, 22, 29, 0.07);
+  --shadow-sm: 0 1px 3px rgba(22, 22, 29, 0.10), 0 1px 2px rgba(22, 22, 29, 0.06);
+  --shadow-md: 0 6px 16px rgba(22, 22, 29, 0.10);
+  --shadow-lg: 0 16px 34px rgba(22, 22, 29, 0.16);
   --shadow-focus-ring: rgba(5, 150, 105, 0.22);
   --glow-a: rgba(5, 150, 105, 0.10);
   --glow-b: rgba(13, 148, 136, 0.09);`;
@@ -160,13 +166,36 @@ const EFFECTS_DARK = `  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
   --glow-a: rgba(16, 185, 129, 0.20);
   --glow-b: rgba(34, 211, 238, 0.16);`;
 
+/**
+ * Cross-fade between themes.
+ *
+ * Deliberately gated behind a class the provider adds only for the duration of a switch:
+ * a permanent global transition would also animate every hover, focus and route change,
+ * which makes the whole app feel laggy. Only the colour properties are transitioned —
+ * animating `all` would drag layout properties into the compositor and cause visible jank.
+ *
+ * Honours prefers-reduced-motion, where an instant swap is the correct behaviour.
+ */
+const THEME_TRANSITION = `.theme-transition, .theme-transition *, .theme-transition *::before, .theme-transition *::after {
+  transition: background-color 320ms ease, background-image 320ms ease, border-color 320ms ease,
+    color 320ms ease, fill 320ms ease, stroke 320ms ease, box-shadow 320ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition, .theme-transition *, .theme-transition *::before, .theme-transition *::after {
+    transition: none !important;
+  }
+}
+`;
+
 /** The stylesheet text defining both themes. Injected once at startup. */
 export function buildThemeStylesheet(): string {
   const light = COLOR_PAIRS.map((p) => `  ${varName(p.name)}: ${p.light};`).join('\n');
   const dark = COLOR_PAIRS.map((p) => `  ${varName(p.name)}: ${p.dark};`).join('\n');
   return (
     `:root {\n  color-scheme: light;\n${light}\n${EFFECTS_LIGHT}\n}\n\n` +
-    `:root[data-theme='dark'] {\n  color-scheme: dark;\n${dark}\n${EFFECTS_DARK}\n}\n`
+    `:root[data-theme='dark'] {\n  color-scheme: dark;\n${dark}\n${EFFECTS_DARK}\n}\n\n` +
+    THEME_TRANSITION
   );
 }
 

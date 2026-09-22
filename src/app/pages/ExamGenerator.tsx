@@ -884,7 +884,7 @@ export default function ExamGenerator() {
 
       {/* Modern High-End Banner */}
       <Box sx={{
-        background: 'linear-gradient(135deg, var(--c-slate-900) 0%, var(--c-slate-800) 100%)',
+        background: 'linear-gradient(135deg, var(--c-banner-from) 0%, var(--c-banner-to) 100%)',
         borderRadius: 4,
         p: { xs: 3, md: 4 },
         mb: 4,
@@ -927,7 +927,7 @@ export default function ExamGenerator() {
             <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: '-0.025em', mb: 0.5, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
               AI Exam Generator
             </Typography>
-            <Typography variant="body2" sx={{ color: 'var(--c-slate-300)', fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ color: 'var(--c-banner-ink-dim)', fontWeight: 500 }}>
               Design syllabus-aligned, high-fidelity exam pools with custom randomized question drawers.
             </Typography>
           </Box>
@@ -1277,7 +1277,7 @@ export default function ExamGenerator() {
                             disabled={isTosActive}
                             value={mcCount}
                             onChange={(e) => setMcCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? 'var(--c-slate-100)' : '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? 'var(--c-slate-100)' : 'var(--c-surface)' } }}
                           />
                         </Grid>
                         <Grid size={{ xs: 6, sm: 3 }}>
@@ -1289,7 +1289,7 @@ export default function ExamGenerator() {
                             disabled={isTosActive}
                             value={tfCount}
                             onChange={(e) => setTfCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? 'var(--c-slate-100)' : '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? 'var(--c-slate-100)' : 'var(--c-surface)' } }}
                           />
                         </Grid>
                         <Grid size={{ xs: 6, sm: 3 }}>
@@ -1301,7 +1301,7 @@ export default function ExamGenerator() {
                             disabled={isTosActive}
                             value={saCount}
                             onChange={(e) => setSaCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? 'var(--c-slate-100)' : '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? 'var(--c-slate-100)' : 'var(--c-surface)' } }}
                           />
                         </Grid>
                         <Grid size={{ xs: 6, sm: 3 }}>
@@ -1313,7 +1313,7 @@ export default function ExamGenerator() {
                             disabled={isTosActive}
                             value={essayCount}
                             onChange={(e) => setEssayCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? 'var(--c-slate-100)' : '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? 'var(--c-slate-100)' : 'var(--c-surface)' } }}
                           />
                         </Grid>
                       </Grid>
