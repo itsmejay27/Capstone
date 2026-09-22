@@ -903,7 +903,7 @@ export default function LoginPage() {
           {/* English Google Sign-In Container */}
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
             {!GOOGLE_CLIENT_ID ? (
-              <Alert severity="info" sx={{ width: '100%', borderRadius: 2, fontSize: '0.8rem' }}>
+              <Alert severity="info" sx={{ width: '100%', borderRadius: 2, fontSize: '0.8rem', bgcolor: 'var(--c-surface-muted)', color: 'var(--c-ink)', border: '1px solid var(--c-border)', '& .MuiAlert-icon': { color: 'var(--c-primary)' } }}>
                 Google Sign-In is not configured. Set <strong>VITE_GOOGLE_CLIENT_ID</strong> to enable it —
                 use the demo accounts below in the meantime.
               </Alert>
