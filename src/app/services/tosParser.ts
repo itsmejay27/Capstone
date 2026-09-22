@@ -8,6 +8,8 @@
  * - Points per item
  */
 
+import { geminiEndpoint, isGeminiAvailable } from './geminiEndpoint';
+
 export interface TOSItemSpec {
   itemNumber: number;
   topic: string;
@@ -774,7 +776,8 @@ export function buildItemSpecs(rows: TOSRow[]): TOSItemSpec[] {
  */
 export async function analyzeTOSWithAI(rawText: string, apiKey?: string): Promise<Partial<TOSData> | null> {
   const key = (apiKey || (typeof window !== 'undefined' ? localStorage.getItem('gemini_api_key') : '') || '').trim();
-  if (!key || !rawText || rawText.trim().length < 40) return null;
+  if (!rawText || rawText.trim().length < 40) return null;
+  if (!isGeminiAvailable(key)) return null;
 
   const prompt = `[MANDATORY STEP 1: TOS ANALYSIS & INVENTORY]
 You are an expert university curriculum auditor.
@@ -829,7 +832,7 @@ Respond ONLY with valid JSON matching this schema:
 
   for (const modelCandidate of modelsToTry) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelCandidate}:generateContent?key=${key}`;
+      const url = geminiEndpoint(modelCandidate, key);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 40000);
 
