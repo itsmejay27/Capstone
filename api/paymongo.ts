@@ -18,8 +18,13 @@
 
 const PAYMONGO_BASE = 'https://api.paymongo.com/v1';
 
-/** Payment methods a Philippine school account can realistically accept. */
-const PAYMENT_METHODS = ['card', 'gcash', 'paymaya'];
+/**
+ * Payment methods requested on the checkout page. Defaults to QR Ph, which any Philippine
+ * banking or e-wallet app can scan. Override with PAYMONGO_PAYMENT_METHODS (comma-separated,
+ * e.g. "qrph,gcash,card") once PayMongo activates more methods on the account.
+ */
+const PAYMENT_METHODS = (process.env.PAYMONGO_PAYMENT_METHODS || 'qrph')
+  .split(',').map((m) => m.trim()).filter(Boolean);
 
 export const config = { maxDuration: 30 };
 
