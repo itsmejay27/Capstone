@@ -5,6 +5,7 @@
 
 import { getDifficultyPromptDirective } from './ollamaService';
 import { TOSData, buildTOSConstraintText, normaliseCogLevel, isAdministrativeMetadata } from './tosParser';
+import { geminiEndpoint } from './geminiEndpoint';
 
 export const DEFAULT_GEMINI_API_KEY =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) || '';
@@ -22,6 +23,8 @@ export function getStoredGeminiApiKey(): string {
   }
   return DEFAULT_GEMINI_API_KEY;
 }
+
+export { geminiEndpoint, isGeminiAvailable } from './geminiEndpoint';
 
 export interface GeminiExamParams {
   apiKey?: string;
@@ -62,7 +65,7 @@ async function callGeminiApiForBatch(
   if (!apiKey) return [];
   for (const modelCandidate of modelsToTry) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelCandidate}:generateContent?key=${apiKey}`;
+      const url = geminiEndpoint(modelCandidate, apiKey);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -425,7 +428,7 @@ export async function regenerateQuestionWithGemini(
   effectiveTopic?: string
 ): Promise<any> {
   const key = (apiKey || getStoredGeminiApiKey()).trim();
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const url = geminiEndpoint(model, key);
 
   const topic = (effectiveTopic && effectiveTopic !== 'General Subject Matter' && effectiveTopic !== 'Custom Topic')
     ? effectiveTopic
@@ -669,7 +672,7 @@ Respond ONLY with valid JSON:
 
   for (const modelCandidate of modelsToTry) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelCandidate}:generateContent?key=${key}`;
+      const url = geminiEndpoint(modelCandidate, key);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for multi-module reviewer
 
