@@ -8,6 +8,7 @@ import {
   Home, School, AutoAwesome, LibraryBooks, Quiz, MenuBook, Notifications,
   ExpandLess, ExpandMore, Star, StarBorder, ChevronLeft, ChevronRight, Inventory2,
   Settings as SettingsIcon,
+  WorkspacePremium,
 } from '@mui/icons-material';
 import { palette, radius, layout, font } from '../../theme/tokens';
 import { visibleTabSlugs, CLASSROOM_TAB_LABELS } from '../../constants/classroomTabs';
@@ -149,6 +150,7 @@ export default function AppSidebar({
 
       <List sx={{ px: 1, py: 0 }}>
         {navButton({ label: 'Notifications', icon: <Notifications fontSize="small" />, path: '/notifications', badge: notificationCount })}
+        {isInstructor && navButton({ label: 'Plans & billing', icon: <WorkspacePremium fontSize="small" />, path: '/billing' })}
         {navButton({ label: 'Settings', icon: <SettingsIcon fontSize="small" />, path: '/settings' })}
       </List>
 

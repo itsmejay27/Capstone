@@ -12,6 +12,7 @@ import ExamResults from './pages/ExamResults';
 import QuestionBank from './pages/QuestionBank';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
+import Billing from './pages/Billing';
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: 'question-bank', Component: QuestionBank },
       { path: 'notifications', Component: Notifications },
       { path: 'settings', Component: Settings },
+      { path: 'billing', Component: Billing },
       { path: 'reviewer-generator', Component: ReviewerGenerator },
       { path: 'reviewer', Component: Reviewer },
       { path: 'exam/:examId/take', Component: TakeExam },

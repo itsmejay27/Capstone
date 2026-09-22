@@ -782,3 +782,66 @@ export async function deleteCommentDb(commentId: string) {
   }
 }
 
+
+// ── Subscriptions ────────────────────────────────────────────────────────────
+
+/** The plan catalogue. Readable without signing in, so the pricing page works for guests. */
+export async function fetchSubscriptionPlans() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('subscription_plans')
+    .select('*')
+    .eq('is_active', true)
+    .order('sort_order');
+  if (error) {
+    warn('fetchSubscriptionPlans', error);
+    return [];
+  }
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description || '',
+    priceCentavos: p.price_centavos ?? 0,
+    currency: p.currency || 'PHP',
+    interval: p.interval || 'month',
+    features: Array.isArray(p.features) ? p.features : [],
+    maxClassrooms: p.max_classrooms ?? null,
+    maxExamsPerMonth: p.max_exams_per_month ?? null,
+    sortOrder: p.sort_order ?? 0,
+  }));
+}
+
+/**
+ * The signed-in user's current subscription, or null when they are on the free plan.
+ *
+ * Only an `active` row whose period has not yet elapsed counts. Rows are never deleted, so
+ * an expired subscription stays on record without granting anything.
+ */
+export async function fetchUserSubscription(userId: string) {
+  if (!supabase || !userId) return null;
+  const { data, error } = await supabase
+    .from('user_subscriptions')
+    .select('*')
+    .eq('user_id', toDbId(userId))
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) {
+    warn('fetchUserSubscription', error);
+    return null;
+  }
+  const row = (data || [])[0];
+  if (!row) return null;
+  if (row.current_period_end && new Date(row.current_period_end).getTime() < Date.now()) {
+    return null;
+  }
+  return {
+    id: row.id,
+    userId: row.user_id,
+    planId: row.plan_id,
+    status: row.status,
+    currentPeriodStart: row.current_period_start || undefined,
+    currentPeriodEnd: row.current_period_end || undefined,
+    amountCentavos: row.amount_centavos ?? undefined,
+  };
+}
