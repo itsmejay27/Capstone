@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import OllamaConfigControl, { AIEngineType } from '../components/OllamaConfigControl';
 import { generateExamWithOllama, regenerateQuestionWithOllama, regenerateItemsForSpecsOllama } from '../services/ollamaService';
 import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey, regenerateItemsForSpecs } from '../services/geminiService';
@@ -218,6 +219,7 @@ const getDifficultyBadgeColor = (level?: string) => {
 };
 
 export default function ExamGenerator() {
+  const { toast, ToastHost } = useToast();
   const { classroomId } = useParams();
   const { currentUser, saveExamToRepository } = useAuth();
   const navigate = useNavigate();
@@ -800,17 +802,17 @@ export default function ExamGenerator() {
   // Save the exam template to the Exam Repository
   const handleSaveExam = () => {
     if (!examTitle.trim()) {
-      alert('Please enter an exam title.');
+      toast('Please enter an exam title.', 'error');
       return;
     }
 
     // Belt and braces: the Save buttons are already disabled in this state, but never let a
     // non-compliant exam reach the repository without an explicit acknowledgement.
     if (tosReport && !tosReport.compliant && !tosOverride) {
-      alert(
-        'This exam does not match the uploaded Table of Specifications.\n\n' +
-        `${tosReport.summary}\n\n` +
-        'Regenerate the flagged items, correct them by hand, or tick the acknowledgement box to save anyway.'
+      toast(
+        `This exam does not match the uploaded Table of Specifications. ${tosReport.summary} ` +
+        'Regenerate the flagged items, correct them by hand, or tick the acknowledgement box to save anyway.',
+        'warning'
       );
       return;
     }
@@ -848,8 +850,9 @@ export default function ExamGenerator() {
     };
 
     saveExamToRepository(examTemplate);
-    alert('Exam template successfully saved in the Exam Repository!');
-    navigate('/exam-repository');
+    toast('Exam template saved to the Exam Repository.');
+    // Give the confirmation a moment to be read before the page changes under it.
+    setTimeout(() => navigate('/exam-repository'), 900);
   };
 
   return (
@@ -2408,6 +2411,7 @@ export default function ExamGenerator() {
           </Box>
         )}
       </Paper>
+      {ToastHost}
     </Container>
   );
 }

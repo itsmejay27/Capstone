@@ -7,8 +7,11 @@
  * can inspect.
  *
  * The key is deliberately NOT named VITE_GEMINI_API_KEY: the VITE_ prefix is what
- * inlines a value into the public client bundle, which is precisely what this exists
- * to avoid.
+ * inlines a value into the public client bundle, which is precisely what this avoids.
+ *
+ * This runs on Vercel's Node runtime (the `(req, res)` signature below), because
+ * generation can take most of a minute and the Node runtime is what supports the
+ * extended `maxDuration`.
  */
 
 const ALLOWED_MODELS = new Set([
@@ -19,30 +22,44 @@ const ALLOWED_MODELS = new Set([
 
 export const config = { maxDuration: 60 };
 
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405);
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    // Surfaced to the caller so a misconfigured deployment is diagnosable, without
-    // leaking anything about the environment itself.
-    return json({ error: 'GEMINI_API_KEY is not configured on the server.' }, 503);
+    // Surfaced so a misconfigured deployment is diagnosable from the client, without
+    // revealing anything about the environment itself.
+    res.status(503).json({
+      error: 'GEMINI_API_KEY is not configured on the server. Add it in the Vercel project settings.',
+    });
+    return;
   }
 
-  const model = new URL(req.url).searchParams.get('model') || 'gemini-3.5-flash-lite';
-  // Only proxy to a known model, so this endpoint cannot be repurposed as an open
-  // relay to arbitrary Google API paths.
+  const model = String(req.query?.model || 'gemini-3.5-flash-lite');
+  // Only proxy to a known model, so this cannot be repurposed as an open relay to
+  // arbitrary Google API paths.
   if (!ALLOWED_MODELS.has(model)) {
-    return json({ error: `Unsupported model: ${model}` }, 400);
+    res.status(400).json({ error: `Unsupported model: ${model}` });
+    return;
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: 'Request body must be JSON.' }, 400);
+  // Vercel parses a JSON body automatically, but a string can still arrive when the
+  // content type is not exactly application/json.
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      res.status(400).json({ error: 'Request body must be JSON.' });
+      return;
+    }
+  }
+  if (!body || typeof body !== 'object') {
+    res.status(400).json({ error: 'Request body must be JSON.' });
+    return;
   }
 
   const upstream = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -54,21 +71,12 @@ export default async function handler(req: Request): Promise<Response> {
       body: JSON.stringify(body),
     });
 
-    // Pass Google's response through untouched so the client's existing parsing and
-    // its model-fallback logic keep working, including on an error status.
+    // Pass Google's response through untouched, including on an error status, so the
+    // client's existing parsing and model-fallback logic keep working unchanged.
     const text = await response.text();
-    return new Response(text, {
-      status: response.status,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    res.status(response.status).setHeader('Content-Type', 'application/json');
+    res.send(text);
   } catch (error) {
-    return json({ error: `Upstream request failed: ${(error as Error).message}` }, 502);
+    res.status(502).json({ error: `Upstream request failed: ${(error as Error).message}` });
   }
-}
-
-function json(payload: unknown, status: number): Response {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
 }
