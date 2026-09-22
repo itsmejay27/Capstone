@@ -8,6 +8,6 @@
 export default function handler(_req: any, res: any) {
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
-    googleClientId: process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '',
+    googleClientId: (process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '').trim(),
   });
 }
