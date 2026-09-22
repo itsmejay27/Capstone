@@ -59,7 +59,7 @@ function SummaryTile({
       onClick={onClick}
       sx={{
         position: 'relative', overflow: 'hidden', flex: '1 1 150px', minWidth: 0,
-        p: 2, pl: 2.5, borderRadius: radius.lg, cursor: onClick ? 'pointer' : 'default',
+        p: 2, pl: 2.5, borderRadius: '14px', cursor: onClick ? 'pointer' : 'default',
         border: `1px solid ${active ? map.fg : palette.border}`,
         bgcolor: active ? map.bg : palette.surface,
         transition: 'border-color .15s ease, background-color .15s ease, transform .15s ease',
@@ -71,7 +71,7 @@ function SummaryTile({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
         <Box
           sx={{
-            width: 26, height: 26, borderRadius: radius.sm, bgcolor: map.bg,
+            width: 26, height: 26, borderRadius: '8px', bgcolor: map.bg,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           }}
         >
@@ -98,7 +98,7 @@ function TodoRow({ item, onOpen }: { item: TodoItem; onOpen: () => void }) {
     <Paper
       onClick={onOpen}
       sx={{
-        p: { xs: 1.75, sm: 2 }, mb: 1.25, borderRadius: radius.lg, cursor: 'pointer',
+        p: { xs: 1.75, sm: 2 }, mb: 1.25, borderRadius: '14px', cursor: 'pointer',
         border: `1px solid ${overdue ? palette.dangerSoft : palette.border}`,
         borderLeft: `3px solid ${overdue ? palette.danger : tint.from}`,
         display: 'flex', alignItems: 'center', gap: 1.75,
@@ -108,7 +108,7 @@ function TodoRow({ item, onOpen }: { item: TodoItem; onOpen: () => void }) {
     >
       <Box
         sx={{
-          width: 38, height: 38, borderRadius: radius.md, flexShrink: 0,
+          width: 38, height: 38, borderRadius: '10px', flexShrink: 0,
           background: `linear-gradient(135deg, ${tint.from}, ${tint.to})`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
@@ -268,7 +268,7 @@ export default function Notifications() {
 
       {/* Progress ribbon — students only; instructors have no "completion" of their own. */}
       {!isInstructor && todos.length > 0 && (
-        <Paper sx={{ p: 2, mb: 3, borderRadius: radius.lg, border: `1px solid ${palette.border}` }}>
+        <Paper sx={{ p: 2, mb: 3, borderRadius: '14px', border: `1px solid ${palette.border}` }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
             <Typography variant="caption" sx={{ fontWeight: 700, color: palette.inkSecondary }}>
               Term progress
@@ -346,7 +346,7 @@ export default function Notifications() {
                   key={a.id}
                   onClick={() => navigate(`/classroom/${a.classroomId}?tab=stream`)}
                   sx={{
-                    p: 2, mb: 1.25, borderRadius: radius.lg, cursor: 'pointer',
+                    p: 2, mb: 1.25, borderRadius: '14px', cursor: 'pointer',
                     border: `1px solid ${palette.border}`,
                     display: 'flex', gap: 1.75, alignItems: 'flex-start',
                     '&:hover': { boxShadow: shadow.sm },

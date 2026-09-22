@@ -124,7 +124,7 @@ export default function OllamaConfigControl({
           {/* Engine Status Badge */}
           {engine === 'gemini' ? (
             <Chip
-              icon={<AutoAwesome sx={{ color: '#059669 !important' }} />}
+              icon={<AutoAwesome sx={{ color: '#10b981 !important' }} />}
               label="Google Gemini Cloud AI"
               color="secondary"
               variant="outlined"
@@ -133,7 +133,7 @@ export default function OllamaConfigControl({
             />
           ) : engine === 'nvidia' ? (
             <Chip
-              icon={<AutoAwesome sx={{ color: '#16a34a !important' }} />}
+              icon={<AutoAwesome sx={{ color: '#4ade80 !important' }} />}
               label="Llama via NVIDIA Cloud"
               color="success"
               variant="outlined"
@@ -149,7 +149,7 @@ export default function OllamaConfigControl({
             />
           ) : ollamaStatus.connected ? (
             <Chip
-              icon={<CheckCircle sx={{ color: '#16a34a !important' }} />}
+              icon={<CheckCircle sx={{ color: '#4ade80 !important' }} />}
               label="Ollama Connected"
               color="success"
               variant="outlined"
@@ -158,7 +158,7 @@ export default function OllamaConfigControl({
             />
           ) : (
             <Chip
-              icon={<ErrorIcon sx={{ color: '#dc2626 !important' }} />}
+              icon={<ErrorIcon sx={{ color: '#f87171 !important' }} />}
               label="Ollama Offline"
               color="error"
               variant="outlined"
@@ -185,7 +185,7 @@ export default function OllamaConfigControl({
                   borderRadius: 2,
                   cursor: 'pointer',
                   borderWidth: 2,
-                  borderColor: engine === 'gemini' ? 'secondary.main' : '#e2e8f0',
+                  borderColor: engine === 'gemini' ? 'secondary.main' : '#25304a',
                   bgcolor: engine === 'gemini' ? 'rgba(5, 150, 105, 0.04)' : 'inherit',
                   transition: 'all 0.2s',
                   display: 'flex',
@@ -197,7 +197,7 @@ export default function OllamaConfigControl({
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
                     <AutoAwesome fontSize="small" color="secondary" />
-                    <Typography variant="body2" fontWeight="bold" color="#6b21a8">Google Gemini AI</Typography>
+                    <Typography variant="body2" fontWeight="bold" color="#67e8f9">Google Gemini AI</Typography>
                   </Box>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.75rem' }}>
                     Ultra fast cloud model (1-2s response time)
@@ -216,7 +216,7 @@ export default function OllamaConfigControl({
                   borderRadius: 2,
                   cursor: 'pointer',
                   borderWidth: 2,
-                  borderColor: engine === 'nvidia' ? 'success.main' : '#e2e8f0',
+                  borderColor: engine === 'nvidia' ? 'success.main' : '#25304a',
                   bgcolor: engine === 'nvidia' ? 'rgba(22, 163, 74, 0.04)' : 'inherit',
                   transition: 'all 0.2s',
                   display: 'flex',
@@ -228,7 +228,7 @@ export default function OllamaConfigControl({
                 <Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
                     <AutoAwesome fontSize="small" color="success" />
-                    <Typography variant="body2" fontWeight="bold" color="#15803d">Llama (NVIDIA Cloud)</Typography>
+                    <Typography variant="body2" fontWeight="bold" color="#4ade80">Llama (NVIDIA Cloud)</Typography>
                   </Box>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.75rem' }}>
                     Hosted Llama 3.3 — works on the deployed site
@@ -247,7 +247,7 @@ export default function OllamaConfigControl({
                   borderRadius: 2,
                   cursor: 'pointer',
                   borderWidth: 2,
-                  borderColor: engine === 'ollama' ? 'primary.main' : '#e2e8f0',
+                  borderColor: engine === 'ollama' ? 'primary.main' : '#25304a',
                   bgcolor: engine === 'ollama' ? 'rgba(16, 185, 129, 0.04)' : 'inherit',
                   transition: 'all 0.2s',
                   display: 'flex',
@@ -281,7 +281,7 @@ export default function OllamaConfigControl({
                 value={nvidiaModels.some((m) => m.id === nvidiaModel) ? nvidiaModel : ''}
                 label={nvidiaLoading ? 'Loading available models…' : 'Select Llama Model'}
                 onChange={(e) => onNvidiaModelChange?.(e.target.value)}
-                sx={{ borderRadius: 2, bgcolor: '#fff' }}
+                sx={{ borderRadius: 2, bgcolor: '#131b2e' }}
               >
                 {nvidiaModels.map((m) => (
                   <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
@@ -305,7 +305,7 @@ export default function OllamaConfigControl({
               value={geminiModel}
               label="Select Gemini Model"
               onChange={(e) => onGeminiModelChange && onGeminiModelChange(e.target.value)}
-              sx={{ borderRadius: 2, bgcolor: '#fff' }}
+              sx={{ borderRadius: 2, bgcolor: '#131b2e' }}
             >
               {GEMINI_MODELS.map((m) => (
                 <MenuItem key={m.id} value={m.id}>
@@ -325,7 +325,7 @@ export default function OllamaConfigControl({
                   label="Select Ollama Model"
                   onChange={(e) => onModelChange(e.target.value)}
                   disabled={!ollamaStatus.connected}
-                  sx={{ borderRadius: 2, bgcolor: '#fff' }}
+                  sx={{ borderRadius: 2, bgcolor: '#131b2e' }}
                 >
                   {ollamaStatus.models.length > 0 ? (
                     ollamaStatus.models.map((m) => (
@@ -357,9 +357,9 @@ export default function OllamaConfigControl({
 
         {/* Speed Tip Banner for Local Ollama */}
         {engine === 'ollama' && (
-          <Box sx={{ mt: 1.5, p: 1.2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
+          <Box sx={{ mt: 1.5, p: 1.2, bgcolor: '#0f1626', borderRadius: 2, border: '1px dashed #33415c' }}>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-              <Box component="span" sx={{ fontWeight: 'bold', color: '#16a34a' }}>⚡ Laptop Speed Tip:</Box>
+              <Box component="span" sx={{ fontWeight: 'bold', color: '#4ade80' }}>⚡ Laptop Speed Tip:</Box>
               Select <strong>llama3.2:latest</strong> (3B) or 1B models for 3x–5x faster execution. (Run <code>ollama pull llama3.2:1b</code> in terminal for ultra-fast 1B generation).
             </Typography>
           </Box>

@@ -163,7 +163,7 @@ export default function CommentThread({
                 <Box
                   sx={{
                     flex: 1, minWidth: 0, bgcolor: palette.surfaceMuted,
-                    border: `1px solid ${palette.border}`, borderRadius: radius.md, px: 1.5, py: 1,
+                    border: `1px solid ${palette.border}`, borderRadius: '10px', px: 1.5, py: 1,
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>

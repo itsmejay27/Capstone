@@ -884,7 +884,7 @@ export default function ExamGenerator() {
 
       {/* Modern High-End Banner */}
       <Box sx={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+        background: 'linear-gradient(135deg, #16213a 0%, #0f1b2e 55%, #0c2a2a 100%)',
         borderRadius: 4,
         p: { xs: 3, md: 4 },
         mb: 4,
@@ -927,14 +927,14 @@ export default function ExamGenerator() {
             <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: '-0.025em', mb: 0.5, fontSize: { xs: '1.75rem', md: '2.25rem' } }}>
               AI Exam Generator
             </Typography>
-            <Typography variant="body2" sx={{ color: '#cbd5e1', fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ color: '#33415c', fontWeight: 500 }}>
               Design syllabus-aligned, high-fidelity exam pools with custom randomized question drawers.
             </Typography>
           </Box>
         </Box>
       </Box>
 
-      <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9' }}>
+      <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid #1a2338' }}>
         <Stepper activeStep={activeStep} sx={{ mb: 5 }}>
           {steps.map((label) => (
             <Step key={label}>
@@ -950,7 +950,7 @@ export default function ExamGenerator() {
           <Grid container spacing={3} sx={{ animation: 'fadeIn 0.3s ease' }}>
             {/* LEFT COLUMN: Basic Details & AI Engine Selection */}
             <Grid size={{ xs: 12, md: 6 }}>
-              <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: '#e2e8f0', height: '100%', p: 1 }}>
+              <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: '#25304a', height: '100%', p: 1 }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
                     <ListAlt color="primary" />
@@ -1059,7 +1059,7 @@ export default function ExamGenerator() {
 
             {/* RIGHT COLUMN: AI Topics, Difficulty, Allocations & File Attachments */}
             <Grid size={{ xs: 12, md: 6 }}>
-              <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: isTosActive ? '#6ee7b7' : '#e2e8f0', height: '100%', p: 1 }}>
+              <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: isTosActive ? '#6ee7b7' : '#25304a', height: '100%', p: 1 }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -1085,17 +1085,17 @@ export default function ExamGenerator() {
                         sx={{
                           p: 2,
                           borderRadius: 3,
-                          bgcolor: '#faf5ff',
+                          bgcolor: 'rgba(34, 211, 238, 0.08)',
                           borderColor: '#d8b4fe',
-                          borderLeft: '5px solid #059669',
+                          borderLeft: '5px solid #10b981',
                           boxShadow: '0 4px 12px rgba(5, 150, 105, 0.07)',
                         }}
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AssignmentTurnedIn sx={{ color: '#047857', fontSize: 24 }} />
+                            <AssignmentTurnedIn sx={{ color: '#34d399', fontSize: 24 }} />
                             <Box>
-                              <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#581c87', lineHeight: 1.2 }}>
+                              <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#a5f3fc', lineHeight: 1.2 }}>
                                 Table of Specifications (TOS) Active
                               </Typography>
                               <Typography variant="caption" sx={{ color: '#7e22ce', fontWeight: 600 }}>
@@ -1117,7 +1117,7 @@ export default function ExamGenerator() {
 
                         {isTosParsing ? (
                           <Box sx={{ py: 1 }}>
-                            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 700, color: '#6b21a8' }}>
+                            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 700, color: '#67e8f9' }}>
                               Reading Table of Specifications matrix & cognitive levels...
                             </Typography>
                             <LinearProgress color="secondary" sx={{ borderRadius: 2, height: 6 }} />
@@ -1125,11 +1125,11 @@ export default function ExamGenerator() {
                         ) : tosData ? (
                           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
                             {tosData.courseTitle && (
-                              <Box sx={{ p: 1, bgcolor: '#ecfdf5', borderRadius: 1.5, border: '1px solid #a7f3d0' }}>
-                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#065f46', display: 'block' }}>
+                              <Box sx={{ p: 1, bgcolor: 'rgba(16, 185, 129, 0.13)', borderRadius: 1.5, border: '1px solid rgba(16, 185, 129, 0.38)' }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, color: '#6ee7b7', display: 'block' }}>
                                   COURSE SPECIFICATION:
                                 </Typography>
-                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#064e3b' }}>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#a7f3d0' }}>
                                   {tosData.courseTitle}
                                 </Typography>
                               </Box>
@@ -1154,12 +1154,12 @@ export default function ExamGenerator() {
                                 icon={<Lock sx={{ fontSize: '0.75rem !important' }} />}
                                 label="Rules Locked by TOS"
                                 size="small"
-                                sx={{ fontWeight: 800, fontSize: '0.7rem', bgcolor: '#d1fae5', color: '#6b21a8' }}
+                                sx={{ fontWeight: 800, fontSize: '0.7rem', bgcolor: 'rgba(16, 185, 129, 0.18)', color: '#67e8f9' }}
                               />
                             </Box>
 
                             <Box>
-                              <Typography variant="caption" sx={{ fontWeight: 750, color: '#064e3b', display: 'block', mb: 0.5 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 750, color: '#a7f3d0', display: 'block', mb: 0.5 }}>
                                 Bloom's Cognitive Distribution:
                               </Typography>
                               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
@@ -1187,10 +1187,10 @@ export default function ExamGenerator() {
 
                             {tosData.topics && tosData.topics.length > 0 && (
                               <Box sx={{ mt: 0.3 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 750, color: '#064e3b', display: 'block', mb: 0.2 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 750, color: '#a7f3d0', display: 'block', mb: 0.2 }}>
                                   TOS Topics Detected ({tosData.topics.length}):
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: '#6b21a8', fontStyle: 'italic', display: 'block', lineHeight: 1.3 }}>
+                                <Typography variant="caption" sx={{ color: '#67e8f9', fontStyle: 'italic', display: 'block', lineHeight: 1.3 }}>
                                   {tosData.topics.slice(0, 4).join(' • ')}{tosData.topics.length > 4 ? ` (+${tosData.topics.length - 4} more)` : ''}
                                 </Typography>
                               </Box>
@@ -1253,7 +1253,7 @@ export default function ExamGenerator() {
                     />
 
                     {/* Question Type Quantity Distribution */}
-                    <Box sx={{ p: 2, bgcolor: isTosActive ? '#f1f5f9' : '#f8fafc', borderRadius: 2.5, border: '1px solid #e2e8f0', opacity: isTosActive ? 0.65 : 1 }}>
+                    <Box sx={{ p: 2, bgcolor: isTosActive ? '#1a2338' : '#0f1626', borderRadius: 2.5, border: '1px solid #25304a', opacity: isTosActive ? 0.65 : 1 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
                         <Typography variant="caption" sx={{ fontWeight: 750, color: 'text.secondary', display: 'block' }}>
                           Question Type Quantities
@@ -1263,7 +1263,7 @@ export default function ExamGenerator() {
                             icon={<Lock sx={{ fontSize: '0.75rem !important' }} />}
                             label="Governed by TOS"
                             size="small"
-                            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: '#e2e8f0', color: '#475569' }}
+                            sx={{ height: 20, fontSize: '0.65rem', fontWeight: 800, bgcolor: '#25304a', color: '#c3cddf' }}
                           />
                         )}
                       </Box>
@@ -1277,7 +1277,7 @@ export default function ExamGenerator() {
                             disabled={isTosActive}
                             value={mcCount}
                             onChange={(e) => setMcCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#1a2338' : '#131b2e' } }}
                           />
                         </Grid>
                         <Grid size={{ xs: 6, sm: 3 }}>
@@ -1289,7 +1289,7 @@ export default function ExamGenerator() {
                             disabled={isTosActive}
                             value={tfCount}
                             onChange={(e) => setTfCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#1a2338' : '#131b2e' } }}
                           />
                         </Grid>
                         <Grid size={{ xs: 6, sm: 3 }}>
@@ -1301,7 +1301,7 @@ export default function ExamGenerator() {
                             disabled={isTosActive}
                             value={saCount}
                             onChange={(e) => setSaCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#1a2338' : '#131b2e' } }}
                           />
                         </Grid>
                         <Grid size={{ xs: 6, sm: 3 }}>
@@ -1313,7 +1313,7 @@ export default function ExamGenerator() {
                             disabled={isTosActive}
                             value={essayCount}
                             onChange={(e) => setEssayCount(Math.max(0, Number(e.target.value)))}
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#f1f5f9' : '#fff' } }}
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: isTosActive ? '#1a2338' : '#131b2e' } }}
                           />
                         </Grid>
                       </Grid>
@@ -1329,8 +1329,8 @@ export default function ExamGenerator() {
                     </Box>
 
                     {/* Compact Upload Bar (Syllabus, TOS, Materials) */}
-                    <Box sx={{ p: 2, bgcolor: '#faf5ff', borderRadius: 2.5, border: '1px solid #f3e8ff' }}>
-                      <Typography variant="caption" sx={{ fontWeight: 750, color: '#6b21a8', display: 'block', mb: 1 }}>
+                    <Box sx={{ p: 2, bgcolor: 'rgba(34, 211, 238, 0.08)', borderRadius: 2.5, border: '1px solid rgba(34, 211, 238, 0.14)' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 750, color: '#67e8f9', display: 'block', mb: 1 }}>
                         Attach Course Materials (Optional Alignment)
                       </Typography>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
@@ -1391,7 +1391,7 @@ export default function ExamGenerator() {
             <Box sx={{ mb: 3.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <CheckCircle color="success" sx={{ fontSize: 36 }} />
               <Box>
-                <Typography variant="h5" fontWeight={900} sx={{ color: '#0f172a', letterSpacing: '-0.02em' }}>Verify Assessment Blueprint</Typography>
+                <Typography variant="h5" fontWeight={900} sx={{ color: '#e8edf7', letterSpacing: '-0.02em' }}>Verify Assessment Blueprint</Typography>
                 <Typography variant="body2" color="text.secondary">Carefully review your configurations and files before the AI generates your question bank.</Typography>
               </Box>
             </Box>
@@ -1402,7 +1402,7 @@ export default function ExamGenerator() {
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
 
                   {/* Summary Profile */}
-                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: '#cbd5e1', borderLeft: '6px solid #059669', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
+                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: '#33415c', borderLeft: '6px solid #10b981', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
                     <CardContent sx={{ p: 3.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <Assignment color="primary" sx={{ fontSize: 20 }} />
@@ -1410,7 +1410,7 @@ export default function ExamGenerator() {
                           EXAM PROFILE DETAILS
                         </Typography>
                       </Box>
-                      <Typography variant="h5" fontWeight={900} gutterBottom sx={{ letterSpacing: '-0.025em', color: '#1e293b' }}>
+                      <Typography variant="h5" fontWeight={900} gutterBottom sx={{ letterSpacing: '-0.025em', color: '#e8edf7' }}>
                         {examTitle || '(No title entered)'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 3.5, fontStyle: examDescription ? 'normal' : 'italic' }}>
@@ -1419,40 +1419,40 @@ export default function ExamGenerator() {
 
                       <Grid container spacing={2.5}>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Assignment sx={{ color: '#059669', fontSize: 22 }} />
+                          <Box sx={{ p: 2, bgcolor: '#0f1626', borderRadius: 3, border: '1px solid #25304a', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Assignment sx={{ color: '#10b981', fontSize: 22 }} />
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>TYPE</Typography>
-                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#1e293b' }}>
+                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#e8edf7' }}>
                                 {assessmentType === 'Other' ? (customAssessmentType || 'Custom') : assessmentType}
                               </Typography>
                             </Box>
                           </Box>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ p: 2, bgcolor: '#0f1626', borderRadius: 3, border: '1px solid #25304a', display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <AccessTime sx={{ color: '#10b981', fontSize: 22 }} />
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>DURATION</Typography>
-                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#1e293b' }}>{duration} mins</Typography>
+                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#e8edf7' }}>{duration} mins</Typography>
                             </Box>
                           </Box>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <SportsScore sx={{ color: '#d97706', fontSize: 22 }} />
+                          <Box sx={{ p: 2, bgcolor: '#0f1626', borderRadius: 3, border: '1px solid #25304a', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <SportsScore sx={{ color: '#fbbf24', fontSize: 22 }} />
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>CAP LIMIT</Typography>
-                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#1e293b' }}>{totalPoints} pts</Typography>
+                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#e8edf7' }}>{totalPoints} pts</Typography>
                             </Box>
                           </Box>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <TrendingUp sx={{ color: '#059669', fontSize: 22 }} />
+                          <Box sx={{ p: 2, bgcolor: '#0f1626', borderRadius: 3, border: '1px solid #25304a', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <TrendingUp sx={{ color: '#10b981', fontSize: 22 }} />
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>DIFFICULTY</Typography>
-                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#1e293b', textTransform: 'capitalize' }}>
+                              <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#e8edf7', textTransform: 'capitalize' }}>
                                 {difficulty}
                               </Typography>
                             </Box>
@@ -1463,7 +1463,7 @@ export default function ExamGenerator() {
                   </Card>
 
                   {/* Summary Files */}
-                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: '#cbd5e1', borderLeft: '6px solid #047857', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
+                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: '#33415c', borderLeft: '6px solid #34d399', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
                     <CardContent sx={{ p: 3.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <FolderZip color="secondary" sx={{ fontSize: 20 }} />
@@ -1472,24 +1472,24 @@ export default function ExamGenerator() {
                         </Typography>
                       </Box>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, borderBottom: '1px solid #f1f5f9' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, borderBottom: '1px solid #1a2338' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <FileIcon color="primary" sx={{ fontSize: 18 }} />
-                            <Typography variant="body2" fontWeight="bold" color="#334155">Syllabus Outline</Typography>
+                            <Typography variant="body2" fontWeight="bold" color="#dbe3f0">Syllabus Outline</Typography>
                           </Box>
                           {syllabus ? <Chip label={syllabus.name} color="primary" size="small" variant="outlined" sx={{ fontWeight: 700 }} /> : <Typography variant="caption" color="text.secondary">None attached</Typography>}
                         </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, borderBottom: '1px solid #f1f5f9' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5, borderBottom: '1px solid #1a2338' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <FileIcon color="secondary" sx={{ fontSize: 18 }} />
-                            <Typography variant="body2" fontWeight="bold" color="#334155">Table of Specifications (TOS)</Typography>
+                            <Typography variant="body2" fontWeight="bold" color="#dbe3f0">Table of Specifications (TOS)</Typography>
                           </Box>
                           {tos ? <Chip label={tos.name} color="secondary" size="small" variant="outlined" sx={{ fontWeight: 700 }} /> : <Typography variant="caption" color="text.secondary">None attached</Typography>}
                         </Box>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.5 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <FileIcon color="success" sx={{ fontSize: 18 }} />
-                            <Typography variant="body2" fontWeight="bold" color="#334155">Learning materials</Typography>
+                            <Typography variant="body2" fontWeight="bold" color="#dbe3f0">Learning materials</Typography>
                           </Box>
                           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
                             {materials.length > 0 ? `${materials.length} slides / readings` : 'None attached'}
@@ -1505,7 +1505,7 @@ export default function ExamGenerator() {
                   </Card>
 
                   {/* Summary Topics */}
-                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: '#cbd5e1', borderLeft: '6px solid #0891b2', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
+                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: '#33415c', borderLeft: '6px solid #0891b2', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
                     <CardContent sx={{ p: 3.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <Topic sx={{ color: '#0891b2', fontSize: 20 }} />
@@ -1532,8 +1532,8 @@ export default function ExamGenerator() {
                 <Card variant="outlined" sx={{ borderRadius: 4, borderColor: '#10b981', bgcolor: 'rgba(16,185,129,0.01)', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
                   {/* Indigo Mini Header Banner */}
-                  <Box sx={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', p: 3, color: 'white', textAlign: 'center' }}>
-                    <AutoAwesome sx={{ fontSize: 28, mb: 1, color: '#d1fae5' }} />
+                  <Box sx={{ background: 'linear-gradient(135deg, #10b981 0%, #10b981 100%)', p: 3, color: 'white', textAlign: 'center' }}>
+                    <AutoAwesome sx={{ fontSize: 28, mb: 1, color: 'rgba(16, 185, 129, 0.18)' }} />
                     <Typography variant="subtitle2" sx={{ fontWeight: 800, letterSpacing: '0.08em' }}>
                       AI BLUEPRINT MANIFEST
                     </Typography>
@@ -1544,11 +1544,11 @@ export default function ExamGenerator() {
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
                         {isTosActive && tosData ? (
                           <>
-                            <Box sx={{ p: 1.5, bgcolor: '#f0fdf4', borderRadius: 2, border: '1px solid #bbf7d0', mb: 0.5 }}>
-                              <Typography variant="caption" sx={{ fontWeight: 800, color: '#166534', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Box sx={{ p: 1.5, bgcolor: 'rgba(74, 222, 128, 0.09)', borderRadius: 2, border: '1px solid rgba(74, 222, 128, 0.35)', mb: 0.5 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 800, color: '#86efac', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <AssignmentTurnedIn sx={{ fontSize: 16 }} /> TOS BLUEPRINT SPECIFICATION
                               </Typography>
-                              <Typography variant="caption" sx={{ color: '#15803d', display: 'block', mt: 0.3 }}>
+                              <Typography variant="caption" sx={{ color: '#4ade80', display: 'block', mt: 0.3 }}>
                                 Strict Bloom cognitive levels and sequential item placement sequence active.
                               </Typography>
                             </Box>
@@ -1566,7 +1566,7 @@ export default function ExamGenerator() {
                                       <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: style.text }} />
                                       <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>{lvl}:</Typography>
                                     </Box>
-                                    <Typography variant="body2" fontWeight="bold" color="#1e293b">{cnt} items</Typography>
+                                    <Typography variant="body2" fontWeight="bold" color="#e8edf7">{cnt} items</Typography>
                                   </Box>
                                 );
                               })}
@@ -1577,26 +1577,26 @@ export default function ExamGenerator() {
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Total Points:</Typography>
-                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{tosData.totalPoints || activeQuestionCount} Points</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#e8edf7">{tosData.totalPoints || activeQuestionCount} Points</Typography>
                             </Box>
                           </>
                         ) : (
                           <>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Multiple Choice:</Typography>
-                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{mcCount} items</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#e8edf7">{mcCount} items</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>True / False:</Typography>
-                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{tfCount} items</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#e8edf7">{tfCount} items</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Short Answer:</Typography>
-                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{saCount} items</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#e8edf7">{saCount} items</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Essay:</Typography>
-                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{essayCount} items</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#e8edf7">{essayCount} items</Typography>
                             </Box>
                             <Divider sx={{ my: 1 }} />
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1605,7 +1605,7 @@ export default function ExamGenerator() {
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Anti-Cheat Drawer (E):</Typography>
-                              <Typography variant="body2" fontWeight="bold" color="#1e293b">{extraCount} Questions</Typography>
+                              <Typography variant="body2" fontWeight="bold" color="#e8edf7">{extraCount} Questions</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.8, bgcolor: 'rgba(16, 185, 129, 0.05)', borderRadius: 3, border: '1px solid rgba(16,185,129,0.1)' }}>
                               <Typography variant="subtitle2" fontWeight="bold" color="primary.dark">Total Pool Size:</Typography>
@@ -1640,7 +1640,7 @@ export default function ExamGenerator() {
                     }
                   }}
                 />
-                <Typography variant="h5" gutterBottom fontWeight="black" sx={{ color: '#0f172a', letterSpacing: '-0.02em' }}>
+                <Typography variant="h5" gutterBottom fontWeight="black" sx={{ color: '#e8edf7', letterSpacing: '-0.02em' }}>
                   {aiEngine === 'gemini' ? `Google Gemini (${geminiModel}) Generating Exam...` : aiEngine === 'nvidia' ? `Llama (${nvidiaModel}) Generating Exam...` : `Ollama (${ollamaModel}) AI Generating Exam...`}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 4, maxWidth: 550, mx: 'auto', px: 2 }}>
@@ -1656,8 +1656,8 @@ export default function ExamGenerator() {
                   sx={{
                     mb: 3.5,
                     borderRadius: 4,
-                    borderColor: generationError ? '#fcd34d' : '#86efac',
-                    bgcolor: generationError ? '#fffbeb' : '#f0fdf4',
+                    borderColor: generationError ? 'rgba(251, 191, 36, 0.48)' : 'rgba(74, 222, 128, 0.45)',
+                    bgcolor: generationError ? 'rgba(251, 191, 36, 0.08)' : 'rgba(74, 222, 128, 0.09)',
                     p: { xs: 2.5, md: 3 },
                     boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
                   }}
@@ -1668,19 +1668,19 @@ export default function ExamGenerator() {
                         width: 44,
                         height: 44,
                         borderRadius: 3,
-                        bgcolor: generationError ? '#fef3c7' : '#dcfce7',
+                        bgcolor: generationError ? 'rgba(251, 191, 36, 0.14)' : 'rgba(74, 222, 128, 0.16)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0
                       }}>
-                        <CheckCircle sx={{ color: generationError ? '#d97706' : '#16a34a', fontSize: 26 }} />
+                        <CheckCircle sx={{ color: generationError ? '#fbbf24' : '#4ade80', fontSize: 26 }} />
                       </Box>
                       <Box>
-                        <Typography variant="subtitle1" fontWeight={900} sx={{ color: generationError ? '#92400e' : '#14532d', lineHeight: 1.2 }}>
+                        <Typography variant="subtitle1" fontWeight={900} sx={{ color: generationError ? '#fcd34d' : '#14532d', lineHeight: 1.2 }}>
                           {generationError ? 'Question Bank Built (Topic Engine Fallback)' : 'Question Bank Successfully Generated!'}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: generationError ? '#b45309' : '#166534', mt: 0.5, fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{ color: generationError ? '#fbbf24' : '#86efac', mt: 0.5, fontWeight: 500 }}>
                           {aiEngine === 'gemini'
                             ? `Engine: Google Gemini AI (${geminiModel})`
                             : `Engine: Local Ollama AI (${ollamaModel})`} &bull; Created <strong>{generatedQuestions.length} total items</strong>
@@ -1711,7 +1711,7 @@ export default function ExamGenerator() {
                     </Button>
                   </Box>
                   {generationError && (
-                    <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: '#b45309', fontWeight: 600, bgcolor: '#fef3c7', p: 1, borderRadius: 2 }}>
+                    <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: '#fbbf24', fontWeight: 600, bgcolor: 'rgba(251, 191, 36, 0.14)', p: 1, borderRadius: 2 }}>
                       {generationError} Note: To use real local AI models, launch Ollama in terminal (<code>ollama serve</code>) and select a pulled model.
                     </Typography>
                   )}
@@ -1728,11 +1728,11 @@ export default function ExamGenerator() {
                           <Checkbox
                             checked={tosOverride}
                             onChange={(e) => setTosOverride(e.target.checked)}
-                            sx={{ color: '#dc2626', '&.Mui-checked': { color: '#dc2626' } }}
+                            sx={{ color: '#f87171', '&.Mui-checked': { color: '#f87171' } }}
                           />
                         }
                         label={
-                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#991b1b' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#fca5a5' }}>
                             I understand this exam does not match the uploaded Table of
                             Specifications, and I want to save it anyway.
                           </Typography>
@@ -1743,9 +1743,9 @@ export default function ExamGenerator() {
                 )}
 
                 {/* Top Action & View Toolbar */}
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, gap: 2, mb: 3.5, p: 2, bgcolor: '#f8fafc', borderRadius: 3.5, border: '1px solid #e2e8f0' }}>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, gap: 2, mb: 3.5, p: 2, bgcolor: '#0f1626', borderRadius: 3.5, border: '1px solid #25304a' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                    <Typography variant="h6" fontWeight="bold" sx={{ color: '#0f172a', mr: 1 }}>
+                    <Typography variant="h6" fontWeight="bold" sx={{ color: '#e8edf7', mr: 1 }}>
                       Review & Edit Questions
                     </Typography>
                     <Chip label={`Active Exam: ${activeQuestionCount}`} color="primary" size="small" sx={{ fontWeight: 800 }} />
@@ -1760,7 +1760,7 @@ export default function ExamGenerator() {
                         value={newQuestionType}
                         label="Add Type"
                         onChange={(e) => setNewQuestionType(e.target.value as string)}
-                        sx={{ borderRadius: 2, bgcolor: 'white' }}
+                        sx={{ borderRadius: 2, bgcolor: '#131b2e' }}
                       >
                         <MenuItem value="multiple-choice">Multiple Choice</MenuItem>
                         <MenuItem value="true-false">True / False</MenuItem>
@@ -1768,7 +1768,7 @@ export default function ExamGenerator() {
                         <MenuItem value="essay">Essay</MenuItem>
                       </Select>
                     </FormControl>
-                    <Button variant="outlined" startIcon={<Add />} onClick={() => handleAddNewQuestion(newQuestionType)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, bgcolor: 'white' }}>
+                    <Button variant="outlined" startIcon={<Add />} onClick={() => handleAddNewQuestion(newQuestionType)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, bgcolor: '#131b2e' }}>
                       Add Question
                     </Button>
                     <Button
@@ -1796,7 +1796,7 @@ export default function ExamGenerator() {
                         sx={{
                           width: '100%',
                           boxSizing: 'border-box',
-                          border: isQExtra ? '2px dashed #9c27b0' : '1px solid #e2e8f0',
+                          border: isQExtra ? '2px dashed #22d3ee' : '1px solid #25304a',
                           borderRadius: 4.5,
                           position: 'relative',
                           transition: 'all 0.2s',
@@ -1830,7 +1830,7 @@ export default function ExamGenerator() {
 
                         <CardContent sx={{ p: { xs: 2.5, md: 3.5 } }}>
                           {/* Unified Card Header: Tags on Left, Status + Delete on Right (No overlapping) */}
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1.5, mb: 2.5, pb: 1.5, borderBottom: '1px solid #f1f5f9' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1.5, mb: 2.5, pb: 1.5, borderBottom: '1px solid #1a2338' }}>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                               <Typography variant="subtitle1" fontWeight={900} sx={{ color: 'primary.main', mr: 0.5 }}>
                                 #{q.itemPlacement || qIdx + 1}
@@ -1868,12 +1868,12 @@ export default function ExamGenerator() {
                                     fontWeight: 800,
                                     fontSize: '0.65rem',
                                     ...(q.difficulty.toLowerCase() === 'hard'
-                                      ? { bgcolor: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }
+                                      ? { bgcolor: 'rgba(248, 113, 113, 0.14)', color: '#fca5a5', border: '1px solid rgba(248, 113, 113, 0.42)' }
                                       : q.difficulty.toLowerCase() === 'medium'
-                                        ? { bgcolor: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }
+                                        ? { bgcolor: 'rgba(251, 191, 36, 0.14)', color: '#fcd34d', border: '1px solid rgba(251, 191, 36, 0.48)' }
                                         : q.difficulty.toLowerCase() === 'easy'
-                                          ? { bgcolor: '#dcfce7', color: '#166534', border: '1px solid #86efac' }
-                                          : { bgcolor: '#d1fae5', color: '#3730a3', border: '1px solid #a7f3d0' }),
+                                          ? { bgcolor: 'rgba(74, 222, 128, 0.16)', color: '#86efac', border: '1px solid rgba(74, 222, 128, 0.45)' }
+                                          : { bgcolor: 'rgba(16, 185, 129, 0.18)', color: '#3730a3', border: '1px solid rgba(16, 185, 129, 0.38)' }),
                                   }}
                                 />
                               )}
@@ -1937,11 +1937,11 @@ export default function ExamGenerator() {
 
                               {/* Short Answer */}
                               {q.type === 'short-answer' && (
-                                <Box sx={{ pl: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                <Box sx={{ pl: 1, p: 1.5, bgcolor: '#0f1626', borderRadius: 2, border: '1px solid #25304a' }}>
                                   <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
                                     Expected Correct Answer Key:
                                   </Typography>
-                                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#16a34a' }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#4ade80' }}>
                                     {q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : 'Specific technical keyword or concise statement'}
                                   </Typography>
                                 </Box>
@@ -1949,11 +1949,11 @@ export default function ExamGenerator() {
 
                               {/* Essay */}
                               {q.type === 'essay' && (
-                                <Box sx={{ pl: 1, p: 1.5, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                <Box sx={{ pl: 1, p: 1.5, bgcolor: '#0f1626', borderRadius: 2, border: '1px solid #25304a' }}>
                                   <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', display: 'block', mb: 0.5 }}>
                                     Evaluation Rubric / Key Criteria:
                                   </Typography>
-                                  <Typography variant="body2" sx={{ color: '#475569', fontStyle: q.correctAnswer ? 'normal' : 'italic' }}>
+                                  <Typography variant="body2" sx={{ color: '#c3cddf', fontStyle: q.correctAnswer ? 'normal' : 'italic' }}>
                                     {q.correctAnswer && q.correctAnswer !== '0' ? q.correctAnswer : 'Instructor will evaluate student synthesis and comprehensive analysis.'}
                                   </Typography>
                                 </Box>
@@ -1987,7 +1987,7 @@ export default function ExamGenerator() {
                                   Attach Question Image asset
                                 </Button>
                                 {q.image && (
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, border: '1px solid #e2e8f0', borderRadius: 2 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, border: '1px solid #25304a', borderRadius: 2 }}>
                                     <img src={q.image} alt="Thumbnail" style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '4px' }} />
                                     <Typography variant="caption" color="text.secondary">Question Asset Active</Typography>
                                     <IconButton size="small" color="error" onClick={() => handleRemoveImage(qIdx)}>
@@ -2000,7 +2000,7 @@ export default function ExamGenerator() {
                               {/* Multiple choice editor */}
                               {q.type === 'multiple-choice' && q.options && (
                                 <Box sx={{ pl: { xs: 1.5, md: 3 }, borderLeft: '4px solid #10b981', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#dbe3f0' }}>
                                     Configure Multiple Choice Keys and Options
                                   </Typography>
 
@@ -2040,7 +2040,7 @@ export default function ExamGenerator() {
                                             Attach Option Image
                                           </Button>
                                           {q.optionsImages?.[optIdx] && (
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 0.5, border: '1px solid #f1f5f9', borderRadius: 1.5 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 0.5, border: '1px solid #1a2338', borderRadius: 1.5 }}>
                                               <img src={q.optionsImages[optIdx]} alt="Opt Thumbnail" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
                                               <IconButton size="small" color="error" onClick={() => handleRemoveImage(qIdx, optIdx)}>
                                                 <Delete fontSize="small" />
@@ -2057,7 +2057,7 @@ export default function ExamGenerator() {
                               {/* True / False Editor */}
                               {q.type === 'true-false' && (
                                 <Box sx={{ pl: 3, borderLeft: '4px solid #10b981', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#dbe3f0' }}>
                                     Configure True/False Correct Key
                                   </Typography>
                                   <RadioGroup
@@ -2075,7 +2075,7 @@ export default function ExamGenerator() {
                               {q.type === 'short-answer' && (
                                 <Box sx={{ pl: 3, borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#dbe3f0' }}>
                                       Short Answer Key
                                     </Typography>
                                     <Button
@@ -2091,10 +2091,10 @@ export default function ExamGenerator() {
                                         fontSize: '0.75rem',
                                         py: 0.3,
                                         px: 1.5,
-                                        bgcolor: '#fffbeb',
-                                        borderColor: '#fde68a',
-                                        color: '#b45309',
-                                        '&:hover': { bgcolor: '#fef3c7', borderColor: '#f59e0b' }
+                                        bgcolor: 'rgba(251, 191, 36, 0.08)',
+                                        borderColor: 'rgba(251, 191, 36, 0.38)',
+                                        color: '#fbbf24',
+                                        '&:hover': { bgcolor: 'rgba(251, 191, 36, 0.14)', borderColor: '#f59e0b' }
                                       }}
                                     >
                                       {isQRegenerating ? 'Regenerating Key...' : 'Regenerate Answer Key'}
@@ -2116,7 +2116,7 @@ export default function ExamGenerator() {
                               {q.type === 'essay' && (
                                 <Box sx={{ pl: 3, borderLeft: '4px solid #10b981', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#dbe3f0' }}>
                                       Essay Grading Rubric & Criteria
                                     </Typography>
                                     <Button
@@ -2133,9 +2133,9 @@ export default function ExamGenerator() {
                                         py: 0.3,
                                         px: 1.5,
                                         bgcolor: '#fbf7ff',
-                                        borderColor: '#a7f3d0',
-                                        color: '#065f46',
-                                        '&:hover': { bgcolor: '#d1fae5', borderColor: '#10b981' }
+                                        borderColor: 'rgba(16, 185, 129, 0.38)',
+                                        color: '#6ee7b7',
+                                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.18)', borderColor: '#10b981' }
                                       }}
                                     >
                                       {isQRegenerating ? 'Regenerating Rubric...' : 'Regenerate Rubric / Answer Key'}
@@ -2157,7 +2157,7 @@ export default function ExamGenerator() {
                               )}
 
                               {/* Item Point & Difficulty Setting */}
-                              <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2.5, border: '1px solid #e2e8f0' }}>
+                              <Box sx={{ p: 2, bgcolor: '#0f1626', borderRadius: 2.5, border: '1px solid #25304a' }}>
                                 <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.secondary', display: 'block', mb: 1.5 }}>
                                   Item Settings & Weight
                                 </Typography>
@@ -2170,11 +2170,11 @@ export default function ExamGenerator() {
                                       size="small"
                                       value={q.points}
                                       onChange={(e) => handleUpdatePoints(qIdx, Number(e.target.value))}
-                                      sx={{ bgcolor: 'white', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                                      sx={{ bgcolor: '#131b2e', '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                                     />
                                   </Grid>
                                   <Grid size={{ xs: 12, sm: 4 }}>
-                                    <FormControl fullWidth size="small" sx={{ bgcolor: 'white' }}>
+                                    <FormControl fullWidth size="small" sx={{ bgcolor: '#131b2e' }}>
                                       <InputLabel>Difficulty</InputLabel>
                                       <Select
                                         value={q.difficulty || 'medium'}
@@ -2193,7 +2193,7 @@ export default function ExamGenerator() {
                                     </FormControl>
                                   </Grid>
                                   <Grid size={{ xs: 12, sm: 4 }}>
-                                    <FormControl fullWidth size="small" sx={{ bgcolor: 'white' }}>
+                                    <FormControl fullWidth size="small" sx={{ bgcolor: '#131b2e' }}>
                                       <InputLabel>Cognitive Level</InputLabel>
                                       <Select
                                         value={q.cognitiveLevel || 'Applying'}
@@ -2215,10 +2215,10 @@ export default function ExamGenerator() {
                               </Box>
 
                               {/* Clean, Full-Featured AI Revision Action Bar */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, pt: 1.5, borderTop: '1px solid #f1f5f9' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, pt: 1.5, borderTop: '1px solid #1a2338' }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                   <AutoAwesome sx={{ color: '#10b981', fontSize: 18 }} />
-                                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
+                                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#c3cddf' }}>
                                     AI Revision:
                                   </Typography>
                                 </Box>
@@ -2235,10 +2235,10 @@ export default function ExamGenerator() {
                                       borderRadius: 2,
                                       fontWeight: 700,
                                       fontSize: '0.8rem',
-                                      color: '#047857',
-                                      borderColor: '#a7f3d0',
-                                      bgcolor: '#ecfdf5',
-                                      '&:hover': { bgcolor: '#d1fae5', borderColor: '#a7f3d0' }
+                                      color: '#34d399',
+                                      borderColor: 'rgba(16, 185, 129, 0.38)',
+                                      bgcolor: 'rgba(16, 185, 129, 0.13)',
+                                      '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.18)', borderColor: 'rgba(16, 185, 129, 0.38)' }
                                     }}
                                   >
                                     Re-generate with AI
@@ -2257,10 +2257,10 @@ export default function ExamGenerator() {
                                           borderRadius: 2,
                                           fontWeight: 700,
                                           fontSize: '0.8rem',
-                                          color: '#065f46',
-                                          borderColor: '#a7f3d0',
-                                          bgcolor: '#ecfdf5',
-                                          '&:hover': { bgcolor: '#d1fae5', borderColor: '#6ee7b7' }
+                                          color: '#6ee7b7',
+                                          borderColor: 'rgba(16, 185, 129, 0.38)',
+                                          bgcolor: 'rgba(16, 185, 129, 0.13)',
+                                          '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.18)', borderColor: '#6ee7b7' }
                                         }}
                                       >
                                         Shuffle Choices
@@ -2276,10 +2276,10 @@ export default function ExamGenerator() {
                                           borderRadius: 2,
                                           fontWeight: 700,
                                           fontSize: '0.8rem',
-                                          color: '#15803d',
-                                          borderColor: '#bbf7d0',
-                                          bgcolor: '#f0fdf4',
-                                          '&:hover': { bgcolor: '#dcfce7', borderColor: '#86efac' }
+                                          color: '#4ade80',
+                                          borderColor: 'rgba(74, 222, 128, 0.35)',
+                                          bgcolor: 'rgba(74, 222, 128, 0.09)',
+                                          '&:hover': { bgcolor: 'rgba(74, 222, 128, 0.16)', borderColor: 'rgba(74, 222, 128, 0.45)' }
                                         }}
                                       >
                                         Regenerate Key
@@ -2299,10 +2299,10 @@ export default function ExamGenerator() {
                                         borderRadius: 2,
                                         fontWeight: 700,
                                         fontSize: '0.8rem',
-                                        color: '#b45309',
-                                        borderColor: '#fde68a',
-                                        bgcolor: '#fffbeb',
-                                        '&:hover': { bgcolor: '#fef3c7', borderColor: '#f59e0b' }
+                                        color: '#fbbf24',
+                                        borderColor: 'rgba(251, 191, 36, 0.38)',
+                                        bgcolor: 'rgba(251, 191, 36, 0.08)',
+                                        '&:hover': { bgcolor: 'rgba(251, 191, 36, 0.14)', borderColor: '#f59e0b' }
                                       }}
                                     >
                                       Regenerate Answer Key
@@ -2321,10 +2321,10 @@ export default function ExamGenerator() {
                                         borderRadius: 2,
                                         fontWeight: 700,
                                         fontSize: '0.8rem',
-                                        color: '#065f46',
-                                        borderColor: '#a7f3d0',
-                                        bgcolor: '#ecfdf5',
-                                        '&:hover': { bgcolor: '#d1fae5', borderColor: '#6ee7b7' }
+                                        color: '#6ee7b7',
+                                        borderColor: 'rgba(16, 185, 129, 0.38)',
+                                        bgcolor: 'rgba(16, 185, 129, 0.13)',
+                                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.18)', borderColor: '#6ee7b7' }
                                       }}
                                     >
                                       Regenerate Rubric / Answer Key
@@ -2343,10 +2343,10 @@ export default function ExamGenerator() {
                                         borderRadius: 2,
                                         fontWeight: 700,
                                         fontSize: '0.8rem',
-                                        color: '#0369a1',
-                                        borderColor: '#bae6fd',
-                                        bgcolor: '#f0f9ff',
-                                        '&:hover': { bgcolor: '#e0f2fe', borderColor: '#7dd3fc' }
+                                        color: '#38bdf8',
+                                        borderColor: 'rgba(56, 189, 248, 0.38)',
+                                        bgcolor: 'rgba(56, 189, 248, 0.08)',
+                                        '&:hover': { bgcolor: 'rgba(56, 189, 248, 0.14)', borderColor: 'rgba(56, 189, 248, 0.48)' }
                                       }}
                                     >
                                       Toggle Correct Key
@@ -2397,7 +2397,7 @@ export default function ExamGenerator() {
 
         {/* Navigation Step Button Controls */}
         {activeStep < 2 && (
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 5, pt: 2, borderTop: '1px solid #f1f5f9' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 5, pt: 2, borderTop: '1px solid #1a2338' }}>
             <Button
               disabled={activeStep === 0}
               onClick={handleBack}

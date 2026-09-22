@@ -320,7 +320,7 @@ export default function Dashboard() {
         />
         {isInstructor && (
           <Button variant="outlined" size="small" startIcon={<LibraryBooks />} onClick={() => navigate('/exam-repository')}
-            sx={{ borderRadius: radius.pill, whiteSpace: 'nowrap' }}>
+            sx={{ borderRadius: '999px', whiteSpace: 'nowrap' }}>
             Repository
           </Button>
         )}

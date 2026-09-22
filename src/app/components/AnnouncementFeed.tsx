@@ -43,7 +43,7 @@ function AttachmentChip({ att, onRemove }: { att: AnnouncementAttachment; onRemo
       onDelete={onRemove}
       deleteIcon={onRemove ? <Close /> : undefined}
       sx={{
-        maxWidth: '100%', bgcolor: '#f1f5f9', color: '#334155', fontWeight: 600,
+        maxWidth: '100%', bgcolor: '#1a2338', color: '#dbe3f0', fontWeight: 600,
         '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
       }}
     />
@@ -137,7 +137,7 @@ function Composer({
   const canSubmit = (!empty || attachments.length > 0) && !busy && !uploading;
 
   return (
-    <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#fff', mb: 2.5 }}>
+    <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 3, border: '1px solid #25304a', bgcolor: '#131b2e', mb: 2.5 }}>
       <Stack direction="row" spacing={0.5} sx={{ mb: 1, flexWrap: 'wrap', gap: 0.5 }}>
         <Tooltip title="Bold"><IconButton size="small" onMouseDown={(e) => { e.preventDefault(); exec('bold'); }}><FormatBold fontSize="small" /></IconButton></Tooltip>
         <Tooltip title="Italic"><IconButton size="small" onMouseDown={(e) => { e.preventDefault(); exec('italic'); }}><FormatItalic fontSize="small" /></IconButton></Tooltip>
@@ -176,15 +176,15 @@ function Composer({
         dangerouslySetInnerHTML={{ __html: sanitizeRichText(initial?.bodyHtml ?? '', MAX_BODY_LENGTH) }}
         sx={{
           minHeight: 84, maxHeight: 340, overflowY: 'auto',
-          border: '1px solid #e2e8f0', borderRadius: 2, p: 1.5,
-          fontSize: '0.92rem', lineHeight: 1.6, color: '#0f172a',
+          border: '1px solid #25304a', borderRadius: 2, p: 1.5,
+          fontSize: '0.92rem', lineHeight: 1.6, color: '#e8edf7',
           outline: 'none', wordBreak: 'break-word',
-          '&:focus': { borderColor: '#059669', boxShadow: '0 0 0 3px rgba(5,150,105,0.12)' },
+          '&:focus': { borderColor: '#10b981', boxShadow: '0 0 0 3px rgba(5,150,105,0.12)' },
           '& ul': { pl: 3, my: 0.5 },
-          '& a': { color: '#059669' },
+          '& a': { color: '#10b981' },
           '&:empty::before': {
             content: '"Share an update with your class…"',
-            color: '#94a3b8',
+            color: '#7482a0',
           },
         }}
       />
@@ -225,7 +225,7 @@ function Composer({
           startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <Send />}
           onClick={submit}
           disabled={!canSubmit}
-          sx={{ bgcolor: '#059669', fontWeight: 800, textTransform: 'none', '&:hover': { bgcolor: '#047857' } }}
+          sx={{ bgcolor: '#10b981', fontWeight: 800, textTransform: 'none', '&:hover': { bgcolor: '#34d399' } }}
         >
           {initial ? 'Save changes' : 'Post'}
         </Button>
@@ -251,24 +251,24 @@ function AnnouncementCard({
     <Paper
       elevation={0}
       sx={{
-        p: { xs: 1.75, sm: 2.5 }, mb: 2, borderRadius: 3, bgcolor: '#fff',
-        border: announcement.isPinned ? '2px solid #fbbf24' : '1px solid #e2e8f0',
+        p: { xs: 1.75, sm: 2.5 }, mb: 2, borderRadius: 3, bgcolor: '#131b2e',
+        border: announcement.isPinned ? '2px solid #fbbf24' : '1px solid #25304a',
       }}
     >
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-        <Avatar sx={{ bgcolor: '#059669', width: 40, height: 40, fontWeight: 800, flexShrink: 0 }}>
+        <Avatar sx={{ bgcolor: '#10b981', width: 40, height: 40, fontWeight: 800, flexShrink: 0 }}>
           {(announcement.authorName || '?').charAt(0).toUpperCase()}
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Typography sx={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>
+            <Typography sx={{ fontWeight: 800, color: '#e8edf7', fontSize: '0.92rem' }}>
               {announcement.authorName}
             </Typography>
             {announcement.isPinned && (
               <Chip icon={<PushPin sx={{ fontSize: '0.75rem !important' }} />} label="Pinned" size="small"
-                sx={{ bgcolor: '#fef3c7', color: '#92400e', fontWeight: 800, height: 20, fontSize: '0.65rem' }} />
+                sx={{ bgcolor: 'rgba(251, 191, 36, 0.14)', color: '#fcd34d', fontWeight: 800, height: 20, fontSize: '0.65rem' }} />
             )}
-            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+            <Typography variant="caption" sx={{ color: '#7482a0' }}>
               {relativeTime(announcement.createdAt)}
               {announcement.updatedAt && ' · edited'}
             </Typography>
@@ -287,7 +287,7 @@ function AnnouncementCard({
               <MenuItem onClick={() => { setAnchor(null); onEdit(); }}>
                 <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
               </MenuItem>
-              <MenuItem onClick={() => { setAnchor(null); onDelete(); }} sx={{ color: '#dc2626' }}>
+              <MenuItem onClick={() => { setAnchor(null); onDelete(); }} sx={{ color: '#f87171' }}>
                 <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
               </MenuItem>
             </Menu>
@@ -299,9 +299,9 @@ function AnnouncementCard({
           and a database row is not a trust boundary. */}
       <Box
         sx={{
-          mt: 1.25, color: '#334155', fontSize: '0.92rem', lineHeight: 1.65, wordBreak: 'break-word',
+          mt: 1.25, color: '#dbe3f0', fontSize: '0.92rem', lineHeight: 1.65, wordBreak: 'break-word',
           '& ul, & ol': { pl: 3, my: 0.5 },
-          '& a': { color: '#059669' },
+          '& a': { color: '#10b981' },
           '& p': { my: 0.5 },
         }}
         dangerouslySetInnerHTML={{ __html: sanitizeRichText(announcement.bodyHtml, MAX_BODY_LENGTH) }}
@@ -410,10 +410,10 @@ export default function AnnouncementFeed({
       )}
 
       {ordered.length === 0 ? (
-        <Paper elevation={0} sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center', borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#fff' }}>
-          <Campaign sx={{ fontSize: 44, color: '#94a3b8', mb: 1 }} />
-          <Typography variant="h6" fontWeight={800} color="#0f172a">No announcements yet</Typography>
-          <Typography variant="body2" sx={{ color: '#64748b' }}>
+        <Paper elevation={0} sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center', borderRadius: 3, border: '1px solid #25304a', bgcolor: '#131b2e' }}>
+          <Campaign sx={{ fontSize: 44, color: '#7482a0', mb: 1 }} />
+          <Typography variant="h6" fontWeight={800} color="#e8edf7">No announcements yet</Typography>
+          <Typography variant="body2" sx={{ color: '#a3b0c7' }}>
             {isInstructor
               ? 'Post an update, attach a handout, or pin something important to the top of the class stream.'
               : 'Your instructor has not posted any announcements yet.'}

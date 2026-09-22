@@ -540,7 +540,7 @@ export default function ExamRepository() {
       <Paper sx={{ p: 4, borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Quiz sx={{ fontSize: 40, color: '#9c27b0', mr: 2 }} />
+            <Quiz sx={{ fontSize: 40, color: '#22d3ee', mr: 2 }} />
             <Box>
               <Typography variant="h4" fontWeight="bold">
                 Exam Repository
@@ -589,16 +589,16 @@ export default function ExamRepository() {
                 sx={{
                   width: '100%',
                   minHeight: { md: 110 },
-                  bgcolor: 'white',
+                  bgcolor: '#131b2e',
                   borderRadius: 3,
-                  border: '1px solid #e2e8f0',
-                  borderLeft: '6px solid #9c27b0',
+                  border: '1px solid #25304a',
+                  borderLeft: '6px solid #22d3ee',
                   p: 3,
                   transition: 'all 0.2s ease',
                   '&:hover': {
                     transform: 'translateY(-2px)',
                     boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
-                    borderColor: '#cbd5e1',
+                    borderColor: '#33415c',
                   },
                   display: 'flex',
                   flexDirection: { xs: 'column', md: 'row' },
@@ -614,7 +614,7 @@ export default function ExamRepository() {
                     width: 46,
                     height: 46,
                     borderRadius: 2,
-                    background: 'linear-gradient(135deg, #7b1fa2 0%, #9c27b0 100%)',
+                    background: 'linear-gradient(135deg, #22d3ee 0%, #22d3ee 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -698,7 +698,7 @@ export default function ExamRepository() {
                   minWidth: { md: '280px' },
                   width: { xs: '100%', md: 'auto' },
                   justifyContent: { xs: 'flex-start', md: 'flex-end' },
-                  borderTop: { xs: '1px solid #f1f5f9', md: 'none' },
+                  borderTop: { xs: '1px solid #1a2338', md: 'none' },
                   pt: { xs: 1.5, md: 0 },
                   mt: { xs: 1, md: 0 }
                 }}>
@@ -743,9 +743,9 @@ export default function ExamRepository() {
                         }
                       }}
                       sx={{
-                        bgcolor: '#fef2f2',
-                        border: '1px solid #fee2e2',
-                        '&:hover': { bgcolor: '#fee2e2' },
+                        bgcolor: 'rgba(248, 113, 113, 0.08)',
+                        border: '1px solid rgba(248, 113, 113, 0.14)',
+                        '&:hover': { bgcolor: 'rgba(248, 113, 113, 0.14)' },
                         width: 32,
                         height: 32,
                       }}
@@ -865,11 +865,11 @@ export default function ExamRepository() {
                         variant="outlined"
                         sx={{
                           p: { xs: 2.5, md: 4 },
-                          bgcolor: '#ffffff',
+                          bgcolor: '#131b2e',
                           position: 'relative',
                           borderRadius: 4,
-                          borderColor: '#cbd5e1',
-                          borderLeft: '5px solid #7b1fa2',
+                          borderColor: '#33415c',
+                          borderLeft: '5px solid #22d3ee',
                           boxShadow: '0 2px 10px rgba(0,0,0,0.01)',
                           transition: 'all 0.2s',
                           '&:hover': { boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }
@@ -892,15 +892,15 @@ export default function ExamRepository() {
                             justifyContent: 'center',
                             borderRadius: 4
                           }}>
-                            <CircularProgress size={38} thickness={4} sx={{ color: '#7b1fa2', mb: 1.5 }} />
-                            <Typography variant="subtitle2" fontWeight="bold" color="#7b1fa2">
+                            <CircularProgress size={38} thickness={4} sx={{ color: '#22d3ee', mb: 1.5 }} />
+                            <Typography variant="subtitle2" fontWeight="bold" color="#22d3ee">
                               AI is constructing alternative templates...
                             </Typography>
                           </Box>
                         )}
 
                         {/* Unified Card Header: Tags on Left, Delete on Right (No overlapping) */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, pb: 1.5, borderBottom: '1px solid #f1f5f9' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, pb: 1.5, borderBottom: '1px solid #1a2338' }}>
                           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                             <Chip label={`#${qIdx + 1}`} size="small" sx={{ fontWeight: 800 }} />
                             <Chip label={q.type.toUpperCase()} size="small" color="primary" sx={{ fontWeight: 800 }} />
@@ -938,7 +938,7 @@ export default function ExamRepository() {
                               Attach Question Image
                             </Button>
                             {q.image && (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 0.5, border: '1px solid #e2e8f0', borderRadius: 2 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 0.5, border: '1px solid #25304a', borderRadius: 2 }}>
                                 <img src={q.image} alt="Q Thumbnail" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
                                 <IconButton size="small" color="error" onClick={() => handleRemoveImg(qIdx)}>
                                   <Delete fontSize="small" />
@@ -949,8 +949,8 @@ export default function ExamRepository() {
 
                           {/* MC choices (Strictly Vertical option stacking) */}
                           {q.type === 'multiple-choice' && q.options && (
-                            <Box sx={{ pl: { xs: 1.5, md: 3 }, borderLeft: '4px solid #7b1fa2', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#475569' }}>
+                            <Box sx={{ pl: { xs: 1.5, md: 3 }, borderLeft: '4px solid #22d3ee', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#c3cddf' }}>
                                 Options and Answer Key Setup
                               </Typography>
                               <RadioGroup
@@ -986,7 +986,7 @@ export default function ExamRepository() {
                                           <ImageIcon fontSize="small" />
                                         </IconButton>
                                         {q.optionsImages?.[optIdx] && (
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5, border: '1px solid #f1f5f9', borderRadius: 1.5 }}>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, p: 0.5, border: '1px solid #1a2338', borderRadius: 1.5 }}>
                                             <img src={q.optionsImages[optIdx]} alt="Opt Thumbnail" style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px' }} />
                                             <IconButton size="small" color="error" onClick={() => handleRemoveImg(qIdx, optIdx)}>
                                               <Delete fontSize="small" />
@@ -1004,7 +1004,7 @@ export default function ExamRepository() {
                           {/* T/F Choice (Spaced vertically) */}
                           {q.type === 'true-false' && (
                             <Box sx={{ pl: 3, borderLeft: '4px solid #10b981', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#475569' }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#c3cddf' }}>
                                 Select Correct Key
                               </Typography>
                               <RadioGroup
@@ -1021,7 +1021,7 @@ export default function ExamRepository() {
                           {/* Short answer choice */}
                           {q.type === 'short-answer' && (
                             <Box sx={{ pl: 3, borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#dbe3f0' }}>
                                 Short Answer Key
                               </Typography>
                               <TextField
@@ -1039,7 +1039,7 @@ export default function ExamRepository() {
                           {/* Essay choice */}
                           {q.type === 'essay' && (
                             <Box sx={{ pl: 3, borderLeft: '4px solid #10b981', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#334155' }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#dbe3f0' }}>
                                 Essay Grading Rubric & Criteria
                               </Typography>
                               <TextField
@@ -1058,7 +1058,7 @@ export default function ExamRepository() {
                           )}
 
                           {/* Points setting and difficulty row (Vertical Stack) */}
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, bgcolor: '#f8fafc', borderRadius: 3, border: '1px solid #f1f5f9' }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, bgcolor: '#0f1626', borderRadius: 3, border: '1px solid #1a2338' }}>
                             <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>Metadata Weights</Typography>
                             <Grid container spacing={2}>
                               <Grid size={{ xs: 12, md: 6 }}>
@@ -1096,10 +1096,10 @@ export default function ExamRepository() {
                           </Box>
 
                           {/* Clean, Unconfusing AI Revision Action Bar */}
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, pt: 1.5, borderTop: '1px solid #f1f5f9' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, pt: 1.5, borderTop: '1px solid #1a2338' }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <AutoAwesome sx={{ color: '#10b981', fontSize: 18 }} />
-                              <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
+                              <Typography variant="caption" sx={{ fontWeight: 700, color: '#c3cddf' }}>
                                 AI Revision:
                               </Typography>
                             </Box>
@@ -1114,10 +1114,10 @@ export default function ExamRepository() {
                                   borderRadius: 2,
                                   fontWeight: 700,
                                   fontSize: '0.8rem',
-                                  color: '#047857',
-                                  borderColor: '#a7f3d0',
-                                  bgcolor: '#ecfdf5',
-                                  '&:hover': { bgcolor: '#d1fae5', borderColor: '#a7f3d0' }
+                                  color: '#34d399',
+                                  borderColor: 'rgba(16, 185, 129, 0.38)',
+                                  bgcolor: 'rgba(16, 185, 129, 0.13)',
+                                  '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.18)', borderColor: 'rgba(16, 185, 129, 0.38)' }
                                 }}
                               >
                                 Re-generate with AI
@@ -1133,10 +1133,10 @@ export default function ExamRepository() {
                                     borderRadius: 2,
                                     fontWeight: 700,
                                     fontSize: '0.8rem',
-                                    color: '#065f46',
-                                    borderColor: '#a7f3d0',
-                                    bgcolor: '#ecfdf5',
-                                    '&:hover': { bgcolor: '#d1fae5', borderColor: '#6ee7b7' }
+                                    color: '#6ee7b7',
+                                    borderColor: 'rgba(16, 185, 129, 0.38)',
+                                    bgcolor: 'rgba(16, 185, 129, 0.13)',
+                                    '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.18)', borderColor: '#6ee7b7' }
                                   }}
                                 >
                                   Shuffle Choices
@@ -1170,7 +1170,7 @@ export default function ExamRepository() {
         fullWidth
         PaperProps={{ sx: { borderRadius: 3 } }}
       >
-        <DialogTitle sx={{ fontWeight: 800, color: '#0f172a' }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#e8edf7' }}>
           Print “{printTarget?.title}”
         </DialogTitle>
         <DialogContent dividers>
@@ -1203,10 +1203,10 @@ export default function ExamRepository() {
             </Alert>
           )}
 
-          <Typography variant="caption" sx={{ fontWeight: 800, color: '#475569', display: 'block', mb: 1 }}>
+          <Typography variant="caption" sx={{ fontWeight: 800, color: '#c3cddf', display: 'block', mb: 1 }}>
             PREVIEW
           </Typography>
-          <Box sx={{ maxHeight: 460, overflowY: 'auto', overflowX: 'hidden', border: '1px solid #e2e8f0', borderRadius: 2, bgcolor: '#f8fafc', p: 1 }}>
+          <Box sx={{ maxHeight: 460, overflowY: 'auto', overflowX: 'hidden', border: '1px solid #25304a', borderRadius: 2, bgcolor: '#0f1626', p: 1 }}>
             {printTarget && (
               <PrintableExam exam={printTarget} header={printHeader} paper={printPaper} mode={printMode} />
             )}

@@ -114,7 +114,7 @@ export default function AppSidebar({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0, cursor: 'pointer' }} onClick={() => go('/dashboard')}>
           <Box
             sx={{
-              width: 28, height: 28, borderRadius: radius.sm, flexShrink: 0,
+              width: 28, height: 28, borderRadius: '8px', flexShrink: 0,
               background: `linear-gradient(135deg, ${palette.primary}, ${palette.instructor})`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontWeight: 800, fontSize: '0.85rem',
