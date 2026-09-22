@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Box, Paper, Typography, Button, Chip, Avatar, Stack, LinearProgress,
@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
   AssignmentTurnedIn, ErrorOutline, Schedule, TaskAlt, RateReview, Campaign,
-  ArrowForward, NotificationsNone, EventBusy, Bolt, Inbox,
+  ArrowForward, NotificationsNone, EventBusy, Bolt, Inbox, ChatBubbleOutline, Lock,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -19,6 +19,7 @@ import {
   type TodoItem, type TodoBucket,
 } from '../services/todo';
 import { useIsMobile } from '../hooks/useResponsive';
+import { commentActivityFor, getCommentsSeenAt, markCommentsSeen } from '../services/commentActivity';
 
 /**
  * To-do / Notifications.
@@ -170,7 +171,7 @@ export default function Notifications() {
   const isMobile = useIsMobile();
   const {
     currentUser, classrooms, exams, examAttempts,
-    classwork, submissions, announcements,
+    classwork, submissions, announcements, comments,
   } = useAuth();
 
   const [filter, setFilter] = useState<ViewFilter>('all');
@@ -217,6 +218,17 @@ export default function Notifications() {
       .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5);
   }, [announcements, classrooms, currentUser, isInstructor]);
+
+  const commentActivity = useMemo(
+    () => commentActivityFor(currentUser, classrooms, comments).slice(0, 15),
+    [currentUser, classrooms, comments]
+  );
+  // Snapshot the previous "seen" time so new items stay highlighted during this visit,
+  // then mark everything seen so the sidebar badge clears.
+  const [seenBefore] = useState(() => getCommentsSeenAt(currentUser?.id));
+  useEffect(() => {
+    markCommentsSeen(currentUser?.id);
+  }, [currentUser?.id, comments.length]);
 
   const activeCount = counts.missing + counts.assigned + counts.review;
   const doneRatio = todos.length > 0 ? counts.done / todos.length : 0;
@@ -331,6 +343,61 @@ export default function Notifications() {
             <TodoRow key={`${item.kind}-${item.id}`} item={item} onOpen={() => navigate(item.href)} />
           ))}
         </Box>
+      )}
+
+      {/* Recent comments */}
+      {commentActivity.length > 0 && (
+        <>
+          <Divider sx={{ my: 3 }} />
+          <SectionHeading title="Recent comments" count={commentActivity.length} />
+          <Box>
+            {commentActivity.map((c) => {
+              const tint = tintFor(c.classroomId);
+              const isNew = new Date(c.createdAt).getTime() > seenBefore;
+              return (
+                <Paper
+                  key={c.id}
+                  onClick={() => navigate(c.href)}
+                  sx={{
+                    p: 2, mb: 1.25, borderRadius: '14px', cursor: 'pointer',
+                    border: `1px solid ${isNew ? palette.primary : palette.border}`,
+                    display: 'flex', gap: 1.75, alignItems: 'flex-start',
+                    '&:hover': { boxShadow: shadow.sm },
+                  }}
+                >
+                  <Avatar sx={{ width: 34, height: 34, bgcolor: tint.from, color: tint.ink, flexShrink: 0 }}>
+                    {c.isPrivate ? <Lock sx={{ fontSize: 16 }} /> : <ChatBubbleOutline sx={{ fontSize: 16 }} />}
+                  </Avatar>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: palette.ink }}>
+                        {c.authorName}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: palette.inkSecondary }}>
+                        {c.isPrivate ? 'sent a private comment' : `commented on ${c.postType === 'announcement' ? 'an announcement' : 'classwork'}`}
+                      </Typography>
+                      <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: palette.inkDisabled }} />
+                      <Typography variant="caption" sx={{ color: palette.inkSecondary }}>
+                        {c.className}
+                      </Typography>
+                      {isNew && <StatusPill label="New" tone="info" />}
+                    </Box>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: palette.inkSecondary, mt: 0.35,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {c.body}
+                    </Typography>
+                  </Box>
+                </Paper>
+              );
+            })}
+          </Box>
+        </>
       )}
 
       {/* Recent announcements */}

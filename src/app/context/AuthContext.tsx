@@ -414,10 +414,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (dbUsers.length > 0) {
         setUsers((prev) => {
-          const byEmail = new Map(dbUsers.map((u) => [u.email.toLowerCase(), u]));
-          const merged = prev.map((u) => byEmail.get(u.email.toLowerCase()) ? { ...u, ...byEmail.get(u.email.toLowerCase()), password: u.password } : u);
-          const existingEmails = new Set(merged.map((u) => u.email.toLowerCase()));
-          const extra = dbUsers.filter((u) => !existingEmails.has(u.email.toLowerCase()));
+          // Merge by id, not email: one Google account can own both an instructor and a
+          // student profile, and keying on email collapsed the two into one.
+          const byId = new Map(dbUsers.map((u) => [u.id, u]));
+          const merged = prev.map((u) => byId.get(u.id) ? { ...u, ...byId.get(u.id), password: u.password } : u);
+          const existingIds = new Set(merged.map((u) => u.id));
+          const extra = dbUsers.filter((u) => !existingIds.has(u.id));
           return [...merged, ...extra];
         });
       }
@@ -457,6 +459,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (dbSubmissions.length > 0) setSubmissions((prev) => mergeById(prev, dbSubmissions));
       if (dbComments.length > 0) setComments((prev) => mergeById(prev, dbComments));
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Activity from other people (a student's comment, a new submission) is otherwise only
+  // loaded on page open. Re-pull the fast-moving collections every 30s and whenever the tab
+  // regains focus, so the instructor's notifications update without a reload.
+  useEffect(() => {
+    let busy = false;
+    const refresh = async () => {
+      if (busy || document.visibilityState === 'hidden') return;
+      busy = true;
+      try {
+        const [dbUsers, dbComments, dbSubmissions, dbAttempts, dbAnnouncements, dbClassrooms] = await Promise.all([
+          db.fetchUsers(), db.fetchComments(), db.fetchSubmissions(), db.fetchExamAttempts(),
+          db.fetchAnnouncements(), db.fetchClassrooms(),
+        ]);
+        if (dbUsers.length > 0) setUsers((prev) => mergeById(prev, dbUsers, (local, remote) => ({ ...local, ...remote, password: local.password })));
+        if (dbComments.length > 0) setComments((prev) => mergeById(prev, dbComments));
+        if (dbSubmissions.length > 0) setSubmissions((prev) => mergeById(prev, dbSubmissions));
+        if (dbAttempts.length > 0) setExamAttempts((prev) => mergeById(prev, dbAttempts, (local, remote) => ({
+          ...local, ...remote,
+          questions: Array.isArray(remote.questions) && remote.questions.length > 0 ? remote.questions : local.questions,
+        })));
+        if (Object.keys(dbAnnouncements).length > 0) setAnnouncements((prev) => mergeGroupedById(prev, dbAnnouncements));
+        if (dbClassrooms.length > 0) setClassrooms(dbClassrooms);
+      } catch {
+        // Offline or unconfigured: keep what is on screen.
+      } finally {
+        busy = false;
+      }
+    };
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
