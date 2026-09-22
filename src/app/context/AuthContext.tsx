@@ -6,6 +6,20 @@ import * as db from '../services/supabaseData';
 import { removeClassroomFile } from '../services/fileStorage';
 import { notifyAnnouncement, notifyAssignment } from '../services/emailService';
 
+/** Per-assignment detail captured when a template is posted to a class. */
+export interface AssignmentOptions {
+  postDate: string;
+  dueDate: string;
+  /** Overrides the template title for this class only; blank keeps the template's. */
+  title?: string;
+  instructions?: string;
+  topicId?: string;
+  totalPoints?: number;
+  allowedAttempts?: number;
+  allowLate?: boolean;
+  shuffleQuestions?: boolean;
+}
+
 interface AuthContextType {
   currentUser: User | null;
   users: User[];
@@ -37,7 +51,7 @@ interface AuthContextType {
   addClassroom: (classroom: any) => void;
   joinClassroom: (classCode: string, studentId: string) => boolean;
   saveExamToRepository: (exam: any) => void;
-  assignExamToClassroom: (examId: string, classroomId: string, postDate: string, dueDate: string) => void;
+  assignExamToClassroom: (examId: string, classroomId: string, options: AssignmentOptions) => void;
   submitExamAttempt: (attempt: any) => void;
   saveReviewer: (reviewer: any) => void;
   saveQuestionBankItem: (item: any) => void;
@@ -785,7 +799,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const assignExamToClassroom = (examId: string, classroomId: string, postDate: string, dueDate: string) => {
+  const assignExamToClassroom = (examId: string, classroomId: string, options: AssignmentOptions) => {
     const repoExam = savedExams.find((e) => e.id === examId);
     if (repoExam) {
       const activeExam = {
@@ -794,9 +808,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sourceExamId: repoExam.id,
         classroomId,
         isPublished: true,
-        allowedAttempts: 1,
-        postDate: new Date(postDate),
-        dueDate: new Date(dueDate),
+        // A blank override keeps the template's own title/points, so an instructor who
+        // fills in nothing gets exactly the previous behaviour.
+        title: options.title?.trim() || repoExam.title,
+        instructions: options.instructions?.trim() || '',
+        topicId: options.topicId || undefined,
+        totalPoints: options.totalPoints ?? repoExam.totalPoints,
+        allowedAttempts: options.allowedAttempts ?? 1,
+        allowLate: !!options.allowLate,
+        shuffleQuestions: !!options.shuffleQuestions,
+        postDate: new Date(options.postDate),
+        dueDate: new Date(options.dueDate),
         createdAt: new Date(),
       };
       setExams((prev) => [...prev, activeExam]);

@@ -331,6 +331,11 @@ export async function fetchExams() {
     allowedAttempts: e.allowed_attempts,
     postDate: e.post_date || undefined,
     dueDate: e.due_date || undefined,
+    // Per-assignment detail, set when a template is posted to a class.
+    instructions: e.instructions || '',
+    topicId: e.topic_id || undefined,
+    allowLate: !!e.allow_late,
+    shuffleQuestions: !!e.shuffle_questions,
   }));
 }
 
@@ -351,6 +356,10 @@ export async function upsertExam(exam: any) {
       allowed_attempts: exam.allowedAttempts || 1,
       post_date: exam.postDate || null,
       due_date: exam.dueDate || null,
+      instructions: exam.instructions || null,
+      topic_id: exam.topicId ? toDbId(exam.topicId) : null,
+      allow_late: !!exam.allowLate,
+      shuffle_questions: !!exam.shuffleQuestions,
     });
     if (error) warn('upsertExam', error);
   } catch (e) {

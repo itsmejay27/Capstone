@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { useConfirm } from '../components/ConfirmDialog';
 import {
   Container,
   FormControl,
@@ -31,6 +32,8 @@ import {
   CircularProgress,
   Alert,
   Divider,
+  FormHelperText,
+  Switch,
 } from '@mui/material';
 import {
   Add,
@@ -207,6 +210,7 @@ const ALTERNATIVE_QUESTIONS: Record<string, any[]> = {
 
 export default function ExamRepository() {
   const { toast, ToastHost } = useToast();
+  const { confirm, ConfirmHost } = useConfirm();
   const {
     currentUser,
     users,
@@ -215,6 +219,7 @@ export default function ExamRepository() {
     assignExamToClassroom,
     updateExamInRepository,
     deleteExamFromRepository,
+    topics,
   } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -264,6 +269,15 @@ export default function ExamRepository() {
   };
   const [postDate, setPostDate] = useState(getLocalDateTimeString(new Date()));
   const [dueDate, setDueDate] = useState(getLocalDateTimeString(new Date(Date.now() + 86400000)));
+  // Per-assignment detail. Title and points start from the template and can be overridden
+  // for this class only, the way Google Classroom lets the same material be posted twice.
+  const [assignTitle, setAssignTitle] = useState('');
+  const [assignInstructions, setAssignInstructions] = useState('');
+  const [assignTopicId, setAssignTopicId] = useState('');
+  const [assignPoints, setAssignPoints] = useState<number | ''>('');
+  const [assignAttempts, setAssignAttempts] = useState(1);
+  const [assignAllowLate, setAssignAllowLate] = useState(true);
+  const [assignShuffle, setAssignShuffle] = useState(true);
 
   // Edit modal state
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -276,6 +290,9 @@ export default function ExamRepository() {
     exam.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Topics belong to a class, so the picker has to follow the class selection.
+  const classTopics: any[] = (topics && selectedClassroomId ? topics[selectedClassroomId] : []) || [];
+
   const handleOpenAssign = (examId: string) => {
     setSelectedExamId(examId);
     // Auto-select first class if available
@@ -283,16 +300,47 @@ export default function ExamRepository() {
     if (myClasses.length > 0) {
       setSelectedClassroomId(myClasses[0].id);
     }
+    // Seed the form from the template so the common case is one click.
+    const template = savedExams.find((e) => e.id === examId);
+    setAssignTitle(template?.title || '');
+    setAssignInstructions(template?.description || '');
+    setAssignPoints(template?.totalPoints ?? '');
+    setAssignTopicId('');
+    setAssignAttempts(1);
+    setAssignAllowLate(true);
+    setAssignShuffle(true);
+    setPostDate(getLocalDateTimeString(new Date()));
+    setDueDate(getLocalDateTimeString(new Date(Date.now() + 86400000)));
     setOpenAssignModal(true);
   };
 
   const handleAssignConfirm = () => {
     if (!selectedExamId || !selectedClassroomId || !postDate || !dueDate) {
-      toast('Please fill out all fields.', 'error');
+      toast('Choose a class and set both dates.', 'error');
       return;
     }
-    assignExamToClassroom(selectedExamId, selectedClassroomId, postDate, dueDate);
-    toast('Exam assigned and scheduled.');
+    if (!assignTitle.trim()) {
+      toast('Give the assignment a title.', 'error');
+      return;
+    }
+    // A due date before the post date would publish an exam that is already overdue.
+    if (new Date(dueDate) <= new Date(postDate)) {
+      toast('The due date must come after the post date.', 'error');
+      return;
+    }
+    const className = myClassrooms.find((c) => c.id === selectedClassroomId)?.name || 'the class';
+    assignExamToClassroom(selectedExamId, selectedClassroomId, {
+      postDate,
+      dueDate,
+      title: assignTitle,
+      instructions: assignInstructions,
+      topicId: assignTopicId || undefined,
+      totalPoints: assignPoints === '' ? undefined : Number(assignPoints),
+      allowedAttempts: assignAttempts,
+      allowLate: assignAllowLate,
+      shuffleQuestions: assignShuffle,
+    });
+    toast(`Assigned to ${className}.`);
     setOpenAssignModal(false);
     setSelectedExamId(null);
   };
@@ -736,9 +784,16 @@ export default function ExamRepository() {
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => {
-                            if (confirm('Delete this template from repository?')) {
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: 'Delete this template?',
+                              message: `"${exam.title}" will be removed from the repository. Exams already assigned to a class are not affected.`,
+                              confirmLabel: 'Delete',
+                              tone: 'danger',
+                            });
+                            if (ok) {
                               deleteExamFromRepository(exam.id);
+                              toast('Template deleted.');
                             }
                           }}
                           sx={{
@@ -762,47 +817,154 @@ export default function ExamRepository() {
 
       {/* Assign / Schedule Modal */}
       <Dialog open={openAssignModal} onClose={() => setOpenAssignModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Assign Exam to Classroom & Schedule</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-            <FormControl fullWidth>
-              <InputLabel>Select Classroom</InputLabel>
-              <Select
-                value={selectedClassroomId}
-                onChange={(e) => setSelectedClassroomId(e.target.value)}
-                label="Select Classroom"
-              >
-                {myClassrooms.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.name} ({c.section})
+        <DialogTitle sx={{ pb: 0.5 }}>Assign exam</DialogTitle>
+        <Typography variant="body2" sx={{ px: 3, pb: 2, color: 'var(--c-ink-secondary)' }}>
+          Students see this title and these instructions. The template itself is unchanged,
+          so the same exam can be posted to another class with different detail.
+        </Typography>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <TextField
+              label="Title"
+              required
+              value={assignTitle}
+              onChange={(e) => setAssignTitle(e.target.value)}
+              inputProps={{ maxLength: 140 }}
+            />
+
+            <TextField
+              label="Instructions (optional)"
+              value={assignInstructions}
+              onChange={(e) => setAssignInstructions(e.target.value)}
+              multiline
+              minRows={3}
+              placeholder="What students should know before they start — materials allowed, how to submit, anything to watch for."
+            />
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Class</InputLabel>
+                <Select
+                  value={selectedClassroomId}
+                  onChange={(e) => { setSelectedClassroomId(e.target.value); setAssignTopicId(''); }}
+                  label="Class"
+                >
+                  {myClassrooms.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.name} ({c.section})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth disabled={classTopics.length === 0}>
+                <InputLabel>Topic</InputLabel>
+                <Select
+                  value={assignTopicId}
+                  onChange={(e) => setAssignTopicId(e.target.value)}
+                  label="Topic"
+                >
+                  <MenuItem value="">
+                    <em>No topic</em>
                   </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                  {classTopics.map((t: any) => (
+                    <MenuItem key={t.id} value={t.id}>{t.name || t.title}</MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  {classTopics.length === 0
+                    ? 'This class has no topics yet.'
+                    : 'Groups the exam in the class stream.'}
+                </FormHelperText>
+              </FormControl>
+            </Box>
 
-            <TextField
-              label="Post Date and Time"
-              type="datetime-local"
-              fullWidth
-              value={postDate}
-              onChange={(e) => setPostDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              <TextField
+                label="Points"
+                type="number"
+                value={assignPoints}
+                onChange={(e) => setAssignPoints(e.target.value === '' ? '' : Number(e.target.value))}
+                inputProps={{ min: 0 }}
+                helperText="Total marks for this assignment."
+              />
+              <TextField
+                label="Attempts allowed"
+                type="number"
+                value={assignAttempts}
+                onChange={(e) => setAssignAttempts(Math.max(1, Number(e.target.value) || 1))}
+                inputProps={{ min: 1, max: 10 }}
+                helperText="How many times a student may sit it."
+              />
+            </Box>
 
-            <TextField
-              label="Due Date and Time"
-              type="datetime-local"
-              fullWidth
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              <TextField
+                label="Posts on"
+                type="datetime-local"
+                value={postDate}
+                onChange={(e) => setPostDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                helperText="Hidden from students until this time."
+              />
+              <TextField
+                label="Due"
+                type="datetime-local"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                error={Boolean(postDate && dueDate) && new Date(dueDate) <= new Date(postDate)}
+                helperText={
+                  postDate && dueDate && new Date(dueDate) <= new Date(postDate)
+                    ? 'Must be after the post date.'
+                    : ' '
+                }
+              />
+            </Box>
+
+            <Box
+              sx={{
+                p: 1.75, borderRadius: '10px',
+                border: '1px solid var(--c-border)', bgcolor: 'var(--c-surface-muted)',
+              }}
+            >
+              <FormControlLabel
+                control={<Switch checked={assignAllowLate} onChange={(e) => setAssignAllowLate(e.target.checked)} />}
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>Accept late submissions</Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)' }}>
+                      Turn this off to close the exam once the due date passes.
+                    </Typography>
+                  </Box>
+                }
+                sx={{ alignItems: 'flex-start', m: 0, mb: 1 }}
+              />
+              <FormControlLabel
+                control={<Switch checked={assignShuffle} onChange={(e) => setAssignShuffle(e.target.checked)} />}
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>Shuffle question order</Typography>
+                    <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)' }}>
+                      Each student sees a different order. Off keeps the template order.
+                    </Typography>
+                  </Box>
+                }
+                sx={{ alignItems: 'flex-start', m: 0 }}
+              />
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAssignModal(false)}>Cancel</Button>
-          <Button onClick={handleAssignConfirm} variant="contained" color="secondary" disabled={!selectedClassroomId}>
-            Schedule Assignment
+          <Button onClick={() => setOpenAssignModal(false)} sx={{ color: 'var(--c-ink-secondary)' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleAssignConfirm}
+            variant="contained"
+            disabled={!selectedClassroomId || !assignTitle.trim()}
+          >
+            Assign
           </Button>
         </DialogActions>
       </Dialog>
@@ -1234,6 +1396,7 @@ export default function ExamRepository() {
         )}
       </PrintPortal>
       {ToastHost}
+      {ConfirmHost}
     </Container>
   );
 }
