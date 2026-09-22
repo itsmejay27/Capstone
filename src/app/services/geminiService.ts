@@ -188,6 +188,40 @@ async function callGeminiApiForBatch(
 
 let geminiIdCounter = 1;
 
+
+/**
+ * How many generation batches may be in flight at once.
+ *
+ * Batches were previously awaited one after another, so a 60-item TOS exam made eight
+ * round trips end to end — roughly 6s each, 45-60s of wall time for work that has no
+ * ordering dependency between batches. Four at a time keeps the total near the slowest
+ * single batch while staying well inside provider rate limits; higher values start
+ * drawing 429s from Gemini's free tier.
+ */
+const BATCH_CONCURRENCY = 4;
+
+/**
+ * Runs `worker` over `items` with at most `limit` in flight, returning results in the
+ * ORIGINAL order regardless of completion order — question numbering depends on it.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
+
 function mapRawToExamItem(q: any, spec: any, defaultTopic: string, fallbackIdx: number): any {
   let qType = (spec?.questionType || q?.type || q?.t || 'multiple-choice').toLowerCase();
   if (!['multiple-choice', 'true-false', 'short-answer', 'essay'].includes(qType)) {
@@ -323,13 +357,20 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
     const finalQuestions: any[] = [];
     const BATCH_SIZE = 8; // Optimal batch size: fast execution (~5-7s), avoids 8192 token truncation and HTTP ECONNRESET
 
+    // Slice the specs into batches up front so they can be dispatched concurrently.
+    const specChunks: any[][] = [];
     for (let i = 0; i < specsToGenerate.length; i += BATCH_SIZE) {
-      const chunkSpecs = specsToGenerate.slice(i, i + BATCH_SIZE);
+      specChunks.push(specsToGenerate.slice(i, i + BATCH_SIZE));
+    }
+
+    let completedBatches = 0;
+    params.onProgress?.(0, totalQuestions, `Generating ${totalQuestions} items in ${specChunks.length} batches...`);
+
+    const chunkResults = await mapWithConcurrency(specChunks, BATCH_CONCURRENCY, async (chunkSpecs, chunkIndex) => {
+      const batchQuestions: any[] = [];
+      const baseIndex = chunkIndex * BATCH_SIZE;
       const startNum = chunkSpecs[0].itemNumber;
       const endNum = chunkSpecs[chunkSpecs.length - 1].itemNumber;
-      const currentTopic = chunkSpecs[0].topic || primaryTopic;
-
-      params.onProgress?.(finalQuestions.length, totalQuestions, `Generating items ${startNum}–${endNum} of ${totalQuestions} (${currentTopic})...`);
 
       const systemPrompt = `You are an expert academic test generator. You must parse the provided TOS document and map your output strictly to its parameters. Do not deviate from the item count, topic distribution, or cognitive levels.
 
@@ -385,10 +426,10 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
           const spec = chunkSpecs[cIdx];
           const rawQ = rawBatch[cIdx];
           if (rawQ) {
-            finalQuestions.push(mapRawToExamItem(rawQ, spec, primaryTopic, finalQuestions.length));
+            batchQuestions.push(mapRawToExamItem(rawQ, spec, primaryTopic, baseIndex + cIdx));
           } else {
             const [filled] = buildTopicDrivenQuestionsForSpecs([spec], primaryTopic, params.difficulty);
-            if (filled) finalQuestions.push({ ...filled, needsAuthoring: true });
+            if (filled) batchQuestions.push({ ...filled, needsAuthoring: true });
           }
         }
         if (rawBatch.length < chunkSpecs.length) {
@@ -401,9 +442,21 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
         // Fallback specifically for this chunk using dynamic spec generator
         console.warn(`Gemini batch for items ${startNum}-${endNum} failed or timed out, generating via dynamic spec generator.`);
         const fallbackChunk = buildTopicDrivenQuestionsForSpecs(chunkSpecs, primaryTopic, params.difficulty);
-        finalQuestions.push(...fallbackChunk.map((q: any) => ({ ...q, needsAuthoring: true })));
+        batchQuestions.push(...fallbackChunk.map((q: any) => ({ ...q, needsAuthoring: true })));
       }
-    }
+
+      // Batches finish out of order, so progress counts completed batches rather than
+      // pretending to know which item number is currently in flight.
+      completedBatches++;
+      params.onProgress?.(
+        Math.min(completedBatches * BATCH_SIZE, totalQuestions),
+        totalQuestions,
+        `Generated ${completedBatches} of ${specChunks.length} batches...`
+      );
+      return batchQuestions;
+    });
+
+    for (const batch of chunkResults) finalQuestions.push(...batch);
 
     params.onProgress?.(finalQuestions.length, totalQuestions, 'Question generation complete!');
     return finalQuestions;
@@ -426,12 +479,20 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
   const finalQuestions: any[] = [];
   const diffDirective = getDifficultyPromptDirective(params.difficulty);
 
+  // Same treatment as the TOS path: batches are independent, so they go out concurrently.
+  const typeChunks: typeof targetTypes[] = [];
   for (let i = 0; i < targetTypes.length; i += BATCH_SIZE) {
-    const chunkTypes = targetTypes.slice(i, i + BATCH_SIZE);
+    typeChunks.push(targetTypes.slice(i, i + BATCH_SIZE));
+  }
+
+  let completedManualBatches = 0;
+  params.onProgress?.(0, totalQuestions, `Generating ${totalQuestions} questions in ${typeChunks.length} batches...`);
+
+  const manualResults = await mapWithConcurrency(typeChunks, BATCH_CONCURRENCY, async (chunkTypes, chunkIndex) => {
+    const batchQuestions: any[] = [];
+    const i = chunkIndex * BATCH_SIZE;
     const startNum = i + 1;
     const endNum = i + chunkTypes.length;
-
-    params.onProgress?.(finalQuestions.length, totalQuestions, `Generating questions ${startNum}–${endNum} of ${totalQuestions} on "${primaryTopic}"...`);
 
     const systemPrompt = `You are an expert university professor and examination author creating an exam on: "${primaryTopic}".
 Difficulty Target: ${diffDirective.levelLabel}
@@ -466,7 +527,7 @@ Respond ONLY with raw valid JSON:
         const t = chunkTypes[cIdx];
         const rawQ = rawBatch[cIdx] || rawBatch[cIdx % rawBatch.length];
         const spec = { questionType: t.type, points: t.defaultPoints, isExtra: t.isExtra, itemNumber: startNum + cIdx, topic: primaryTopic };
-        finalQuestions.push(mapRawToExamItem(rawQ, spec, primaryTopic, finalQuestions.length));
+        batchQuestions.push(mapRawToExamItem(rawQ, spec, primaryTopic, i + cIdx));
       }
     } else {
       const fallbackChunk = buildTopicDrivenQuestions({
@@ -477,9 +538,19 @@ Respond ONLY with raw valid JSON:
         essayCount: chunkTypes.filter((t) => t.type === 'essay').length,
         extraCount: chunkTypes.filter((t) => t.isExtra).length,
       });
-      finalQuestions.push(...fallbackChunk);
+      batchQuestions.push(...fallbackChunk);
     }
-  }
+
+    completedManualBatches++;
+    params.onProgress?.(
+      Math.min(completedManualBatches * BATCH_SIZE, totalQuestions),
+      totalQuestions,
+      `Generated ${completedManualBatches} of ${typeChunks.length} batches...`
+    );
+    return batchQuestions;
+  });
+
+  for (const batch of manualResults) finalQuestions.push(...batch);
 
   params.onProgress?.(finalQuestions.length, totalQuestions, 'Question generation complete!');
   return finalQuestions;

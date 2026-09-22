@@ -75,8 +75,11 @@ export default function TakeExam() {
       const N = exam.activeQuestionCount || exam.questions.length;
       const pool = exam.questions;
       
-      const shuffledPool = shuffleArray(pool);
-      const selectedQuestions = shuffledPool.slice(0, Math.min(N, pool.length));
+      // `shuffleQuestions` is undefined on exams assigned before the setting existed, so
+      // it defaults to true — the behaviour every existing exam already had.
+      const shouldShuffle = exam.shuffleQuestions !== false;
+      const orderedPool = shouldShuffle ? shuffleArray(pool) : pool;
+      const selectedQuestions = orderedPool.slice(0, Math.min(N, pool.length));
 
       const finalizedQuestions = selectedQuestions.map((q: any) => {
         if (q.type === 'multiple-choice' && q.options) {
@@ -157,6 +160,31 @@ export default function TakeExam() {
     );
   }
 
+  const dueAt = exam.dueDate ? new Date(exam.dueDate) : null;
+  const isPastDue = Boolean(dueAt && Date.now() > dueAt.getTime());
+  const lateAllowed = exam.allowLate !== false;
+
+  // Past due and late work is not accepted: refuse entry rather than let a student sit an
+  // exam whose submission would be rejected.
+  if (!hasStarted && isPastDue && !lateAllowed) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Paper sx={{ p: { xs: 4, md: 6 }, borderRadius: 4, textAlign: 'center' }}>
+          <Typography variant="h5" fontWeight={900} sx={{ mb: 1.5, color: 'var(--c-slate-900)' }}>
+            This exam has closed
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            {exam.title} was due on {dueAt?.toLocaleString()}, and late submissions are not
+            being accepted. Speak to your instructor if you think this is a mistake.
+          </Typography>
+          <Button variant="contained" onClick={() => navigate('/dashboard')}>
+            Back to dashboard
+          </Button>
+        </Paper>
+      </Container>
+    );
+  }
+
   if (!hasStarted) {
     return (
       <Container maxWidth="md" sx={{ py: 8 }}>
@@ -165,7 +193,7 @@ export default function TakeExam() {
             {exam.title}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4, px: { md: 4 } }}>
-            {exam.description || 'Please read the instructions carefully before starting the assessment.'}
+            {exam.instructions || exam.description || 'Please read the instructions carefully before starting the assessment.'}
           </Typography>
           
           <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 2, sm: 4 }, my: 4, flexWrap: 'wrap' }}>
@@ -265,6 +293,9 @@ export default function TakeExam() {
       answers,
       score,
       submittedAt: new Date().toISOString(),
+      // Recorded so a submission accepted after the due date is visible when grading,
+      // rather than being silently indistinguishable from an on-time one.
+      isLate: Boolean(exam.dueDate && Date.now() > new Date(exam.dueDate).getTime()),
     };
 
     submitExamAttempt(finalizedAttempt);
@@ -320,7 +351,7 @@ export default function TakeExam() {
           />
         )}
         <Typography variant="body2" sx={{ color: 'var(--c-slate-300)', opacity: 0.9 }}>
-          {exam.description || 'Answer all questions in the pool. Review your answers before submitting.'}
+          {exam.instructions || exam.description || 'Answer all questions in the pool. Review your answers before submitting.'}
         </Typography>
       </Box>
 

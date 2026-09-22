@@ -8,7 +8,7 @@ import {
   LightMode, DarkMode, Settings as SettingsIcon,
 } from '@mui/icons-material';
 import AppSidebar from './AppSidebar';
-import { SearchField } from '../ui-kit';
+import GlobalSearch from './GlobalSearch';
 import { palette, layout, radius } from '../../theme/tokens';
 import { useIsMobile } from '../../hooks/useResponsive';
 import { useThemeMode } from '../../context/ThemeModeContext';
@@ -62,10 +62,7 @@ export default function AppShell({
   const [collapsed, setCollapsed] = useState(() => readStored(COLLAPSED_KEY, false));
   const [favourites, setFavourites] = useState<string[]>(() => readStored<string[]>(FAVOURITES_KEY, []));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [localSearch, setLocalSearch] = useState('');
 
-  const search = searchValue ?? localSearch;
-  const setSearch = onSearchChange ?? setLocalSearch;
 
   useEffect(() => {
     try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(collapsed)); } catch { /* quota */ }
@@ -144,7 +141,7 @@ export default function AppShell({
             </IconButton>
           )}
 
-          <SearchField value={search} onChange={setSearch} shortcut="⌘K" sx={{ flex: 1, maxWidth: 380 }} />
+          <GlobalSearch />
 
           <Box sx={{ flex: 1 }} />
 
