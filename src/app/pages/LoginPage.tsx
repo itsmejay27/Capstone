@@ -67,16 +67,21 @@ export default function LoginPage() {
   // again (on every re-render or role change) is what logged the GSI "called multiple
   // times" warning and could drop the callback. The callback reads the latest role and
   // handlers through a ref, so one initialisation stays correct.
-  // The build-time ID wins; otherwise ask the server, which sees env vars without a rebuild.
-  const [googleClientId, setGoogleClientId] = useState<string>(GOOGLE_CLIENT_ID);
-  const [googleIdChecked, setGoogleIdChecked] = useState<boolean>(Boolean(GOOGLE_CLIENT_ID));
+  // The server's value wins: it reflects the env var as it is NOW, while the build-time
+  // value is frozen at the last deploy and goes stale when the client ID is replaced.
+  // The GSI button waits for this check so it never initialises with an outdated ID.
+  const [googleClientId, setGoogleClientId] = useState<string>('');
+  const [googleIdChecked, setGoogleIdChecked] = useState<boolean>(false);
   useEffect(() => {
-    if (GOOGLE_CLIENT_ID) return;
     let cancelled = false;
     fetch('/api/public-config')
       .then((r) => (r.ok ? r.json() : null))
-      .then((cfg) => { if (!cancelled && cfg?.googleClientId) setGoogleClientId(String(cfg.googleClientId).trim()); })
-      .catch(() => {})
+      .then((cfg) => {
+        if (cancelled) return;
+        const runtimeId = String(cfg?.googleClientId || '').trim().replace(/^["']|["']$/g, '');
+        setGoogleClientId(runtimeId || GOOGLE_CLIENT_ID);
+      })
+      .catch(() => { if (!cancelled) setGoogleClientId(GOOGLE_CLIENT_ID); })
       .finally(() => { if (!cancelled) setGoogleIdChecked(true); });
     return () => { cancelled = true; };
   }, []);
