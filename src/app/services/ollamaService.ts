@@ -8,6 +8,25 @@ import { TOSData, buildTOSConstraintText, normaliseCogLevel, extractFileText, is
 
 export const DEFAULT_OLLAMA_URL = '/api/ollama';
 
+export const OLLAMA_REMOTE_MESSAGE =
+  'Ollama runs on your own computer, so it is only available when you run this app locally. ' +
+  'Use Gemini for the deployed site.';
+
+/**
+ * Whether contacting Ollama can possibly succeed from the current page.
+ *
+ * Ollama listens on the user's own machine. `vite dev` proxies /api/ollama to it, but a
+ * deployed build has no such proxy, and a page served from a public origin may not call a
+ * loopback address: Chrome blocks the private-network request outright and Ollama sends no
+ * CORS headers for it. Probing from a deployed origin can therefore only fail — noisily,
+ * several times per page load — so it is skipped entirely.
+ */
+export function isOllamaReachable(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local');
+}
+
 export interface OllamaModelInfo {
   name: string;
   size?: number;
@@ -49,6 +68,9 @@ export interface ReviewerGenerationParams {
  * Checks connection to local Ollama instance and returns available models.
  */
 export async function checkOllamaConnection(baseUrl: string = DEFAULT_OLLAMA_URL): Promise<OllamaConnectionState> {
+  if (!isOllamaReachable()) {
+    return { connected: false, models: [], activeModel: '', error: OLLAMA_REMOTE_MESSAGE };
+  }
   const endpointsToTry = [baseUrl, 'http://localhost:11434', 'http://127.0.0.1:11434'];
 
   for (const endpoint of endpointsToTry) {
@@ -268,6 +290,7 @@ export function getDifficultyPromptDirective(difficulty: string): DifficultyDire
  */
 export async function generateExamWithOllama(params: ExamGenerationParams): Promise<any[]> {
   const userUrl = (params.baseUrl || DEFAULT_OLLAMA_URL).replace(/\/$/, '');
+  if (!isOllamaReachable()) throw new Error(OLLAMA_REMOTE_MESSAGE);
   const endpointsToTry = Array.from(new Set([userUrl, 'http://localhost:11434', 'http://127.0.0.1:11434']));
   const isTosMode = Boolean(params.tosData && (params.tosData.totalItems > 0 || params.tosData.rawText));
 
@@ -683,6 +706,7 @@ export async function regenerateQuestionWithOllama(
   baseUrl: string = DEFAULT_OLLAMA_URL
 ): Promise<any> {
   const userUrl = baseUrl.replace(/\/$/, '');
+  if (!isOllamaReachable()) throw new Error(OLLAMA_REMOTE_MESSAGE);
   const endpointsToTry = Array.from(new Set([userUrl, 'http://localhost:11434', 'http://127.0.0.1:11434']));
   const topic = questionItem.topic || 'Subject Matter';
   const itemDiff = questionItem.difficulty || 'medium';
@@ -820,6 +844,7 @@ Respond with JSON:
  */
 export async function generateReviewerWithOllama(params: ReviewerGenerationParams): Promise<any[]> {
   const userUrl = (params.baseUrl || DEFAULT_OLLAMA_URL).replace(/\/$/, '');
+  if (!isOllamaReachable()) throw new Error(OLLAMA_REMOTE_MESSAGE);
   const endpointsToTry = Array.from(new Set([userUrl, 'http://localhost:11434', 'http://127.0.0.1:11434']));
 
   const moduleCounts = { easy: 3, normal: 4, hard: 5 };

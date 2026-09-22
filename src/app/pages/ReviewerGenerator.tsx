@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import OllamaConfigControl, { AIEngineType } from '../components/OllamaConfigControl';
 import { generateReviewerWithOllama, extractFilesContent } from '../services/ollamaService';
 import { generateReviewerWithGemini, buildTopicDrivenModules } from '../services/geminiService';
@@ -136,6 +137,7 @@ function generateModules(subject: string, difficulty: 'none' | 'easy' | 'normal'
 // Component
 // ─────────────────────────────────────────────
 export default function ReviewerGenerator() {
+  const { toast, ToastHost } = useToast();
   const { saveReviewer, classrooms, classroomMaterials, currentUser } = useAuth();
   const navigate = useNavigate();
 
@@ -192,7 +194,7 @@ export default function ReviewerGenerator() {
         });
       } catch (err: any) {
         console.error('Gemini reviewer generation failed:', err);
-        alert(`Gemini AI Error: ${err.message || err}`);
+        toast(`Gemini AI error: ${err.message || err}`, 'error');
         setGenerating(false);
         return;
       }
@@ -209,7 +211,7 @@ export default function ReviewerGenerator() {
         });
       } catch (err: any) {
         console.error('Ollama reviewer generation failed:', err);
-        alert(`Ollama Error: ${err.message || err}`);
+        toast(`Ollama error: ${err.message || err}`, 'error');
         setGenerating(false);
         return;
       }
@@ -538,6 +540,7 @@ export default function ReviewerGenerator() {
           </Box>
         </Paper>
       )}
+      {ToastHost}
     </Container>
   );
 }

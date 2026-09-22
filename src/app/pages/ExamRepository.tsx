@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import {
   Container,
   FormControl,
@@ -203,6 +204,7 @@ const ALTERNATIVE_QUESTIONS: Record<string, any[]> = {
 };
 
 export default function ExamRepository() {
+  const { toast, ToastHost } = useToast();
   const {
     currentUser,
     users,
@@ -284,11 +286,11 @@ export default function ExamRepository() {
 
   const handleAssignConfirm = () => {
     if (!selectedExamId || !selectedClassroomId || !postDate || !dueDate) {
-      alert('Please fill out all fields.');
+      toast('Please fill out all fields.', 'error');
       return;
     }
     assignExamToClassroom(selectedExamId, selectedClassroomId, postDate, dueDate);
-    alert('Exam assigned and scheduled successfully!');
+    toast('Exam assigned and scheduled.');
     setOpenAssignModal(false);
     setSelectedExamId(null);
   };
@@ -301,13 +303,13 @@ export default function ExamRepository() {
 
   const handleSaveEditConfirm = () => {
     if (!editingExam.title.trim()) {
-      alert('Title is required');
+      toast('Title is required.', 'error');
       return;
     }
     updateExamInRepository(editingExam);
     setOpenEditModal(false);
     setEditingExam(null);
-    alert('Exam template updated successfully!');
+    toast('Exam template updated.');
   };
 
   // Edit question helpers inside Repository dialog
@@ -656,7 +658,11 @@ export default function ExamRepository() {
                       <Chip label={`Pool: ${exam.questions.length} items`} size="small" color="secondary" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 700 }} />
                       <Chip label={`Set: ${exam.activeQuestionCount || exam.questions.length} items`} size="small" color="primary" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 700 }} />
                       <Chip label={`Points Cap: ${exam.totalPoints} pts`} size="small" variant="outlined" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
-                      <Chip label={`Time limit: ${exam.duration}m`} size="small" variant="outlined" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
+                      {/* A template saved before a duration was captured has none; showing
+                          "undefinedm" is worse than showing nothing. */}
+                      {Number.isFinite(Number(exam.duration)) && Number(exam.duration) > 0 && (
+                        <Chip label={`Time limit: ${exam.duration}m`} size="small" variant="outlined" sx={{ height: 24, fontSize: '0.7rem', fontWeight: 600 }} />
+                      )}
                     </Box>
                   </Box>
                 </Box>
@@ -1206,6 +1212,7 @@ export default function ExamRepository() {
           <PrintableExam exam={printTarget} header={printHeader} paper={printPaper} mode={printMode} />
         )}
       </PrintPortal>
+      {ToastHost}
     </Container>
   );
 }
