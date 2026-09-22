@@ -227,7 +227,7 @@ export default function Billing() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3, color: palette.inkTertiary }}>
         <Lock sx={{ fontSize: 16 }} />
         <Typography variant="caption">
-          Card, GCash and Maya payments are handled on PayMongo's secure checkout page. Card
+          Payments (QR Ph — scan with any bank or e-wallet app) are handled on PayMongo's secure checkout page. Payment
           details never pass through this system.
         </Typography>
       </Box>
