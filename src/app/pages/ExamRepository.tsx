@@ -2,24 +2,22 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import {
-  Container,
   Paper,
   Typography,
   Box,
+  Stack,
   TextField,
   Button,
-  Grid,
   Chip,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
   MenuItem,
+  Menu,
+  ListItemIcon,
+  ListItemText,
   IconButton,
-  Divider,
   Radio,
   RadioGroup,
   FormControlLabel,
@@ -28,7 +26,6 @@ import {
   Alert,
 } from '@mui/material';
 import {
-  ArrowBack,
   Add,
   Edit,
   Delete,
@@ -38,9 +35,51 @@ import {
   Save,
   AutoAwesome,
   Print,
+  MoreVert,
 } from '@mui/icons-material';
 import PrintableExam, { PrintPortal } from '../components/PrintableExam';
 import type { PrintPaperSize, PrintMode } from '../types';
+import { useIsMobile } from '../hooks/useResponsive';
+import {
+  PageContainer,
+  PageHeader,
+  SectionHeading,
+  SearchField,
+  CardGrid,
+  EntityCard,
+  StatusPill,
+  EmptyState,
+  Field,
+  FieldRow,
+} from '../components/ui-kit';
+import { palette, radius, font } from '../theme/tokens';
+
+/**
+ * Relative "created" line for a template card. `createdAt` arrives as a Date from memory and
+ * as an ISO string once it has been round-tripped through localStorage / Supabase, so both
+ * shapes are accepted here.
+ */
+function relativeDate(value: unknown): string {
+  if (!value) return 'No date';
+  const d = value instanceof Date ? value : new Date(value as string);
+  if (Number.isNaN(d.getTime())) return 'No date';
+  const diff = Date.now() - d.getTime();
+  const DAY = 86400000;
+  if (diff < 0) return d.toLocaleDateString();
+  if (diff < 3600000) {
+    const m = Math.floor(diff / 60000);
+    return m <= 1 ? 'Just now' : `${m} min ago`;
+  }
+  if (diff < DAY) {
+    const h = Math.floor(diff / 3600000);
+    return `${h} hour${h > 1 ? 's' : ''} ago`;
+  }
+  if (diff < 7 * DAY) {
+    const days = Math.floor(diff / DAY);
+    return days === 1 ? 'Yesterday' : `${days} days ago`;
+  }
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 const MOCK_IMAGES = [
   'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&q=80',
@@ -168,8 +207,14 @@ export default function ExamRepository() {
     deleteExamFromRepository,
   } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Per-card overflow menu (presentation only — it just routes to the handlers below).
+  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [menuExam, setMenuExam] = useState<any | null>(null);
+  const closeMenu = () => { setMenuAnchor(null); setMenuExam(null); };
 
   // Print state
   const [printTarget, setPrintTarget] = useState<any | null>(null);

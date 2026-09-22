@@ -1,20 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import { useAuth, mockQuestionBank } from '../context/AuthContext';
 import {
-  Container,
   Paper,
   Typography,
   Box,
   TextField,
   Button,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Chip,
-  FormControl,
-  InputLabel,
   Select,
   MenuItem,
   IconButton,
@@ -22,20 +13,35 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Chip,
+  Stack,
 } from '@mui/material';
 import {
-  ArrowBack,
   Add,
   Edit,
   Delete,
-  Search,
-  FilterList,
   LibraryBooks,
+  CheckCircle,
 } from '@mui/icons-material';
+import { useIsMobile } from '../hooks/useResponsive';
+import {
+  PageContainer,
+  PageHeader,
+  SectionHeading,
+  SearchField,
+  FilterPill,
+  FilterBar,
+  EmptyState,
+  Field,
+  FieldRow,
+  palette,
+  radius,
+  font,
+} from '../components/ui-kit';
 
 export default function QuestionBank() {
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
@@ -73,248 +79,263 @@ export default function QuestionBank() {
     return colors[difficulty] || 'default';
   };
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Button
-        startIcon={<ArrowBack />}
-        onClick={() => navigate('/dashboard')}
-        sx={{ mb: 3 }}
-      >
-        Back to Dashboard
-      </Button>
+  const typeOptions = [
+    { value: 'all', label: 'All Types' },
+    { value: 'multiple-choice', label: 'Multiple Choice' },
+    { value: 'true-false', label: 'True/False' },
+    { value: 'short-answer', label: 'Short Answer' },
+    { value: 'essay', label: 'Essay' },
+  ];
 
-      <Paper sx={{ p: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <LibraryBooks sx={{ fontSize: 40, color: '#9c27b0', mr: 2 }} />
-            <Box>
-              <Typography variant="h4" fontWeight="bold">
-                Question Bank
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Browse, manage, and reuse questions
-              </Typography>
-            </Box>
-          </Box>
-          {isInstructor && (
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => setOpenDialog(true)}
-            >
+  const difficultyOptions = [
+    { value: 'all', label: 'All Levels' },
+    { value: 'easy', label: 'Easy' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'hard', label: 'Hard' },
+  ];
+
+  const subjectOptions = [
+    { value: 'all', label: 'All Subjects' },
+    ...subjects.map((subject) => ({ value: String(subject), label: String(subject) })),
+  ];
+
+  const filtersActive =
+    filterType !== 'all' || filterDifficulty !== 'all' || filterSubject !== 'all' || searchTerm !== '';
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Question Bank"
+        subtitle="Browse, manage, and reuse questions"
+        actions={
+          isInstructor && (
+            <Button variant="contained" startIcon={<Add />} onClick={() => setOpenDialog(true)}>
               Add Question
             </Button>
-          )}
-        </Box>
+          )
+        }
+      />
 
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField
-              fullWidth
-              placeholder="Search questions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />,
+      <Box sx={{ mb: 2 }}>
+        <SearchField
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Search questions…"
+        />
+      </Box>
+
+      <FilterBar>
+        <FilterPill label="Type" value={filterType} options={typeOptions} onChange={setFilterType} />
+        <FilterPill
+          label="Difficulty"
+          value={filterDifficulty}
+          options={difficultyOptions}
+          onChange={setFilterDifficulty}
+        />
+        <FilterPill
+          label="Subject"
+          value={filterSubject}
+          options={subjectOptions}
+          onChange={setFilterSubject}
+        />
+        {filtersActive && (
+          <Button
+            size="small"
+            onClick={() => {
+              setFilterType('all');
+              setFilterDifficulty('all');
+              setFilterSubject('all');
+              setSearchTerm('');
+            }}
+            sx={{ color: palette.inkSecondary, whiteSpace: 'nowrap' }}
+          >
+            Clear
+          </Button>
+        )}
+      </FilterBar>
+
+      <SectionHeading title="Questions" count={filteredQuestions.length} />
+
+      {filteredQuestions.length === 0 ? (
+        <EmptyState
+          icon={<LibraryBooks />}
+          title="No questions found"
+          description="Try adjusting your filters or add new questions."
+          action={
+            isInstructor && (
+              <Button variant="contained" startIcon={<Add />} onClick={() => setOpenDialog(true)}>
+                Add Question
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <Stack spacing={2}>
+          {filteredQuestions.map((question) => (
+            <Paper
+              key={question.id}
+              sx={{
+                p: { xs: 2, sm: 2.5 },
+                borderRadius: radius.lg,
+                border: `1px solid ${palette.border}`,
+                minWidth: 0,
               }}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Type</InputLabel>
-              <Select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                label="Type"
+            >
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 1.5,
+                }}
               >
-                <MenuItem value="all">All Types</MenuItem>
+                <Typography
+                  sx={{
+                    fontFamily: font.mono,
+                    fontSize: '0.92rem',
+                    fontWeight: 600,
+                    color: palette.ink,
+                    lineHeight: 1.5,
+                    minWidth: 0,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {question.question}
+                </Typography>
+                {isInstructor && (
+                  <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+                    <IconButton size="small" aria-label="Edit question">
+                      <Edit sx={{ fontSize: 18, color: palette.inkSecondary }} />
+                    </IconButton>
+                    <IconButton size="small" aria-label="Delete question">
+                      <Delete sx={{ fontSize: 18, color: palette.danger }} />
+                    </IconButton>
+                  </Stack>
+                )}
+              </Box>
+
+              {question.options && (
+                <Stack spacing={0.5} sx={{ mt: 1.5 }}>
+                  {question.options.map((option, index) => {
+                    const isCorrect = index === question.correctAnswer;
+                    return (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 1,
+                          px: 1.25,
+                          py: 0.75,
+                          borderRadius: radius.sm,
+                          bgcolor: isCorrect ? palette.successSoft : palette.surfaceMuted,
+                          border: `1px solid ${isCorrect ? palette.successSoft : palette.border}`,
+                          minWidth: 0,
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 700,
+                            color: isCorrect ? palette.success : palette.inkTertiary,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {String.fromCharCode(65 + index)}.
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: isCorrect ? palette.success : palette.inkSecondary,
+                            fontWeight: isCorrect ? 700 : 400,
+                            minWidth: 0,
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {option}
+                        </Typography>
+                        {isCorrect && (
+                          <CheckCircle sx={{ fontSize: 15, color: palette.success, ml: 'auto', flexShrink: 0 }} />
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              )}
+
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 0.75,
+                  flexWrap: 'wrap',
+                  mt: 2,
+                  pt: 1.75,
+                  borderTop: `1px solid ${palette.border}`,
+                }}
+              >
+                <Chip
+                  label={question.type.replace('-', ' ').toUpperCase()}
+                  color={getTypeColor(question.type)}
+                  size="small"
+                />
+                <Chip
+                  label={question.difficulty.toUpperCase()}
+                  color={getDifficultyColor(question.difficulty)}
+                  size="small"
+                />
+                <Chip label={`${question.points} points`} size="small" variant="outlined" />
+                {question.topic && <Chip label={question.topic} size="small" variant="outlined" />}
+                {question.subject && (
+                  <Chip label={question.subject} size="small" variant="outlined" color="primary" />
+                )}
+                {question.tags?.map((tag) => (
+                  <Chip key={tag} label={tag} size="small" variant="outlined" />
+                ))}
+              </Box>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>Add New Question</DialogTitle>
+        <DialogContent>
+          <Field label="Question" required>
+            <TextField multiline rows={3} placeholder="Type the question stem…" />
+          </Field>
+
+          <FieldRow>
+            <Field label="Question Type">
+              <Select defaultValue="multiple-choice" fullWidth>
                 <MenuItem value="multiple-choice">Multiple Choice</MenuItem>
                 <MenuItem value="true-false">True/False</MenuItem>
                 <MenuItem value="short-answer">Short Answer</MenuItem>
                 <MenuItem value="essay">Essay</MenuItem>
               </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Difficulty</InputLabel>
-              <Select
-                value={filterDifficulty}
-                onChange={(e) => setFilterDifficulty(e.target.value)}
-                label="Difficulty"
-              >
-                <MenuItem value="all">All Levels</MenuItem>
+            </Field>
+            <Field label="Difficulty">
+              <Select defaultValue="medium" fullWidth>
                 <MenuItem value="easy">Easy</MenuItem>
                 <MenuItem value="medium">Medium</MenuItem>
                 <MenuItem value="hard">Hard</MenuItem>
               </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, md: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel>Subject</InputLabel>
-              <Select
-                value={filterSubject}
-                onChange={(e) => setFilterSubject(e.target.value)}
-                label="Subject"
-              >
-                <MenuItem value="all">All Subjects</MenuItem>
-                {subjects.map((subject) => (
-                  <MenuItem key={subject} value={subject}>
-                    {subject}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, md: 2 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              startIcon={<FilterList />}
-              sx={{ height: '56px' }}
-              onClick={() => {
-                setFilterType('all');
-                setFilterDifficulty('all');
-                setFilterSubject('all');
-                setSearchTerm('');
-              }}
-            >
-              Clear
-            </Button>
-          </Grid>
-        </Grid>
+            </Field>
+          </FieldRow>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Showing {filteredQuestions.length} questions
-        </Typography>
-
-        <Grid container spacing={2}>
-          {filteredQuestions.map((question) => (
-            <Grid size={12} key={question.id}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" gutterBottom>
-                        {question.question}
-                      </Typography>
-                      {question.options && (
-                        <Box sx={{ ml: 2, mt: 1 }}>
-                          {question.options.map((option, index) => (
-                            <Typography
-                              key={index}
-                              variant="body2"
-                              color={
-                                index === question.correctAnswer
-                                  ? 'success.main'
-                                  : 'text.secondary'
-                              }
-                              sx={{ fontWeight: index === question.correctAnswer ? 'bold' : 'normal' }}
-                            >
-                              {String.fromCharCode(65 + index)}. {option}
-                            </Typography>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    <Chip
-                      label={question.type.replace('-', ' ').toUpperCase()}
-                      color={getTypeColor(question.type)}
-                      size="small"
-                    />
-                    <Chip
-                      label={question.difficulty.toUpperCase()}
-                      color={getDifficultyColor(question.difficulty)}
-                      size="small"
-                    />
-                    <Chip label={`${question.points} points`} size="small" variant="outlined" />
-                    {question.topic && (
-                      <Chip label={question.topic} size="small" variant="outlined" />
-                    )}
-                    {question.subject && (
-                      <Chip
-                        label={question.subject}
-                        size="small"
-                        variant="outlined"
-                        color="primary"
-                      />
-                    )}
-                    {question.tags?.map((tag) => (
-                      <Chip key={tag} label={tag} size="small" variant="outlined" />
-                    ))}
-                  </Box>
-                </CardContent>
-                {isInstructor && (
-                  <CardActions>
-                    <IconButton size="small" color="primary">
-                      <Edit />
-                    </IconButton>
-                    <IconButton size="small" color="error">
-                      <Delete />
-                    </IconButton>
-                  </CardActions>
-                )}
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-
-        {filteredQuestions.length === 0 && (
-          <Paper sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="h6" color="text.secondary">
-              No questions found
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Try adjusting your filters or add new questions
-            </Typography>
-          </Paper>
-        )}
-      </Paper>
-
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Add New Question</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Question"
-            multiline
-            rows={3}
-            margin="dense"
-            sx={{ mb: 2 }}
-          />
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth>
-                <InputLabel>Question Type</InputLabel>
-                <Select label="Question Type">
-                  <MenuItem value="multiple-choice">Multiple Choice</MenuItem>
-                  <MenuItem value="true-false">True/False</MenuItem>
-                  <MenuItem value="short-answer">Short Answer</MenuItem>
-                  <MenuItem value="essay">Essay</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <FormControl fullWidth>
-                <InputLabel>Difficulty</InputLabel>
-                <Select label="Difficulty">
-                  <MenuItem value="easy">Easy</MenuItem>
-                  <MenuItem value="medium">Medium</MenuItem>
-                  <MenuItem value="hard">Hard</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth label="Points" type="number" />
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth label="Topic" />
-            </Grid>
-          </Grid>
+          <FieldRow>
+            <Field label="Points">
+              <TextField type="number" />
+            </Field>
+            <Field label="Topic">
+              <TextField placeholder="e.g. SQL Basics" />
+            </Field>
+          </FieldRow>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
@@ -323,6 +344,6 @@ export default function QuestionBank() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </PageContainer>
   );
 }

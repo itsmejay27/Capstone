@@ -135,6 +135,77 @@ export interface MutationResult {
   error?: string;
 }
 
+// ── Classwork (Google Classroom parity) ──
+
+/** Instructor-defined heading that groups classwork, e.g. "Week 1", "Midterms". */
+export interface ClassroomTopic {
+  id: string;
+  classroomId: string;
+  name: string;
+  /** Sort order within the class; lower comes first. */
+  position: number;
+  createdAt?: string;
+}
+
+export type ClassworkKind = 'assignment' | 'material' | 'question';
+
+export interface Classwork {
+  id: string;
+  classroomId: string;
+  topicId?: string | null;
+  kind: ClassworkKind;
+  title: string;
+  instructions?: string;
+  attachments: AnnouncementAttachment[];
+  /** Gradeable only when `kind` is 'assignment' or 'question'. */
+  points?: number;
+  dueDate?: string;
+  postDate?: string;
+  isPublished: boolean;
+  allowLate: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type SubmissionStatus = 'assigned' | 'turned_in' | 'returned';
+
+export interface ClassworkSubmission {
+  id: string;
+  classworkId: string;
+  studentId: string;
+  textAnswer?: string;
+  attachments: AnnouncementAttachment[];
+  status: SubmissionStatus;
+  /**
+   * Stamped at submit time against the due date then in force. The due date can be edited
+   * afterwards, and lateness must reflect the rule the student was actually held to.
+   */
+  isLate: boolean;
+  grade?: number;
+  feedback?: string;
+  submittedAt?: string;
+  returnedAt?: string;
+  createdAt?: string;
+}
+
+export type CommentVisibility = 'class' | 'private';
+
+export interface PostComment {
+  id: string;
+  classroomId: string;
+  postType: 'announcement' | 'classwork';
+  postId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  visibility: CommentVisibility;
+  /** For a private comment, the student side of the conversation. */
+  privateWithId?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 // ── Printing ──
 
 export type PrintPaperSize = 'A4' | 'Letter';

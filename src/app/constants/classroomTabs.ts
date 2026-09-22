@@ -11,10 +11,12 @@
  * conversion is therefore role-aware and clamps rather than returning an out-of-range index.
  */
 
-export type ClassroomTabSlug = 'stream' | 'classwork' | 'materials' | 'people' | 'gradebook';
+export type ClassroomTabSlug = 'stream' | 'classwork' | 'assessments' | 'materials' | 'people' | 'gradebook';
 
 /** Ordered to match the <Tab> children in ClassroomDetail. */
-export const CLASSROOM_TAB_SLUGS: ClassroomTabSlug[] = ['stream', 'classwork', 'materials', 'people', 'gradebook'];
+export const CLASSROOM_TAB_SLUGS: ClassroomTabSlug[] = [
+  'stream', 'classwork', 'assessments', 'materials', 'people', 'gradebook',
+];
 
 /** Instructor-only tabs. A student asking for one of these is sent to the first tab. */
 const INSTRUCTOR_ONLY: ReadonlySet<ClassroomTabSlug> = new Set<ClassroomTabSlug>(['gradebook']);
@@ -22,7 +24,8 @@ const INSTRUCTOR_ONLY: ReadonlySet<ClassroomTabSlug> = new Set<ClassroomTabSlug>
 /** Human labels, kept next to the slugs so the drawer and the tab strip cannot drift apart. */
 export const CLASSROOM_TAB_LABELS: Record<ClassroomTabSlug, string> = {
   stream: 'Stream',
-  classwork: 'Classwork & Assessments',
+  classwork: 'Classwork',
+  assessments: 'Assessments',
   materials: 'Course Materials',
   people: 'People & Roster',
   gradebook: 'Gradebook',

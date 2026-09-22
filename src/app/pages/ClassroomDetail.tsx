@@ -6,6 +6,7 @@ import { uploadClassroomFile, formatBytes, fileExtension } from '../services/fil
 import { extractFileText } from '../services/tosParser';
 import AnnouncementFeed from '../components/AnnouncementFeed';
 import ItemAnalysisPanel from '../components/ItemAnalysisPanel';
+import ClassworkPanel from '../components/ClassworkPanel';
 import {
   Container,
   Paper,
@@ -123,6 +124,17 @@ export default function ClassroomDetail() {
     announcements,
     saveAnnouncement,
     deleteAnnouncement,
+    topics,
+    classwork,
+    submissions,
+    comments,
+    saveTopic,
+    deleteTopic,
+    saveClasswork,
+    deleteClasswork,
+    saveSubmission,
+    saveComment,
+    deleteComment,
   } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -141,6 +153,8 @@ export default function ClassroomDetail() {
   const isInstructor = currentUser?.role === 'instructor';
   const materials = classroomMaterials[classroomId || ''] || [];
   const classAnnouncements = announcements[classroomId || ''] || [];
+  const classTopics = topics[classroomId || ''] || [];
+  const classClasswork = classwork[classroomId || ''] || [];
 
   // Tab selection lives in the URL (?tab=gradebook) so the hamburger drawer can deep-link
   // straight to a tab, and so a tab is bookmarkable and survives the browser back button.
@@ -412,7 +426,8 @@ export default function ClassroomDetail() {
             }}
           >
             <Tab label="Stream" icon={<Campaign />} iconPosition="start" />
-            <Tab label="Classwork & Assessments" icon={<Assignment />} iconPosition="start" />
+            <Tab label="Classwork" icon={<AssignmentTurnedIn />} iconPosition="start" />
+            <Tab label="Assessments" icon={<Assignment />} iconPosition="start" />
             <Tab label="Course Materials" icon={<MenuBook />} iconPosition="start" />
             <Tab label="People & Roster" icon={<People />} iconPosition="start" />
             {isInstructor && (
@@ -431,11 +446,36 @@ export default function ClassroomDetail() {
             currentUserName={currentUser?.name || 'Instructor'}
             onSave={saveAnnouncement}
             onDelete={(id) => deleteAnnouncement(classroomId || '', id)}
+            comments={comments}
+            onSaveComment={saveComment}
+            onDeleteComment={deleteComment}
           />
         )}
 
-        {/* ── TAB 1: CLASSWORK & ASSESSMENTS ── */}
+        {/* ── TAB 1: CLASSWORK (assignments, materials, questions, grouped by topic) ── */}
         {activeTab === 1 && (
+          <ClassworkPanel
+            classroomId={classroomId || ''}
+            classwork={classClasswork}
+            topics={classTopics}
+            submissions={submissions}
+            comments={comments}
+            students={students}
+            isInstructor={isInstructor}
+            currentUserId={currentUser?.id || ''}
+            currentUserName={currentUser?.name || 'User'}
+            onSaveClasswork={saveClasswork}
+            onDeleteClasswork={(id) => deleteClasswork(classroomId || '', id)}
+            onSaveTopic={saveTopic}
+            onDeleteTopic={(id) => deleteTopic(classroomId || '', id)}
+            onSaveSubmission={saveSubmission}
+            onSaveComment={saveComment}
+            onDeleteComment={deleteComment}
+          />
+        )}
+
+        {/* ── TAB 2: ASSESSMENTS (AI-generated exams) ── */}
+        {activeTab === 2 && (
           <Box>
             {classExams.length === 0 ? (
               <Paper elevation={0} sx={{ p: 6, textAlign: 'center', borderRadius: 3.5, border: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
@@ -556,7 +596,7 @@ export default function ClassroomDetail() {
                             <Button
                               size="small"
                               variant="outlined"
-                              onClick={() => setActiveTab(4)}
+                              onClick={() => setActiveTab(5)}
                               sx={{ fontWeight: 700, textTransform: 'none' }}
                             >
                               View Scores
@@ -581,7 +621,7 @@ export default function ClassroomDetail() {
         )}
 
         {/* ── TAB 1: COURSE MATERIALS ── */}
-        {activeTab === 2 && (
+        {activeTab === 3 && (
           <Box>
             {isInstructor && (
               <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
@@ -677,7 +717,7 @@ export default function ClassroomDetail() {
         )}
 
         {/* ── TAB 2: PEOPLE & ROSTER ── */}
-        {activeTab === 3 && (
+        {activeTab === 4 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Teacher Card */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
@@ -740,7 +780,7 @@ export default function ClassroomDetail() {
         )}
 
         {/* ── TAB 3: GRADEBOOK (INSTRUCTOR ONLY) ── */}
-        {activeTab === 4 && isInstructor && (
+        {activeTab === 5 && isInstructor && (
           <>
           <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff', overflow: 'hidden', mb: 3 }}>
             <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>

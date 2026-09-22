@@ -8,7 +8,8 @@ import {
   FormatBold, FormatItalic, FormatListBulleted, InsertLink, Send, InsertDriveFile,
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
-import type { Announcement, AnnouncementAttachment, MutationResult } from '../types';
+import type { Announcement, AnnouncementAttachment, MutationResult, PostComment } from '../types';
+import CommentThread from './CommentThread';
 import { sanitizeRichText, isBlankRichText } from '../utils/sanitizeHtml';
 import { uploadClassroomFile, formatBytes } from '../services/fileStorage';
 import { useIsMobile } from '../hooks/useResponsive';
@@ -234,13 +235,15 @@ function Composer({
 }
 
 function AnnouncementCard({
-  announcement, isInstructor, onEdit, onDelete, onTogglePin,
+  announcement, isInstructor, onEdit, onDelete, onTogglePin, commentSlot,
 }: {
   announcement: Announcement;
   isInstructor: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePin: () => void;
+  /** Rendered beneath the body — the class/private comment thread for this post. */
+  commentSlot?: React.ReactNode;
 }) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
 
@@ -309,6 +312,8 @@ function AnnouncementCard({
           {announcement.attachments.map((a) => <AttachmentChip key={a.id} att={a} />)}
         </Stack>
       )}
+
+      {commentSlot}
     </Paper>
   );
 }
@@ -321,6 +326,9 @@ export default function AnnouncementFeed({
   currentUserName,
   onSave,
   onDelete,
+  comments = [],
+  onSaveComment,
+  onDeleteComment,
 }: {
   classroomId: string;
   announcements: Announcement[];
@@ -329,6 +337,9 @@ export default function AnnouncementFeed({
   currentUserName: string;
   onSave: (a: Announcement) => Promise<MutationResult>;
   onDelete: (id: string) => Promise<MutationResult>;
+  comments?: PostComment[];
+  onSaveComment?: (c: PostComment) => Promise<MutationResult>;
+  onDeleteComment?: (id: string) => Promise<MutationResult>;
 }) {
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [busy, setBusy] = useState(false);
@@ -417,6 +428,21 @@ export default function AnnouncementFeed({
             onEdit={() => setEditing(a)}
             onDelete={() => handleDelete(a.id)}
             onTogglePin={() => handleTogglePin(a)}
+            commentSlot={
+              onSaveComment && onDeleteComment ? (
+                <CommentThread
+                  classroomId={classroomId}
+                  postType="announcement"
+                  postId={a.id}
+                  comments={comments}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                  isInstructor={isInstructor}
+                  onSave={onSaveComment}
+                  onDelete={onDeleteComment}
+                />
+              ) : undefined
+            }
           />
         ))
       )}

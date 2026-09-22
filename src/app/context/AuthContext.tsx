@@ -4,6 +4,7 @@ import { mockUsers, mockClassrooms, mockExams, mockQuestionBank, mockExamAttempt
 import { parseGoogleJwt } from '../utils/authUtils';
 import * as db from '../services/supabaseData';
 import { removeClassroomFile } from '../services/fileStorage';
+import { notifyAnnouncement, notifyAssignment } from '../services/emailService';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -22,6 +23,10 @@ interface AuthContextType {
   reviewers: any[];
   classroomMaterials: Record<string, any[]>; // classroomId -> materials[]
   announcements: Record<string, any[]>; // classroomId -> announcements[]
+  topics: Record<string, any[]>; // classroomId -> topics[]
+  classwork: Record<string, any[]>; // classroomId -> classwork[]
+  submissions: any[]; // flat: spans classes, filtered by classworkId/studentId
+  comments: any[]; // flat: filtered by postType + postId
 
   // Mutators
   addClassroom: (classroom: any) => void;
@@ -40,6 +45,13 @@ interface AuthContextType {
   deleteClassroomMaterial: (classroomId: string, materialId: string) => Promise<MutationResult>;
   saveAnnouncement: (announcement: any) => Promise<MutationResult>;
   deleteAnnouncement: (classroomId: string, announcementId: string) => Promise<MutationResult>;
+  saveTopic: (topic: any) => Promise<MutationResult>;
+  deleteTopic: (classroomId: string, topicId: string) => Promise<MutationResult>;
+  saveClasswork: (work: any) => Promise<MutationResult>;
+  deleteClasswork: (classroomId: string, classworkId: string) => Promise<MutationResult>;
+  saveSubmission: (submission: any) => Promise<MutationResult>;
+  saveComment: (comment: any) => Promise<MutationResult>;
+  deleteComment: (commentId: string) => Promise<MutationResult>;
   archiveClassroom: (classroomId: string) => void;
   unarchiveClassroom: (classroomId: string) => void;
 }
@@ -90,6 +102,16 @@ function safeSetItem(key: string, value: unknown): void {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
     console.warn(`[storage] Could not cache "${key}" in localStorage (quota or serialisation):`, e);
+  }
+}
+
+/** Counterpart to safeSetItem: read a cached collection, falling back on any parse failure. */
+function readCache<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
   }
 }
 
@@ -323,6 +345,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   });
 
+  const [topics, setTopics] = useState<Record<string, any[]>>(() => readCache('classroomTopics', {}));
+  const [classwork, setClasswork] = useState<Record<string, any[]>>(() => readCache('classwork', {}));
+  const [submissions, setSubmissions] = useState<any[]>(() => readCache('classworkSubmissions', []));
+  const [comments, setComments] = useState<any[]>(() => readCache('postComments', []));
+
   // ── Supabase hydration ──
   // Best-effort: if the Supabase project has rows for a given collection, prefer them.
   // Otherwise keep whatever localStorage/mock data was loaded above, so the app never
@@ -334,7 +361,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // insert against a missing user row fails with a FK violation.
       if (currentUser) await db.upsertUser(currentUser);
 
-      const [dbUsers, dbClassrooms, dbExams, dbSavedExams, dbAttempts, dbReviewers, dbMaterials, dbAnnouncements] = await Promise.all([
+      const [
+        dbUsers, dbClassrooms, dbExams, dbSavedExams, dbAttempts, dbReviewers,
+        dbMaterials, dbAnnouncements, dbTopics, dbClasswork, dbSubmissions, dbComments,
+      ] = await Promise.all([
         db.fetchUsers(),
         db.fetchClassrooms(),
         db.fetchExams(),
@@ -343,6 +373,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         db.fetchReviewers(),
         db.fetchClassroomMaterials(),
         db.fetchAnnouncements(),
+        db.fetchTopics(),
+        db.fetchClasswork(),
+        db.fetchSubmissions(),
+        db.fetchComments(),
       ]);
 
       if (dbUsers.length > 0) {
@@ -384,6 +418,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (Object.keys(dbAnnouncements).length > 0) {
         setAnnouncements((prev) => mergeGroupedById(prev, dbAnnouncements));
       }
+      if (Object.keys(dbTopics).length > 0) setTopics((prev) => mergeGroupedById(prev, dbTopics));
+      if (Object.keys(dbClasswork).length > 0) setClasswork((prev) => mergeGroupedById(prev, dbClasswork));
+      if (dbSubmissions.length > 0) setSubmissions((prev) => mergeById(prev, dbSubmissions));
+      if (dbComments.length > 0) setComments((prev) => mergeById(prev, dbComments));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -421,6 +459,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     safeSetItem('announcements', announcements);
   }, [announcements]);
+
+  useEffect(() => { safeSetItem('classroomTopics', topics); }, [topics]);
+  useEffect(() => { safeSetItem('classwork', classwork); }, [classwork]);
+  useEffect(() => { safeSetItem('classworkSubmissions', submissions); }, [submissions]);
+  useEffect(() => { safeSetItem('postComments', comments); }, [comments]);
 
   const login = (email: string, password: string): boolean => {
     const user = users.find(
@@ -532,6 +575,123 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSavedExams((prev) => prev.filter((e) => e.id !== examId));
     setExams((prev) => prev.filter((e) => e.id !== examId && e.sourceExamId !== examId));
     db.deleteSavedExamDb(examId);
+  };
+
+  // ── Classwork, topics, submissions, comments ──
+  // All follow the same shape: optimistic local update, then an awaited write-through whose
+  // failure is reported back to the caller so the UI can surface it.
+
+  const saveTopic = async (topic: any): Promise<MutationResult> => {
+    setTopics((prev) => {
+      const list = prev[topic.classroomId] || [];
+      const idx = list.findIndex((t: any) => t.id === topic.id);
+      const next = idx > -1 ? list.map((t: any) => (t.id === topic.id ? topic : t)) : [...list, topic];
+      return { ...prev, [topic.classroomId]: next.sort((a: any, b: any) => a.position - b.position) };
+    });
+    try {
+      await db.upsertTopic(topic);
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: `Topic saved on this device but not to the server${e?.message ? ` (${e.message})` : ''}.` };
+    }
+  };
+
+  const deleteTopic = async (classroomId: string, topicId: string): Promise<MutationResult> => {
+    const previous = topics[classroomId] || [];
+    setTopics((prev) => ({ ...prev, [classroomId]: (prev[classroomId] || []).filter((t: any) => t.id !== topicId) }));
+    // Classwork under a deleted topic becomes untopiced rather than disappearing with it.
+    setClasswork((prev) => ({
+      ...prev,
+      [classroomId]: (prev[classroomId] || []).map((w: any) => (w.topicId === topicId ? { ...w, topicId: null } : w)),
+    }));
+    try {
+      await db.deleteTopicDb(topicId);
+      return { ok: true };
+    } catch (e: any) {
+      setTopics((prev) => ({ ...prev, [classroomId]: previous }));
+      return { ok: false, error: `Could not delete the topic${e?.message ? ` (${e.message})` : ''}.` };
+    }
+  };
+
+  const saveClasswork = async (work: any): Promise<MutationResult> => {
+    setClasswork((prev) => {
+      const list = prev[work.classroomId] || [];
+      const idx = list.findIndex((w: any) => w.id === work.id);
+      const next = idx > -1 ? list.map((w: any) => (w.id === work.id ? work : w)) : [work, ...list];
+      return { ...prev, [work.classroomId]: next };
+    });
+    try {
+      await db.upsertClasswork(work);
+      // Notify only on first publish of an assignment — not on edits, and not for materials.
+      if (!work.updatedAt && work.isPublished !== false && work.kind !== 'material') {
+        const classroom = classrooms.find((c: any) => c.id === work.classroomId);
+        if (classroom) {
+          void notifyAssignment(classroom, users, {
+            title: work.title,
+            instructions: work.instructions,
+            dueLabel: work.dueDate ? `due ${new Date(work.dueDate).toLocaleDateString()}` : undefined,
+          });
+        }
+      }
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: `"${work?.title ?? 'Classwork'}" is saved on this device but did not reach the server${e?.message ? ` (${e.message})` : ''}.` };
+    }
+  };
+
+  const deleteClasswork = async (classroomId: string, classworkId: string): Promise<MutationResult> => {
+    const previous = classwork[classroomId] || [];
+    setClasswork((prev) => ({ ...prev, [classroomId]: (prev[classroomId] || []).filter((w: any) => w.id !== classworkId) }));
+    setSubmissions((prev) => prev.filter((s: any) => s.classworkId !== classworkId));
+    try {
+      await db.deleteClassworkDb(classworkId);
+      return { ok: true };
+    } catch (e: any) {
+      setClasswork((prev) => ({ ...prev, [classroomId]: previous }));
+      return { ok: false, error: `Could not delete the assignment${e?.message ? ` (${e.message})` : ''}.` };
+    }
+  };
+
+  const saveSubmission = async (submission: any): Promise<MutationResult> => {
+    setSubmissions((prev) => {
+      // Keyed by (classwork, student), not by id: a resubmission must replace the existing
+      // row rather than add a second one that would double-count in the gradebook.
+      const idx = prev.findIndex(
+        (s: any) => s.classworkId === submission.classworkId && s.studentId === submission.studentId
+      );
+      return idx > -1 ? prev.map((s: any, i: number) => (i === idx ? submission : s)) : [...prev, submission];
+    });
+    try {
+      await db.upsertSubmission(submission);
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: `Your work is saved on this device but did not reach the server${e?.message ? ` (${e.message})` : ''}. Try again before the due date.` };
+    }
+  };
+
+  const saveComment = async (comment: any): Promise<MutationResult> => {
+    setComments((prev) => {
+      const idx = prev.findIndex((c: any) => c.id === comment.id);
+      return idx > -1 ? prev.map((c: any) => (c.id === comment.id ? comment : c)) : [...prev, comment];
+    });
+    try {
+      await db.upsertComment(comment);
+      return { ok: true };
+    } catch (e: any) {
+      return { ok: false, error: `Comment posted on this device but not to the server${e?.message ? ` (${e.message})` : ''}.` };
+    }
+  };
+
+  const deleteComment = async (commentId: string): Promise<MutationResult> => {
+    const previous = comments;
+    setComments((prev) => prev.filter((c: any) => c.id !== commentId));
+    try {
+      await db.deleteCommentDb(commentId);
+      return { ok: true };
+    } catch (e: any) {
+      setComments(previous);
+      return { ok: false, error: `Could not delete the comment${e?.message ? ` (${e.message})` : ''}.` };
+    }
   };
 
   const archiveClassroom = (classroomId: string) => {
@@ -654,6 +814,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     try {
       await db.upsertAnnouncement(announcement);
+      // Email the class, but only for a NEW post — editing or pinning must not re-notify.
+      // Deliberately not awaited: email is a notification channel, and a mail outage must
+      // never make posting an announcement appear to fail.
+      if (!announcement.updatedAt) {
+        const classroom = classrooms.find((c: any) => c.id === classroomId);
+        if (classroom) void notifyAnnouncement(classroom, users, announcement);
+      }
       return { ok: true };
     } catch (e: any) {
       return {
@@ -700,6 +867,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         reviewers,
         classroomMaterials,
         announcements,
+        topics,
+        classwork,
+        submissions,
+        comments,
 
         addClassroom,
         joinClassroom,
@@ -715,6 +886,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         deleteClassroomMaterial,
         saveAnnouncement,
         deleteAnnouncement,
+        saveTopic,
+        deleteTopic,
+        saveClasswork,
+        deleteClasswork,
+        saveSubmission,
+        saveComment,
+        deleteComment,
         archiveClassroom,
         unarchiveClassroom,
       }}

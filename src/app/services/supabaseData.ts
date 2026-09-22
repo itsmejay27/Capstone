@@ -526,3 +526,244 @@ export async function deleteQuestionBankItemDb(itemId: string) {
   }
 }
 
+// ---- classroom topics ----
+// Grouped by classroom, mirroring the shape used for materials and announcements.
+export async function fetchTopics(): Promise<Record<string, any[]>> {
+  if (!supabase) return {};
+  const { data, error } = await supabase
+    .from('classroom_topics')
+    .select('*')
+    .order('position', { ascending: true });
+  if (error) {
+    warn('fetchTopics', error);
+    return {};
+  }
+  const grouped: Record<string, any[]> = {};
+  for (const t of data || []) {
+    if (!grouped[t.classroom_id]) grouped[t.classroom_id] = [];
+    grouped[t.classroom_id].push({
+      id: t.id,
+      classroomId: t.classroom_id,
+      name: t.name,
+      position: t.position ?? 0,
+      createdAt: t.created_at,
+    });
+  }
+  return grouped;
+}
+
+export async function upsertTopic(topic: any) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('classroom_topics').upsert({
+      id: toDbId(topic.id),
+      classroom_id: toDbId(topic.classroomId),
+      name: topic.name,
+      position: topic.position ?? 0,
+    });
+    if (error) { warn('upsertTopic', error); throw error; }
+  } catch (e) {
+    warn('upsertTopic', e);
+    throw e;
+  }
+}
+
+export async function deleteTopicDb(topicId: string) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('classroom_topics').delete().eq('id', toDbId(topicId));
+    if (error) { warn('deleteTopicDb', error); throw error; }
+  } catch (e) {
+    warn('deleteTopicDb', e);
+    throw e;
+  }
+}
+
+// ---- classwork ----
+export async function fetchClasswork(): Promise<Record<string, any[]>> {
+  if (!supabase) return {};
+  const { data, error } = await supabase
+    .from('classwork')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) {
+    warn('fetchClasswork', error);
+    return {};
+  }
+  const grouped: Record<string, any[]> = {};
+  for (const w of data || []) {
+    if (!grouped[w.classroom_id]) grouped[w.classroom_id] = [];
+    grouped[w.classroom_id].push({
+      id: w.id,
+      classroomId: w.classroom_id,
+      topicId: w.topic_id || null,
+      kind: w.kind || 'assignment',
+      title: w.title,
+      instructions: w.instructions || '',
+      attachments: Array.isArray(w.attachments) ? w.attachments : [],
+      points: w.points ?? undefined,
+      dueDate: w.due_date || undefined,
+      postDate: w.post_date || undefined,
+      isPublished: w.is_published !== false,
+      allowLate: w.allow_late !== false,
+      createdBy: w.created_by || undefined,
+      createdAt: w.created_at,
+      updatedAt: w.updated_at || undefined,
+    });
+  }
+  return grouped;
+}
+
+export async function upsertClasswork(work: any) {
+  if (!supabase) return;
+  try {
+    // Inline data-URL attachments are local-only; only Storage-backed ones are durable.
+    const attachments = (work.attachments || []).filter((a: any) => !a?.isDataUrl);
+    const { error } = await supabase.from('classwork').upsert({
+      id: toDbId(work.id),
+      classroom_id: toDbId(work.classroomId),
+      topic_id: work.topicId ? toDbId(work.topicId) : null,
+      kind: work.kind || 'assignment',
+      title: work.title,
+      instructions: work.instructions || null,
+      attachments,
+      points: work.points ?? null,
+      due_date: work.dueDate || null,
+      post_date: work.postDate || null,
+      is_published: work.isPublished !== false,
+      allow_late: work.allowLate !== false,
+      created_by: work.createdBy ? toDbId(work.createdBy) : null,
+      updated_at: work.updatedAt || null,
+    });
+    if (error) { warn('upsertClasswork', error); throw error; }
+  } catch (e) {
+    warn('upsertClasswork', e);
+    throw e;
+  }
+}
+
+export async function deleteClassworkDb(classworkId: string) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('classwork').delete().eq('id', toDbId(classworkId));
+    if (error) { warn('deleteClassworkDb', error); throw error; }
+  } catch (e) {
+    warn('deleteClassworkDb', e);
+    throw e;
+  }
+}
+
+// ---- classwork submissions ----
+// Flat array (not grouped): the UI filters by classworkId and studentId, and a student's
+// own submissions span many classes.
+export async function fetchSubmissions() {
+  if (!supabase) return [];
+  const { data, error } = await supabase.from('classwork_submissions').select('*');
+  if (error) {
+    warn('fetchSubmissions', error);
+    return [];
+  }
+  return (data || []).map((s: any) => ({
+    id: s.id,
+    classworkId: s.classwork_id,
+    studentId: s.student_id,
+    textAnswer: s.text_answer || '',
+    attachments: Array.isArray(s.attachments) ? s.attachments : [],
+    status: s.status || 'assigned',
+    isLate: !!s.is_late,
+    grade: s.grade ?? undefined,
+    feedback: s.feedback || undefined,
+    submittedAt: s.submitted_at || undefined,
+    returnedAt: s.returned_at || undefined,
+    createdAt: s.created_at,
+  }));
+}
+
+export async function upsertSubmission(sub: any) {
+  if (!supabase) return;
+  try {
+    const attachments = (sub.attachments || []).filter((a: any) => !a?.isDataUrl);
+    const { error } = await supabase.from('classwork_submissions').upsert(
+      {
+        id: toDbId(sub.id),
+        classwork_id: toDbId(sub.classworkId),
+        student_id: toDbId(sub.studentId),
+        text_answer: sub.textAnswer || null,
+        attachments,
+        status: sub.status || 'assigned',
+        is_late: !!sub.isLate,
+        grade: sub.grade ?? null,
+        feedback: sub.feedback || null,
+        submitted_at: sub.submittedAt || null,
+        returned_at: sub.returnedAt || null,
+      },
+      // One submission per (classwork, student) — resubmitting updates the existing row
+      // rather than creating a duplicate that would double-count in the gradebook.
+      { onConflict: 'classwork_id,student_id' }
+    );
+    if (error) { warn('upsertSubmission', error); throw error; }
+  } catch (e) {
+    warn('upsertSubmission', e);
+    throw e;
+  }
+}
+
+// ---- comments ----
+export async function fetchComments() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('post_comments')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) {
+    warn('fetchComments', error);
+    return [];
+  }
+  return (data || []).map((c: any) => ({
+    id: c.id,
+    classroomId: c.classroom_id,
+    postType: c.post_type,
+    postId: c.post_id,
+    authorId: c.author_id,
+    authorName: c.author_name || 'User',
+    body: c.body || '',
+    visibility: c.visibility || 'class',
+    privateWithId: c.private_with_id || null,
+    createdAt: c.created_at,
+    updatedAt: c.updated_at || undefined,
+  }));
+}
+
+export async function upsertComment(comment: any) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('post_comments').upsert({
+      id: toDbId(comment.id),
+      classroom_id: toDbId(comment.classroomId),
+      post_type: comment.postType,
+      post_id: toDbId(comment.postId),
+      author_id: comment.authorId ? toDbId(comment.authorId) : null,
+      author_name: comment.authorName || null,
+      body: comment.body,
+      visibility: comment.visibility || 'class',
+      private_with_id: comment.privateWithId ? toDbId(comment.privateWithId) : null,
+      updated_at: comment.updatedAt || null,
+    });
+    if (error) { warn('upsertComment', error); throw error; }
+  } catch (e) {
+    warn('upsertComment', e);
+    throw e;
+  }
+}
+
+export async function deleteCommentDb(commentId: string) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase.from('post_comments').delete().eq('id', toDbId(commentId));
+    if (error) { warn('deleteCommentDb', error); throw error; }
+  } catch (e) {
+    warn('deleteCommentDb', e);
+    throw e;
+  }
+}
+

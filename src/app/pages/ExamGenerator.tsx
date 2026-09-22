@@ -9,7 +9,6 @@ import { enforceTOSCompliance, type TOSComplianceReport } from '../services/tosV
 import TOSCompliancePanel from '../components/TOSCompliancePanel';
 import { useIsMobile } from '../hooks/useResponsive';
 import {
-  Container,
   Paper,
   Typography,
   Box,
@@ -19,12 +18,8 @@ import {
   Step,
   StepLabel,
   Grid,
-  Card,
-  CardContent,
   Select,
   MenuItem,
-  FormControl,
-  InputLabel,
   Chip,
   IconButton,
   Alert,
@@ -34,8 +29,6 @@ import {
   RadioGroup,
   FormControlLabel,
   Checkbox,
-  Tooltip,
-  CardActionArea,
   CircularProgress,
 } from '@mui/material';
 import {
@@ -47,10 +40,7 @@ import {
   Save,
   Image as ImageIcon,
   CheckCircle,
-  HelpOutline,
   Description as FileIcon,
-  Settings,
-  MenuBook,
   ListAlt,
   Tune,
   AccessTime,
@@ -63,7 +53,20 @@ import {
   AssignmentTurnedIn,
   Psychology,
   Lock,
+  QuizOutlined,
 } from '@mui/icons-material';
+import {
+  PageContainer,
+  PageHeader,
+  SectionHeading,
+  StatTile,
+  EmptyState,
+  Field,
+  FieldRow,
+  palette,
+  radius,
+  font,
+} from '../components/ui-kit';
 
 const steps = ['Exam Details & Configuration', 'Summary Checklist', 'Review & Generate'];
 
@@ -183,15 +186,30 @@ const ALTERNATIVE_QUESTIONS: Record<string, any[]> = {
   ]
 };
 
+/**
+ * Bloom level → token-backed badge colours. Colour carries meaning here (which cognitive
+ * level an item sits at), so each level keeps a distinct hue — but they are drawn from the
+ * design tokens rather than one-off hexes, with the hairline derived from the same token.
+ */
 const getBloomBadgeColor = (level?: string) => {
   const norm = (level || '').toLowerCase();
-  if (norm.includes('rememb')) return { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd' }; // Remembering: Blue
-  if (norm.includes('underst')) return { bg: '#ccfbf1', text: '#115e59', border: '#5eead4' }; // Understanding: Teal
-  if (norm.includes('apply') || norm.includes('applic')) return { bg: '#dcfce7', text: '#166534', border: '#86efac' }; // Applying: Green
-  if (norm.includes('analy')) return { bg: '#fef3c7', text: '#92400e', border: '#fcd34d' }; // Analyzing: Amber
-  if (norm.includes('eval')) return { bg: '#ffe4e6', text: '#9f1239', border: '#fda4af' }; // Evaluating: Rose
-  if (norm.includes('creat')) return { bg: '#f3e8ff', text: '#6b21a8', border: '#d8b4fe' }; // Creating: Purple
-  return { bg: '#f1f5f9', text: '#334155', border: '#cbd5e1' };
+  const badge = (text: string, bg: string) => ({ bg, text, border: `${text}40` });
+  if (norm.includes('rememb')) return badge(palette.info, palette.infoSoft);
+  if (norm.includes('underst')) return badge(palette.student, palette.studentSoft);
+  if (norm.includes('apply') || norm.includes('applic')) return badge(palette.success, palette.successSoft);
+  if (norm.includes('analy')) return badge(palette.warning, palette.warningSoft);
+  if (norm.includes('eval')) return badge(palette.danger, palette.dangerSoft);
+  if (norm.includes('creat')) return badge(palette.instructor, palette.instructorSoft);
+  return badge(palette.inkSecondary, palette.surfaceSunken);
+};
+
+/** Difficulty → token-backed badge colours, same convention as the Bloom badges. */
+const getDifficultyBadgeColor = (level?: string) => {
+  const norm = (level || '').toLowerCase();
+  if (norm === 'hard') return { bg: palette.dangerSoft, color: palette.danger, border: `1px solid ${palette.danger}40` };
+  if (norm === 'medium') return { bg: palette.warningSoft, color: palette.warning, border: `1px solid ${palette.warning}40` };
+  if (norm === 'easy') return { bg: palette.successSoft, color: palette.success, border: `1px solid ${palette.success}40` };
+  return { bg: palette.primarySoft, color: palette.primary, border: `1px solid ${palette.primaryBorder}` };
 };
 
 export default function ExamGenerator() {
