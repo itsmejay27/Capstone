@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
@@ -63,59 +63,67 @@ export default function LoginPage() {
   const { login, loginWithGoogle, users } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const initGoogleGsi = () => {
-      // Initialising with an empty client_id makes Google's iframe answer 400 and log
-      // "Parameter client_id is not set correctly", leaving a button that cannot work.
-      // Better to not render it at all and say why.
-      if (!GOOGLE_CLIENT_ID) return;
-      if (window.google?.accounts?.id && openLoginModal) {
-        setGsiLoaded(true);
-        try {
-          window.google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            callback: (response: any) => {
-              if (response?.credential) {
-                const success = loginWithGoogle(response.credential, selectedRole);
-                if (success) {
-                  setOpenLoginModal(false);
-                  navigate('/dashboard');
-                } else {
-                  setError('Failed to log in with Google account. Please try again.');
-                }
-              }
-            },
-          });
+  // Google's library must be initialised exactly once per page load; calling initialize()
+  // again (on every re-render or role change) is what logged the GSI "called multiple
+  // times" warning and could drop the callback. The callback reads the latest role and
+  // handlers through a ref, so one initialisation stays correct.
+  const googleCallbackRef = useRef<(response: any) => void>(() => {});
+  googleCallbackRef.current = (response: any) => {
+    if (!response?.credential) {
+      setError('Google did not return a sign-in credential. Please try again.');
+      return;
+    }
+    if (loginWithGoogle(response.credential, selectedRole)) {
+      setError('');
+      setOpenLoginModal(false);
+      navigate('/dashboard');
+    } else {
+      setError('Failed to log in with Google account. Please try again.');
+    }
+  };
 
-          const btnDiv = document.getElementById('googleGsiButtonModal');
-          if (btnDiv) {
-            btnDiv.innerHTML = '';
-            window.google.accounts.id.renderButton(btnDiv, {
-              theme: 'outline',
-              size: 'large',
-              width: 320,
-              text: 'continue_with',
-              shape: 'pill',
-              logo_alignment: 'left',
-              locale: 'en',
-            });
-          }
-        } catch (e) {
-          console.error('Google GSI initialization error:', e);
+  useEffect(() => {
+    if (!GOOGLE_CLIENT_ID || !openLoginModal) return;
+
+    const renderGoogleButton = (): boolean => {
+      const gsi = window.google?.accounts?.id;
+      const btnDiv = document.getElementById('googleGsiButtonModal');
+      if (!gsi || !btnDiv) return false;
+      try {
+        if (!(window as any).__omscGsiInitialized) {
+          gsi.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: (response: any) => googleCallbackRef.current(response),
+            ux_mode: 'popup',
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+          (window as any).__omscGsiInitialized = true;
         }
+        btnDiv.innerHTML = '';
+        gsi.renderButton(btnDiv, {
+          theme: 'outline',
+          size: 'large',
+          width: 320,
+          text: 'continue_with',
+          shape: 'pill',
+          logo_alignment: 'left',
+          locale: 'en',
+        });
+        setGsiLoaded(true);
+      } catch (e) {
+        console.error('Google GSI initialization error:', e);
       }
+      return true;
     };
 
-    if (openLoginModal) {
-      initGoogleGsi();
-      const timer = setInterval(() => {
-        if (window.google?.accounts?.id && !gsiLoaded) {
-          initGoogleGsi();
-        }
-      }, 400);
-      return () => clearInterval(timer);
-    }
-  }, [loginWithGoogle, navigate, selectedRole, gsiLoaded, openLoginModal]);
+    // The GSI script loads async and the dialog mounts after this effect, so retry briefly.
+    if (renderGoogleButton()) return;
+    const timer = window.setInterval(() => {
+      if (renderGoogleButton()) window.clearInterval(timer);
+    }, 300);
+    return () => window.clearInterval(timer);
+  }, [openLoginModal]);
 
   const quickLogin = (userEmail: string, userPassword: string) => {
     if (login(userEmail, userPassword)) {
