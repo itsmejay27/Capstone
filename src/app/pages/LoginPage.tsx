@@ -67,6 +67,20 @@ export default function LoginPage() {
   // again (on every re-render or role change) is what logged the GSI "called multiple
   // times" warning and could drop the callback. The callback reads the latest role and
   // handlers through a ref, so one initialisation stays correct.
+  // The build-time ID wins; otherwise ask the server, which sees env vars without a rebuild.
+  const [googleClientId, setGoogleClientId] = useState<string>(GOOGLE_CLIENT_ID);
+  const [googleIdChecked, setGoogleIdChecked] = useState<boolean>(Boolean(GOOGLE_CLIENT_ID));
+  useEffect(() => {
+    if (GOOGLE_CLIENT_ID) return;
+    let cancelled = false;
+    fetch('/api/public-config')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((cfg) => { if (!cancelled && cfg?.googleClientId) setGoogleClientId(String(cfg.googleClientId).trim()); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setGoogleIdChecked(true); });
+    return () => { cancelled = true; };
+  }, []);
+
   const googleCallbackRef = useRef<(response: any) => void>(() => {});
   googleCallbackRef.current = (response: any) => {
     if (!response?.credential) {
@@ -83,7 +97,7 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !openLoginModal) return;
+    if (!googleClientId || !openLoginModal) return;
 
     const renderGoogleButton = (): boolean => {
       const gsi = window.google?.accounts?.id;
@@ -92,7 +106,7 @@ export default function LoginPage() {
       try {
         if (!(window as any).__omscGsiInitialized) {
           gsi.initialize({
-            client_id: GOOGLE_CLIENT_ID,
+            client_id: googleClientId,
             callback: (response: any) => googleCallbackRef.current(response),
             ux_mode: 'popup',
             auto_select: false,
@@ -123,7 +137,7 @@ export default function LoginPage() {
       if (renderGoogleButton()) window.clearInterval(timer);
     }, 300);
     return () => window.clearInterval(timer);
-  }, [openLoginModal]);
+  }, [openLoginModal, googleClientId]);
 
   const quickLogin = (userEmail: string, userPassword: string) => {
     if (login(userEmail, userPassword)) {
@@ -902,12 +916,12 @@ export default function LoginPage() {
 
           {/* English Google Sign-In Container */}
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-            {!GOOGLE_CLIENT_ID ? (
+            {!googleClientId ? (!googleIdChecked ? null : (
               <Alert severity="info" sx={{ width: '100%', borderRadius: 2, fontSize: '0.8rem', bgcolor: 'var(--c-surface-muted)', color: 'var(--c-ink)', border: '1px solid var(--c-border)', '& .MuiAlert-icon': { color: 'var(--c-primary)' } }}>
-                Google Sign-In is not configured. Set <strong>VITE_GOOGLE_CLIENT_ID</strong> to enable it —
+                Google Sign-In is not configured. Add <strong>GOOGLE_CLIENT_ID</strong> in Vercel → Settings → Environment Variables to enable it —
                 use the demo accounts below in the meantime.
               </Alert>
-            ) : (
+            )) : (
               <>
             <div id="googleGsiButtonModal" style={{ minHeight: 44, display: 'flex', justifyContent: 'center', width: '100%' }}></div>
             {!gsiLoaded && (
