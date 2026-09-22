@@ -32,13 +32,56 @@ export type AIProvider = 'gemini' | 'nvidia';
 /** NVIDIA NIM is always reached through the server proxy, which holds NVIDIA_API_KEY. */
 const NVIDIA_PROXY_URL = '/api/nvidia';
 
-export const NVIDIA_MODELS = [
-  { id: 'meta/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct (Recommended)' },
-  { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'Llama 3.1 Nemotron 70B Instruct' },
-  { id: 'meta/llama-3.1-8b-instruct', name: 'Llama 3.1 8B Instruct (Fastest)' },
-];
+/**
+ * Empty until the live catalogue is fetched.
+ *
+ * NVIDIA retires models on a schedule — the ids shipped here previously (llama-3.3-70b,
+ * llama-3.1-8b) reached end of life on 2026-08-26 and every request came back 410 Gone.
+ * A baked-in list is therefore a slow-motion outage, so the catalogue is read at runtime
+ * and the dropdown is built from whatever is actually being served.
+ */
+export const DEFAULT_NVIDIA_MODEL = '';
 
-export const DEFAULT_NVIDIA_MODEL = 'meta/llama-3.3-70b-instruct';
+export interface NvidiaModel {
+  id: string;
+  name: string;
+}
+
+/** A reranker scores relevance and an embedding model returns a vector: neither writes text. */
+const NON_GENERATIVE_MODEL = /(^|[/_-])(rerank|embed|embedqa|reranking)([/_-]|$)/i;
+
+/**
+ * Fetches the models NVIDIA is currently serving, newest-looking Llama first so the
+ * default selection is a sensible instruct model rather than whatever sorts first.
+ */
+export async function fetchNvidiaModels(): Promise<NvidiaModel[]> {
+  try {
+    const response = await fetch(NVIDIA_PROXY_URL, { method: 'GET' });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      console.warn(`Could not list NVIDIA models (HTTP ${response.status}): ${detail.slice(0, 200)}`);
+      return [];
+    }
+    const data = await response.json();
+    const ids: string[] = (data?.data || [])
+      .map((m: any) => String(m?.id || ''))
+      .filter((id: string) => id && !NON_GENERATIVE_MODEL.test(id));
+
+    const rank = (id: string) => {
+      const l = id.toLowerCase();
+      if (l.includes('llama') && l.includes('instruct')) return 0;
+      if (l.includes('llama')) return 1;
+      if (l.includes('instruct') || l.includes('chat')) return 2;
+      return 3;
+    };
+    ids.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+
+    return ids.map((id) => ({ id, name: id }));
+  } catch (err) {
+    console.warn('Could not list NVIDIA models:', err);
+    return [];
+  }
+}
 
 export interface GeminiExamParams {
   apiKey?: string;
@@ -243,7 +286,9 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
   const provider: AIProvider = params.provider || 'gemini';
   const requestedModel = params.model || (provider === 'nvidia' ? DEFAULT_NVIDIA_MODEL : 'gemini-3.6-flash');
   const modelsToTry = provider === 'nvidia'
-    ? Array.from(new Set([requestedModel, DEFAULT_NVIDIA_MODEL, 'meta/llama-3.1-8b-instruct']))
+    // Only the selected model: the dropdown is populated from the live catalogue, so a
+    // hard-coded fallback would just retry ids NVIDIA may already have retired.
+    ? [requestedModel].filter(Boolean)
     : Array.from(new Set([requestedModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']));
 
   const primaryTopic = params.generationPrompt?.trim()
