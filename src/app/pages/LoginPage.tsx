@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
 import { GOOGLE_CLIENT_ID } from '../config/authConfig';
+import { sendSignInCode, verifySignInCode } from '../services/otpService';
 import {
   Container,
   Paper,
@@ -60,7 +61,68 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const { login, loginWithGoogle, users } = useAuth();
+  const { login, loginWithGoogle, loginWithVerifiedEmail, users } = useAuth();
+
+  // One-time email code sign-in.
+  const [authMode, setAuthMode] = useState<'password' | 'code'>('password');
+  const [otpStep, setOtpStep] = useState<'email' | 'code'>('email');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpInfo, setOtpInfo] = useState('');
+  const [resendIn, setResendIn] = useState(0);
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = window.setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [resendIn]);
+
+  const handleSendCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setError('');
+    setOtpInfo('');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Enter a valid email address.');
+      return;
+    }
+    setOtpBusy(true);
+    const result = await sendSignInCode(email.trim());
+    setOtpBusy(false);
+    if (!result.ok) {
+      setError(result.error || 'Could not send the code.');
+      return;
+    }
+    setOtpStep('code');
+    setOtpCode('');
+    setResendIn(60);
+    setOtpInfo(`We sent a 6-digit code to ${email.trim()}. It expires in 10 minutes.`);
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (otpCode.replace(/\D/g, '').length !== 6) {
+      setError('Enter the 6-digit code from your email.');
+      return;
+    }
+    setOtpBusy(true);
+    const result = await verifySignInCode(email.trim(), otpCode);
+    setOtpBusy(false);
+    if (!result.ok) {
+      setError(result.error || 'That code is not valid.');
+      return;
+    }
+    loginWithVerifiedEmail(email.trim(), selectedRole);
+    setOpenLoginModal(false);
+    navigate('/dashboard');
+  };
+
+  const switchAuthMode = (mode: 'password' | 'code') => {
+    setAuthMode(mode);
+    setOtpStep('email');
+    setOtpCode('');
+    setOtpInfo('');
+    setError('');
+  };
   const navigate = useNavigate();
 
   // Google's library must be initialised exactly once per page load; calling initialize()
@@ -869,7 +931,64 @@ export default function LoginPage() {
             </Alert>
           )}
 
+          {/* One-time email code sign-in */}
+          {authMode === 'code' && (
+            <Box component="form" onSubmit={otpStep === 'email' ? handleSendCode : handleVerifyCode} sx={{ mb: 2.5 }}>
+              <TextField
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                autoFocus={otpStep === 'email'}
+                disabled={otpStep === 'code'}
+                sx={{ mb: 1.5 }}
+              />
+              {otpStep === 'code' && (
+                <>
+                  {otpInfo && (
+                    <Alert severity="success" sx={{ mb: 1.5, borderRadius: 2, fontSize: '0.8rem' }}>{otpInfo}</Alert>
+                  )}
+                  <TextField
+                    label="6-digit code"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    autoComplete="one-time-code"
+                    autoFocus
+                    inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 6, style: { letterSpacing: '0.5em', fontWeight: 800, textAlign: 'center', fontSize: '1.2rem' } }}
+                    sx={{ mb: 2 }}
+                  />
+                </>
+              )}
+              <Button
+                type="submit"
+                variant="contained"
+                fullWidth
+                disabled={otpBusy}
+                sx={{ py: 1.25, borderRadius: 3, fontWeight: 800, fontSize: '0.92rem' }}
+              >
+                {otpBusy
+                  ? (otpStep === 'email' ? 'Sending code\u2026' : 'Checking\u2026')
+                  : (otpStep === 'email' ? 'Email me a code' : 'Verify and sign in')}
+              </Button>
+              {otpStep === 'code' && (
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                  <Button size="small" onClick={() => { setOtpStep('email'); setOtpInfo(''); setError(''); }} sx={{ textTransform: 'none' }}>
+                    Use a different email
+                  </Button>
+                  <Button size="small" disabled={resendIn > 0 || otpBusy} onClick={() => handleSendCode()} sx={{ textTransform: 'none' }}>
+                    {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+                  </Button>
+                </Box>
+              )}
+              <Button size="small" fullWidth onClick={() => switchAuthMode('password')} sx={{ mt: 1, textTransform: 'none' }}>
+                Sign in with a password instead
+              </Button>
+            </Box>
+          )}
+
           {/* Email + password sign-in */}
+          {authMode === 'password' && (
           <Box component="form" onSubmit={handleCredentialLogin} sx={{ mb: 2.5 }}>
             <TextField
               label="Email"
@@ -911,7 +1030,11 @@ export default function LoginPage() {
             >
               {submitting ? 'Signing in\u2026' : 'Sign in'}
             </Button>
+            <Button size="small" fullWidth onClick={() => switchAuthMode('code')} sx={{ mt: 1, textTransform: 'none' }}>
+              Sign in with a one-time email code instead
+            </Button>
           </Box>
+          )}
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
             <Box sx={{ flex: 1, height: 1, bgcolor: 'var(--c-border)' }} />
