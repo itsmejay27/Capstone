@@ -25,6 +25,8 @@ interface AuthContextType {
   users: User[];
   login: (email: string, password: string) => boolean;
   loginWithGoogle: (credential: string, role?: UserRole) => boolean;
+  /** Call ONLY after the server has verified the one-time code for this email. */
+  loginWithVerifiedEmail: (email: string, role?: UserRole) => boolean;
   logout: () => void;
   switchAccount: (userId: string) => void;
   /** Updates the signed-in user's display name and/or avatar. */
@@ -650,6 +652,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const loginWithVerifiedEmail = (rawEmail: string, role: UserRole = 'instructor'): boolean => {
+    const email = rawEmail.trim().toLowerCase();
+    if (!email) return false;
+    // Same rule as Google: one email can hold one profile per role.
+    const existing = users.find((u) => u.email.toLowerCase() === email && u.role === role);
+    const user: User = existing || {
+      id: `email-${crypto.randomUUID()}`,
+      email,
+      password: '',
+      name: email.split('@')[0],
+      role,
+    };
+    if (!existing) setUsers((prev) => [...prev, user]);
+    setCurrentUser(user);
+    localStorage.setItem('currentUserId', user.id);
+    db.upsertUser(user);
+    return true;
+  };
+
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('currentUserId');
@@ -1043,6 +1064,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         users,
         login,
         loginWithGoogle,
+        loginWithVerifiedEmail,
         updateProfile,
         changePassword,
         logout,
