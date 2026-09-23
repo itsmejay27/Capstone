@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { commentActivityFor, getCommentsSeenAt, unreadCount } from '../services/commentActivity';
 import { Box } from '@mui/material';
 import AppShell from '../components/shell/AppShell';
-import VerifyEmailGate from '../components/VerifyEmailGate';
 
 /**
  * Root layout.
@@ -27,7 +26,6 @@ export default function RootLayout() {
     exams,
     examAttempts,
     comments,
-    markEmailVerified,
   } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,13 +49,20 @@ export default function RootLayout() {
     }
   }, [location.search]);
 
+  // A new account must confirm its email before it can use the app. Read the flag from the
+  // users list too, since a background refresh may already have the server's answer.
+  // Verification happens in the sign-in dialog on the landing page, so an unverified
+  // account is kept on '/' instead of being sent into the app.
+  const me = currentUser ? users.find((u: any) => u.id === currentUser.id) || currentUser : null;
+  const needsVerification = Boolean(isAuthenticated && me && me.emailVerified === false && currentUser?.emailVerified !== true);
+
   useEffect(() => {
-    if (!isAuthenticated && location.pathname !== '/') {
+    if ((!isAuthenticated || needsVerification) && location.pathname !== '/') {
       navigate('/');
-    } else if (isAuthenticated && location.pathname === '/') {
+    } else if (isAuthenticated && !needsVerification && location.pathname === '/') {
       navigate('/dashboard');
     }
-  }, [isAuthenticated, navigate, location.pathname]);
+  }, [isAuthenticated, needsVerification, navigate, location.pathname]);
 
   /**
    * Badge count for the rail: work that actually needs the current user's attention.
@@ -102,17 +107,9 @@ export default function RootLayout() {
     navigate('/dashboard');
   };
 
-  // A new account must confirm its email before it can use the app. Read the flag from the
-  // users list too, since a background refresh may already have the server's answer.
-  const me = currentUser ? users.find((u: any) => u.id === currentUser.id) || currentUser : null;
-  const needsVerification = Boolean(isAuthenticated && me && me.emailVerified === false && currentUser?.emailVerified !== true);
-  if (needsVerification && me) {
-    return <VerifyEmailGate email={me.email} onVerified={markEmailVerified} onSignOut={handleLogout} />;
-  }
-
   return (
     <>
-      {isAuthenticated ? (
+      {isAuthenticated && !needsVerification ? (
         <AppShell
           currentUser={currentUser}
           users={users}
