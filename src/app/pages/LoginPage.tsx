@@ -5,6 +5,7 @@ import { UserRole } from '../types';
 import { GOOGLE_CLIENT_ID } from '../config/authConfig';
 import { sendSignInCode, verifySignInCode } from '../services/otpService';
 import Landing from '../components/landing/Landing';
+import VerifyEmailGate from '../components/VerifyEmailGate';
 import {
   Container, Paper, Button, Typography, Box, Alert, Avatar, Chip, ToggleButtonGroup, ToggleButton, IconButton, Dialog, DialogContent, TextField, InputAdornment,
 } from '@mui/material';
@@ -28,7 +29,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const { login, loginWithGoogle, loginWithVerifiedEmail, users } = useAuth();
+  const { login, loginWithGoogle, loginWithVerifiedEmail, users, currentUser, markEmailVerified, logout } = useAuth();
+
+  // A signed-in account that still has to confirm its email finishes here, inside the
+  // sign-in dialog, rather than on a separate page.
+  const me = currentUser ? users.find((u: any) => u.id === currentUser.id) || currentUser : null;
+  const needsVerification = Boolean(me && me.emailVerified === false && currentUser?.emailVerified !== true);
+  const dialogOpen = openLoginModal || needsVerification;
+  const closeDialog = () => { if (!needsVerification) setOpenLoginModal(false); };
 
   // One-time email code sign-in.
   const [authMode, setAuthMode] = useState<'password' | 'code'>('password');
@@ -122,9 +130,9 @@ export default function LoginPage() {
       return;
     }
     if (loginWithGoogle(response.credential, selectedRole)) {
+      // The layout moves a verified account into the app; a new one stays here and the
+      // dialog switches to the email-verification step.
       setError('');
-      setOpenLoginModal(false);
-      navigate('/dashboard');
     } else {
       setError('Failed to log in with Google account. Please try again.');
     }
@@ -235,8 +243,8 @@ export default function LoginPage() {
 
       {/* ── 8. SIGN IN POPUP DIALOG (GOOGLE SIGN-IN ONLY + QUICK DEMO) ── */}
       <Dialog
-        open={openLoginModal}
-        onClose={() => setOpenLoginModal(false)}
+        open={dialogOpen}
+        onClose={closeDialog}
         maxWidth="xs"
         fullWidth
         PaperProps={{
@@ -251,12 +259,15 @@ export default function LoginPage() {
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-          <IconButton size="small" onClick={() => setOpenLoginModal(false)}>
+          <IconButton size="small" onClick={needsVerification ? logout : closeDialog} aria-label={needsVerification ? 'Cancel and sign out' : 'Close'}>
             <CloseIcon />
           </IconButton>
         </Box>
 
         <DialogContent sx={{ pt: 0, px: 3, pb: 3 }}>
+          {needsVerification && me ? (
+            <VerifyEmailGate embedded email={me.email} onVerified={markEmailVerified} onSignOut={logout} />
+          ) : (<>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>
             <Box
@@ -560,6 +571,7 @@ export default function LoginPage() {
               })}
             </Box>
           </Box>
+          </>)}
         </DialogContent>
       </Dialog>
     </Box>

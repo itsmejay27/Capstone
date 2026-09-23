@@ -10,8 +10,8 @@ import { palette } from '../theme/tokens';
  * server when the right code is entered, and only then does the app open.
  */
 export default function VerifyEmailGate({
-  email, onVerified, onSignOut,
-}: { email: string; onVerified: () => void; onSignOut: () => void }) {
+  email, onVerified, onSignOut, embedded = false,
+}: { email: string; onVerified: () => void; onSignOut: () => void; embedded?: boolean }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -61,13 +61,19 @@ export default function VerifyEmailGate({
     else setError(r.error || 'That code is not valid.');
   };
 
-  return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2, bgcolor: palette.canvas }}>
-      <Paper
+  // Readable in both themes: MUI's default "standard" alert text is too faint on dark surfaces.
+  const alertSx = (tone: 'error' | 'success') => ({
+    mb: 2, borderRadius: 2, fontSize: '0.82rem', color: palette.ink,
+    bgcolor: tone === 'error' ? palette.dangerSoft : palette.successSoft,
+    border: `1px solid ${tone === 'error' ? palette.danger : palette.success}`,
+    '& .MuiAlert-icon': { color: tone === 'error' ? palette.danger : palette.success },
+  });
+
+  const form = (
+      <Box
         component="form"
         onSubmit={verify}
-        elevation={0}
-        sx={{ width: '100%', maxWidth: 420, p: { xs: 3, sm: 4 }, borderRadius: '18px', border: `1px solid ${palette.border}`, bgcolor: palette.surface }}
+        sx={embedded ? {} : { width: '100%', maxWidth: 420, p: { xs: 3, sm: 4 }, borderRadius: '18px', border: `1px solid ${palette.border}`, bgcolor: palette.surface }}
       >
         <Box sx={{ width: 52, height: 52, borderRadius: '14px', bgcolor: palette.primarySoft, color: palette.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
           <MarkEmailRead />
@@ -77,8 +83,8 @@ export default function VerifyEmailGate({
           This is your first sign-in. Enter the code we emailed to <strong>{email}</strong> to finish setting up your account.
         </Typography>
 
-        {info && !error && <Alert severity="success" sx={{ mb: 2, borderRadius: 2, fontSize: '0.82rem' }}>{info}</Alert>}
-        {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2, fontSize: '0.82rem' }}>{error}</Alert>}
+        {info && !error && <Alert severity="success" sx={alertSx('success')}>{info}</Alert>}
+        {error && <Alert severity="error" sx={alertSx('error')}>{error}</Alert>}
 
         <TextField
           label="6-digit code"
@@ -100,7 +106,13 @@ export default function VerifyEmailGate({
             {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
           </Button>
         </Box>
-      </Paper>
+      </Box>
+  );
+
+  if (embedded) return form;
+  return (
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2, bgcolor: palette.canvas }}>
+      <Paper elevation={0} sx={{ width: '100%', maxWidth: 420, bgcolor: 'transparent' }}>{form}</Paper>
     </Box>
   );
 }
