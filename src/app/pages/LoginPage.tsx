@@ -8,6 +8,7 @@ import Landing from '../components/landing/Landing';
 import VerifyEmailGate from '../components/VerifyEmailGate';
 import TermsAccept from '../components/TermsAccept';
 import { useDeviceTrusted, trustDevice } from '../services/deviceTrust';
+import { hasAcceptedTermsLocally } from '../services/savedAccounts';
 import { checkAccountPassword } from '../services/otpService';
 import {
   Container, Button, Typography, Box, Alert, ToggleButtonGroup, ToggleButton, IconButton, Dialog, DialogContent, TextField, InputAdornment,
@@ -23,8 +24,10 @@ declare global {
 }
 
 export default function LoginPage() {
-  const [openLoginModal, setOpenLoginModal] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole>('instructor');
+  const [openLoginModal, setOpenLoginModal] = useState(() => new URLSearchParams(window.location.search).has('signin'));
+  const [selectedRole, setSelectedRole] = useState<UserRole>(() => {
+    try { return localStorage.getItem('lastLoginRole') === 'student' ? 'student' : 'instructor'; } catch { return 'instructor'; }
+  });
   const [error, setError] = useState('');
   const [gsiLoaded, setGsiLoaded] = useState(false);
   const [email, setEmail] = useState('');
@@ -32,7 +35,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const { login, loginWithGoogle, loginWithVerifiedEmail, users, currentUser, markEmailVerified, logout, acceptTerms } = useAuth();
+  const { login, loginWithGoogle, loginWithVerifiedEmail, users, currentUser, markEmailVerified, logout, acceptTerms, accountSyncing } = useAuth();
 
   // A signed-in account that still has to confirm its email finishes here, inside the
   // sign-in dialog, rather than on a separate page.
@@ -41,7 +44,7 @@ export default function LoginPage() {
   const deviceTrusted = useDeviceTrusted(me?.email);
   const codeStepNeeded = emailUnverified || Boolean(me && !deviceTrusted);
   // After the code step, an account that has not accepted the Terms does so here, once.
-  const termsNeeded = Boolean(me && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt);
+  const termsNeeded = Boolean(me && !accountSyncing && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt && !hasAcceptedTermsLocally(me.id));
   const needsVerification = codeStepNeeded || termsNeeded;
   const onCodeVerified = () => {
     trustDevice(me?.email);
@@ -98,7 +101,7 @@ export default function LoginPage() {
       setError(result.error || 'That code is not valid.');
       return;
     }
-    loginWithVerifiedEmail(email.trim(), selectedRole);
+    await loginWithVerifiedEmail(email.trim(), selectedRole);
     // The code proved this person controls the inbox, so this browser is trusted too.
     trustDevice(email.trim());
     setOpenLoginModal(false);
@@ -138,12 +141,12 @@ export default function LoginPage() {
   }, []);
 
   const googleCallbackRef = useRef<(response: any) => void>(() => {});
-  googleCallbackRef.current = (response: any) => {
+  googleCallbackRef.current = async (response: any) => {
     if (!response?.credential) {
       setError('Google did not return a sign-in credential. Please try again.');
       return;
     }
-    if (loginWithGoogle(response.credential, selectedRole)) {
+    if (await loginWithGoogle(response.credential, selectedRole)) {
       // The layout moves a verified account into the app; a new one stays here and the
       // dialog switches to the email-verification step.
       setError('');
@@ -223,7 +226,7 @@ export default function LoginPage() {
     const server = await checkAccountPassword(addr, password);
     setSubmitting(false);
     if (server.ok) {
-      loginWithVerifiedEmail(addr, selectedRole);
+      await loginWithVerifiedEmail(addr, selectedRole);
       setPassword('');
       return;
     }

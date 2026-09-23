@@ -2,6 +2,8 @@ import { useMemo, createContext, useContext, useState, useEffect, ReactNode } fr
 import { User, UserRole, MutationResult } from '../types';
 import { mockUsers, mockClassrooms, mockExams, mockQuestionBank, mockExamAttempts } from '../data/mockData';
 import { parseGoogleJwt } from '../utils/authUtils';
+import { forgetAccount, getSavedAccountIds, rememberTermsAccepted, hasAcceptedTermsLocally } from '../services/savedAccounts';
+import { untrustDevice } from '../services/deviceTrust';
 import * as db from '../services/supabaseData';
 import { removeClassroomFile } from '../services/fileStorage';
 import { notifyAnnouncement, notifyAssignment, notifyComment } from '../services/emailService';
@@ -24,9 +26,15 @@ interface AuthContextType {
   currentUser: User | null;
   users: User[];
   login: (email: string, password: string, role?: UserRole) => boolean;
-  loginWithGoogle: (credential: string, role?: UserRole) => boolean;
+  loginWithGoogle: (credential: string, role?: UserRole) => Promise<boolean>;
   /** Call ONLY after the server has verified the one-time code for this email. */
-  loginWithVerifiedEmail: (email: string, role?: UserRole) => boolean;
+  loginWithVerifiedEmail: (email: string, role?: UserRole) => Promise<boolean>;
+  /** True while the signed-in profile is being refreshed from the server. */
+  accountSyncing: boolean;
+  /** Leaves the current account but keeps it saved on this device (for "Add another account"). */
+  leaveForAnotherAccount: () => void;
+  /** Forgets a saved account on this device; signs out if it is the current one. */
+  removeSavedAccount: (userId: string) => void;
   /** Call ONLY after the server has verified a code for the current user's email. */
   markEmailVerified: () => void;
   /** Records that the signed-in account accepted the Terms of Service. */
@@ -157,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return mockUsers;
   });
 
+  const [accountSyncing, setAccountSyncing] = useState(() => Boolean(localStorage.getItem('currentUserId')));
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const savedId = localStorage.getItem('currentUserId');
     if (savedId) {
@@ -395,6 +404,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Otherwise keep whatever localStorage/mock data was loaded above, so the app never
   // regresses to an empty state (e.g. if RLS blocks anonymous reads for a table).
   useEffect(() => {
+    const safety = window.setTimeout(() => setAccountSyncing(false), 6000);
     (async () => {
       // A session restored from localStorage must exist in Supabase too: classrooms,
       // exams, attempts and materials all carry a foreign key to this user, and an
@@ -466,7 +476,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (Object.keys(dbClasswork).length > 0) setClasswork((prev) => mergeGroupedById(prev, dbClasswork));
       if (dbSubmissions.length > 0) setSubmissions((prev) => mergeById(prev, dbSubmissions));
       if (dbComments.length > 0) setComments((prev) => mergeById(prev, dbComments));
-    })();
+    })().finally(() => { window.clearTimeout(safety); setAccountSyncing(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -613,78 +623,101 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const loginWithGoogle = (credential: string, role: UserRole = 'instructor'): boolean => {
+  /**
+   * Latest profiles for an email, read from the server first. The local cache can be stale
+   * (another device, or before the first sync), and deciding from it created a second
+   * profile with the wrong role instead of opening the existing one.
+   */
+  const profilesFor = async (email: string): Promise<User[]> => {
+    const e = email.toLowerCase();
+    let fresh: User[] = [];
+    try { fresh = await db.fetchUsers(); } catch { /* offline */ }
+    if (fresh.length > 0) {
+      setUsers((prev) => mergeById(prev, fresh, (local, remote) => ({ ...local, ...remote, password: local.password })));
+    }
+    const pool = fresh.length > 0 ? fresh : users;
+    return pool.filter((u) => u.email.toLowerCase() === e);
+  };
+
+  /**
+   * The profile to open for the role picked on the login screen. If the account has no
+   * profile for that role but has one for the other, open that one: a student who forgot to
+   * switch the toggle must not be turned into a new instructor.
+   */
+  const pickProfile = (profiles: User[], role: UserRole): User | undefined =>
+    profiles.find((u) => u.role === role) || (profiles.length > 0 ? profiles[0] : undefined);
+
+  const enter = (user: User) => {
+    const withLocalTerms = !user.termsAcceptedAt && hasAcceptedTermsLocally(user.id)
+      ? { ...user, termsAcceptedAt: new Date().toISOString() }
+      : user;
+    setCurrentUser(withLocalTerms);
+    localStorage.setItem('currentUserId', withLocalTerms.id);
+    try { localStorage.setItem('lastLoginRole', withLocalTerms.role); } catch { /* storage blocked */ }
+    db.upsertUser(withLocalTerms);
+  };
+
+  const loginWithGoogle = async (credential: string, role: UserRole = 'instructor'): Promise<boolean> => {
     const payload = parseGoogleJwt(credential);
     if (!payload || !payload.email) {
       return false;
     }
-
-    const googleEmail = payload.email.toLowerCase();
-    // One Google account can hold an instructor profile AND a student profile. Match on
-    // the role picked on the login screen too; otherwise choosing "Student" silently signed
-    // back in to the instructor profile created the first time.
-    const existingUser = users.find(
-      (u) => u.email.toLowerCase() === googleEmail && u.role === role
-    );
-
-    if (existingUser) {
-      const updatedUser: User = {
-        ...existingUser,
-        name: payload.name || existingUser.name,
-        avatar: payload.picture || existingUser.avatar,
+    setAccountSyncing(true);
+    try {
+      const profiles = await profilesFor(payload.email);
+      const existingUser = pickProfile(profiles, role);
+      if (existingUser) {
+        const updatedUser: User = {
+          ...existingUser,
+          name: payload.name || existingUser.name,
+          avatar: payload.picture || existingUser.avatar,
+        };
+        setUsers((prev) => prev.some((u) => u.id === updatedUser.id)
+          ? prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+          : [...prev, updatedUser]);
+        enter(updatedUser);
+        return true;
+      }
+      const newUser: User = {
+        id: `google-${payload.sub || Date.now()}`,
+        email: payload.email,
+        password: '',
+        name: payload.name || payload.email.split('@')[0],
+        role: role,
+        avatar: payload.picture,
+        // A new account must confirm its email with a one-time code before using the app.
+        emailVerified: false,
       };
-      setUsers((prev) => prev.map((u) => (u.id === existingUser.id ? updatedUser : u)));
-      setCurrentUser(updatedUser);
-      localStorage.setItem('currentUserId', updatedUser.id);
-      db.upsertUser(updatedUser);
+      setUsers((prev) => [...prev, newUser]);
+      enter(newUser);
       return true;
+    } finally {
+      setAccountSyncing(false);
     }
-
-    const newUser: User = {
-      // The first profile keeps the original id so existing classes stay linked to it;
-      // a second role for the same Google account gets a role-suffixed id.
-      id: (() => {
-        const base = `google-${payload.sub || Date.now()}`;
-        return users.some((u) => u.id === base) ? `${base}-${role}` : base;
-      })(),
-      email: payload.email,
-      password: '',
-      name: payload.name || payload.email.split('@')[0],
-      role: role,
-      avatar: payload.picture,
-      // A new account must confirm its email with a one-time code before using the app.
-      emailVerified: false,
-    };
-
-    setUsers((prev) => [...prev, newUser]);
-    setCurrentUser(newUser);
-    localStorage.setItem('currentUserId', newUser.id);
-    db.upsertUser(newUser);
-    return true;
   };
 
-  const loginWithVerifiedEmail = (rawEmail: string, role: UserRole = 'instructor'): boolean => {
+  const loginWithVerifiedEmail = async (rawEmail: string, role: UserRole = 'instructor'): Promise<boolean> => {
     const email = rawEmail.trim().toLowerCase();
     if (!email) return false;
-    // Same rule as Google: one email can hold one profile per role.
-    const existing = users.find((u) => u.email.toLowerCase() === email && u.role === role);
-    const user: User = existing || {
-      id: `email-${crypto.randomUUID()}`,
-      email,
-      password: '',
-      name: email.split('@')[0],
-      role,
-      emailVerified: true,
-    };
-    if (existing && existing.emailVerified === false) {
-      user.emailVerified = true;
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, emailVerified: true } : u)));
+    setAccountSyncing(true);
+    try {
+      const existing = pickProfile(await profilesFor(email), role);
+      const user: User = existing ? { ...existing, emailVerified: true } : {
+        id: `email-${crypto.randomUUID()}`,
+        email,
+        password: '',
+        name: email.split('@')[0],
+        role,
+        emailVerified: true,
+      };
+      setUsers((prev) => prev.some((u) => u.id === user.id)
+        ? prev.map((u) => (u.id === user.id ? { ...u, ...user } : u))
+        : [...prev, user]);
+      enter(user);
+      return true;
+    } finally {
+      setAccountSyncing(false);
     }
-    if (!existing) setUsers((prev) => [...prev, user]);
-    setCurrentUser(user);
-    localStorage.setItem('currentUserId', user.id);
-    db.upsertUser(user);
-    return true;
   };
 
   const acceptTerms = () => {
@@ -693,6 +726,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const updated = { ...currentUser, termsAcceptedAt: at };
     setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? { ...u, termsAcceptedAt: at } : u)));
     setCurrentUser(updated);
+    rememberTermsAccepted(currentUser.id);
     db.upsertUser(updated);
   };
 
@@ -703,18 +737,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser({ ...currentUser, emailVerified: true });
   };
 
+  // Signing out forgets this account on this device: it leaves the switcher and the next
+  // sign-in asks for a code again.
   const logout = () => {
+    if (currentUser) {
+      forgetAccount(currentUser.id);
+      const stillSaved = users.some((u) => u.id !== currentUser.id
+        && u.email.toLowerCase() === currentUser.email.toLowerCase()
+        && getSavedAccountIds().includes(u.id));
+      if (!stillSaved) untrustDevice(currentUser.email);
+    }
     setCurrentUser(null);
     localStorage.removeItem('currentUserId');
   };
 
+  const leaveForAnotherAccount = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('currentUserId');
+  };
+
+  const removeSavedAccount = (userId: string) => {
+    if (currentUser?.id === userId) { logout(); return; }
+    forgetAccount(userId);
+    const u = users.find((x) => x.id === userId);
+    const stillSaved = u && users.some((x) => x.id !== userId
+      && x.email.toLowerCase() === u.email.toLowerCase() && getSavedAccountIds().includes(x.id));
+    if (u && !stillSaved) untrustDevice(u.email);
+  };
+
+  // Switching is only offered between accounts already signed in on this device.
   const switchAccount = (userId: string) => {
+    if (!getSavedAccountIds().includes(userId)) return;
     const user = users.find((u) => u.id === userId);
-    if (user) {
-      setCurrentUser(user);
-      localStorage.setItem('currentUserId', user.id);
-      db.upsertUser(user);
-    }
+    if (user) enter(user);
   };
 
   const updateClassroom = (classroomId: string, changes: Record<string, any>) => {
@@ -1118,6 +1173,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithVerifiedEmail,
         markEmailVerified,
         acceptTerms,
+        accountSyncing,
+        leaveForAnotherAccount,
+        removeSavedAccount,
         updateProfile,
         changePassword,
         logout,

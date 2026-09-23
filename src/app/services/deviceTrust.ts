@@ -43,3 +43,11 @@ export function useDeviceTrusted(email?: string | null): boolean {
   }, [email]);
   return trusted;
 }
+
+/** Forgets this browser for an email, so the next sign-in asks for a code again. */
+export function untrustDevice(email?: string | null) {
+  if (!email) return;
+  const e = email.toLowerCase();
+  try { localStorage.setItem(KEY, JSON.stringify(read().filter((x) => x !== e))); } catch { /* storage blocked */ }
+  window.dispatchEvent(new Event(EVENT));
+}

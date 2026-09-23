@@ -6,13 +6,15 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon, AccountCircle, ExitToApp,
-  LightMode, DarkMode, Settings as SettingsIcon,
+  LightMode, DarkMode, Settings as SettingsIcon, PersonAdd, Close as CloseIcon, SwapHoriz,
 } from '@mui/icons-material';
 import AppSidebar from './AppSidebar';
 import GlobalSearch from './GlobalSearch';
 import { palette, layout, radius } from '../../theme/tokens';
 import { useIsMobile } from '../../hooks/useResponsive';
 import { useThemeMode } from '../../context/ThemeModeContext';
+import { useAuth } from '../../context/AuthContext';
+import { useSavedAccountIds } from '../../services/savedAccounts';
 
 const FAVOURITES_KEY = 'classroomFavourites';
 const COLLAPSED_KEY = 'sidebarCollapsed';
@@ -64,6 +66,13 @@ export default function AppShell({
   const [collapsed, setCollapsed] = useState(() => readStored(COLLAPSED_KEY, false));
   const [favourites, setFavourites] = useState<string[]>(() => readStored<string[]>(FAVOURITES_KEY, []));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { leaveForAnotherAccount, removeSavedAccount } = useAuth();
+  const savedIds = useSavedAccountIds();
+  // Other accounts already signed in on this device, ready to switch to without a code.
+  const otherAccounts = savedIds
+    .filter((id) => id !== currentUser?.id)
+    .map((id) => users.find((u: any) => u.id === id))
+    .filter(Boolean);
 
 
   useEffect(() => {
@@ -195,6 +204,37 @@ export default function AppShell({
                   <Typography sx={{ fontWeight: 700, fontSize: '0.85rem' }} noWrap>{currentUser.name}</Typography>
                   <Typography variant="caption" sx={{ color: palette.inkTertiary }} noWrap>{currentUser.email}</Typography>
                 </Box>
+                <Divider sx={{ my: 0.5 }} />
+                <Typography variant="caption" sx={{ px: 1.5, color: palette.inkTertiary, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <SwapHoriz sx={{ fontSize: 14 }} /> Switch account
+                </Typography>
+                {otherAccounts.map((u: any) => (
+                  <MenuItem key={u.id} onClick={() => { onSwitchAccount(u.id); setAnchorEl(null); }} sx={{ pr: 0.5 }}>
+                    <Avatar src={u.avatar} sx={{ width: 26, height: 26, mr: 1, fontSize: '0.75rem', bgcolor: palette.primarySoft, color: palette.primary }}>
+                      {u.name?.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography sx={{ fontSize: '0.8rem', fontWeight: 600 }} noWrap>{u.name}</Typography>
+                      <Typography variant="caption" sx={{ color: palette.inkTertiary, display: 'block', maxWidth: 170 }} noWrap>
+                        {u.role === 'student' ? 'Student' : 'Instructor'} · {u.email}
+                      </Typography>
+                    </Box>
+                    <Tooltip title="Remove from this device">
+                      <IconButton
+                        size="small"
+                        aria-label={`Remove ${u.email} from this device`}
+                        onClick={(e) => { e.stopPropagation(); removeSavedAccount(u.id); }}
+                        sx={{ ml: 0.5, color: palette.inkTertiary }}
+                      >
+                        <CloseIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </MenuItem>
+                ))}
+                <MenuItem onClick={() => { setAnchorEl(null); leaveForAnotherAccount(); navigate('/?signin=1'); }}>
+                  <PersonAdd fontSize="small" sx={{ mr: 1, color: palette.inkTertiary }} />
+                  <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Add another account</Typography>
+                </MenuItem>
                 <Divider sx={{ my: 0.5 }} />
                 <MenuItem onClick={() => { navigate('/settings'); setAnchorEl(null); }}>
                   <SettingsIcon fontSize="small" sx={{ mr: 1, color: palette.inkTertiary }} />
