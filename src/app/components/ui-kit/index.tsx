@@ -312,9 +312,11 @@ export function FolderCard({
 
 /** Card with a tinted banner, a meta line and a mono title — the reference's workflow card. */
 export function EntityCard({
-  id, title, metaLeft, metaRight, members, footerRight, onClick, action, bannerHeight = 92,
+  id, title, metaLeft, metaRight, members, footerRight, onClick, action, bannerHeight = 92, bannerBackground,
 }: {
   id: string;
+  /** A full CSS background for the banner (e.g. a class theme); defaults to the id tint. */
+  bannerBackground?: string;
   title: string;
   metaLeft?: string;
   metaRight?: ReactNode;
@@ -341,7 +343,7 @@ export function EntityCard({
       <Box
         sx={{
           height: bannerHeight, position: 'relative',
-          background: `linear-gradient(135deg, ${tint.from} 0%, ${tint.to} 100%)`,
+          background: bannerBackground || `linear-gradient(135deg, ${tint.from} 0%, ${tint.to} 100%)`,
         }}
       >
         {action && <Box sx={{ position: 'absolute', top: 8, right: 8 }}>{action}</Box>}

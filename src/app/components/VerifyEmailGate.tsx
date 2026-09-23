@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Paper, Typography, Button, TextField, Alert, CircularProgress } from '@mui/material';
 import { MarkEmailRead } from '@mui/icons-material';
-import { sendSignInCode, verifySignInCode } from '../services/otpService';
+import { sendSignInCode, verifySignInCode, type CodePurpose } from '../services/otpService';
 import { palette } from '../theme/tokens';
 
 /**
@@ -10,8 +10,8 @@ import { palette } from '../theme/tokens';
  * server when the right code is entered, and only then does the app open.
  */
 export default function VerifyEmailGate({
-  email, onVerified, onSignOut, embedded = false,
-}: { email: string; onVerified: () => void; onSignOut: () => void; embedded?: boolean }) {
+  email, onVerified, onSignOut, embedded = false, purpose = 'verify',
+}: { email: string; onVerified: () => void; onSignOut: () => void; embedded?: boolean; purpose?: CodePurpose }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +22,7 @@ export default function VerifyEmailGate({
   const send = async () => {
     setError('');
     setBusy(true);
-    const r = await sendSignInCode(email);
+    const r = await sendSignInCode(email, purpose);
     setBusy(false);
     if (r.ok) {
       setInfo(`We sent a 6-digit code to ${email}. It expires in 10 minutes.`);
@@ -78,9 +78,13 @@ export default function VerifyEmailGate({
         <Box sx={{ width: 52, height: 52, borderRadius: '14px', bgcolor: palette.primarySoft, color: palette.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
           <MarkEmailRead />
         </Box>
-        <Typography variant="h5" sx={{ fontWeight: 900, mb: 0.75 }}>Verify your email</Typography>
+        <Typography variant="h5" sx={{ fontWeight: 900, mb: 0.75 }}>
+          {purpose === 'new-device' ? 'Confirm this new device' : 'Verify your email'}
+        </Typography>
         <Typography variant="body2" sx={{ color: palette.inkSecondary, mb: 2.5 }}>
-          This is your first sign-in. Enter the code we emailed to <strong>{email}</strong> to finish setting up your account.
+          {purpose === 'new-device'
+            ? <>This browser has not been used with your account before. We emailed a code to <strong>{email}</strong> — enter it to continue. If it was not you, someone may know your sign-in details.</>
+            : <>This is your first sign-in. Enter the code we emailed to <strong>{email}</strong> to finish setting up your account.</>}
         </Typography>
 
         {info && !error && <Alert severity="success" sx={alertSx('success')}>{info}</Alert>}

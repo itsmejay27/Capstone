@@ -72,6 +72,7 @@ export async function fetchClassrooms() {
     classCode: c.class_code,
     level: c.level || '',
     room: c.room || '',
+    theme: c.theme || undefined,
     students: (c.classroom_students || []).map((s: any) => s.student_id),
     createdAt: c.created_at,
     description: c.description || undefined,
@@ -91,6 +92,7 @@ export async function upsertClassroom(classroom: any) {
       class_code: classroom.classCode,
     level: classroom.level || null,
     room: classroom.room || null,
+    theme: classroom.theme || null,
       description: classroom.description || null,
       is_archived: !!classroom.isArchived,
     });

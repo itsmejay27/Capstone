@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box, Paper, Typography, TextField, Button, Avatar, Divider, Alert,
   ToggleButtonGroup, ToggleButton, InputAdornment, IconButton, Chip,
@@ -8,6 +8,8 @@ import {
   SettingsBrightness, Person, Lock, Palette,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { useReauth } from '../components/ReauthProvider';
+import { hasPassword, sendSignInCode, setAccountPassword } from '../services/otpService';
 import { useThemeMode, ThemePreference } from '../context/ThemeModeContext';
 import { PageContainer, PageHeader } from '../components/ui-kit';
 import { useToast } from '../components/Toast';
@@ -93,7 +95,8 @@ function SettingsCard({
 }
 
 export default function Settings() {
-  const { currentUser, updateProfile, changePassword } = useAuth();
+  const { currentUser, updateProfile } = useAuth();
+  const requireReauth = useReauth();
   const { preference, mode, setPreference } = useThemeMode();
   const { toast, ToastHost } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,16 +105,24 @@ export default function Settings() {
   const [avatar, setAvatar] = useState<string | undefined>(currentUser?.avatar);
   const [savingProfile, setSavingProfile] = useState(false);
 
-  const [currentPassword, setCurrentPassword] = useState('');
+  // Email + password sign-in, for every account (Google-created ones included). Setting or
+  // changing it needs a code emailed to the account, so only the inbox owner can do it.
+  const [pwSet, setPwSet] = useState<boolean | null>(null);
+  const [pwStep, setPwStep] = useState<'idle' | 'code'>('idle');
+  const [pwCode, setPwCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswords, setShowPasswords] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [passwordInfo, setPasswordInfo] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+
+  useEffect(() => {
+    if (currentUser?.email) hasPassword(currentUser.email).then(setPwSet);
+  }, [currentUser?.email]);
 
   if (!currentUser) return null;
 
-  const isGoogleAccount = !currentUser.password;
   const profileDirty = name.trim() !== currentUser.name || avatar !== currentUser.avatar;
 
   const handlePickAvatar = async (file: File | undefined) => {
@@ -136,6 +147,7 @@ export default function Settings() {
       toast('Name cannot be empty.', 'error');
       return;
     }
+    if (!(await requireReauth('Changing your name or picture updates how everyone sees you.'))) return;
     setSavingProfile(true);
     const result = await updateProfile({ name: name.trim(), avatar });
     setSavingProfile(false);
@@ -143,22 +155,36 @@ export default function Settings() {
     else toast(result.error || 'Could not update your profile.', 'error');
   };
 
-  const handleChangePassword = async () => {
-    setPasswordError('');
-    if (newPassword !== confirmPassword) {
-      setPasswordError('The new passwords do not match.');
-      return;
-    }
+  const passwordProblem = (p: string) =>
+    p.length < 8 ? 'Use at least 8 characters.'
+      : (!/[A-Za-z]/.test(p) || !/[0-9]/.test(p)) ? 'Use both letters and numbers.' : '';
+
+  const handleSendPasswordCode = async () => {
+    setPasswordError(''); setPasswordInfo('');
     setSavingPassword(true);
-    const result = await changePassword(currentPassword, newPassword);
+    const r = await sendSignInCode(currentUser.email, 'set-password');
     setSavingPassword(false);
-    if (result.ok) {
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      toast('Password changed.');
+    if (r.ok) {
+      setPwStep('code');
+      setPasswordInfo(`We emailed a 6-digit code to ${currentUser.email}. Enter it with your new password.`);
     } else {
-      setPasswordError(result.error || 'Could not change your password.');
+      setPasswordError(r.error || 'Could not send the code.');
+    }
+  };
+
+  const handleSavePassword = async () => {
+    setPasswordError('');
+    const problem = passwordProblem(newPassword);
+    if (problem) { setPasswordError(problem); return; }
+    if (newPassword !== confirmPassword) { setPasswordError('The passwords do not match.'); return; }
+    setSavingPassword(true);
+    const r = await setAccountPassword(currentUser.email, pwCode, newPassword);
+    setSavingPassword(false);
+    if (r.ok) {
+      setPwSet(true); setPwStep('idle'); setPwCode(''); setNewPassword(''); setConfirmPassword(''); setPasswordInfo('');
+      toast(pwSet ? 'Password changed.' : 'Password set — you can now sign in with your email and password.');
+    } else {
+      setPasswordError(r.error || 'Could not save your password.');
     }
   };
 
@@ -270,36 +296,29 @@ export default function Settings() {
       <SettingsCard
         icon={<Lock fontSize="small" />}
         title="Password"
-        description="Change the password you use to sign in."
+        description="Sign in with your email and a password, in addition to Google."
       >
-        {isGoogleAccount ? (
-          <Alert severity="info">
-            This account signs in with Google, so there is no password to change here. Manage
-            it from your Google account instead.
-          </Alert>
+        <Alert severity={pwSet ? 'success' : 'info'} sx={{ mb: 2, borderRadius: 2 }}>
+          {pwSet === null ? 'Checking…'
+            : pwSet ? <>Email sign-in is on. You can sign in with <b>{currentUser.email}</b> and your password, or with Google.</>
+              : <>You sign in with Google only. Set a password to also sign in with <b>{currentUser.email}</b> and a password.</>}
+        </Alert>
+        {passwordError && <Alert severity="error" sx={{ mb: 2 }}>{passwordError}</Alert>}
+        {passwordInfo && !passwordError && <Alert severity="success" sx={{ mb: 2 }}>{passwordInfo}</Alert>}
+
+        {pwStep === 'idle' ? (
+          <Button variant="contained" onClick={handleSendPasswordCode} disabled={savingPassword || pwSet === null}>
+            {savingPassword ? 'Sending code…' : pwSet ? 'Change password' : 'Set a password'}
+          </Button>
         ) : (
           <>
-            {passwordError && <Alert severity="error" sx={{ mb: 2 }}>{passwordError}</Alert>}
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mb: 2.5 }}>
               <TextField
-                label="Current password"
-                type={showPasswords ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                autoComplete="current-password"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        size="small"
-                        onClick={() => setShowPasswords((v) => !v)}
-                        aria-label={showPasswords ? 'Hide passwords' : 'Show passwords'}
-                      >
-                        {showPasswords ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
+                label="6-digit code from your email"
+                value={pwCode}
+                onChange={(e) => setPwCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                autoComplete="one-time-code"
+                inputProps={{ inputMode: 'numeric', style: { letterSpacing: '0.35em', fontWeight: 800 } }}
               />
               <TextField
                 label="New password"
@@ -307,7 +326,16 @@ export default function Settings() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 autoComplete="new-password"
-                helperText="At least 8 characters."
+                helperText="8+ characters, letters and numbers."
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setShowPasswords((v) => !v)} aria-label={showPasswords ? 'Hide passwords' : 'Show passwords'}>
+                        {showPasswords ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
               <TextField
                 label="Confirm new password"
@@ -316,21 +344,20 @@ export default function Settings() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"
                 error={Boolean(confirmPassword) && confirmPassword !== newPassword}
-                helperText={
-                  confirmPassword && confirmPassword !== newPassword ? 'Does not match.' : ' '
-                }
+                helperText={confirmPassword && confirmPassword !== newPassword ? 'Does not match.' : ' '}
               />
             </Box>
-            <Button
-              variant="contained"
-              onClick={handleChangePassword}
-              disabled={
-                savingPassword || !currentPassword || newPassword.length < 8
-                || newPassword !== confirmPassword
-              }
-            >
-              {savingPassword ? 'Changing…' : 'Change password'}
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                onClick={handleSavePassword}
+                disabled={savingPassword || pwCode.length !== 6 || !newPassword || newPassword !== confirmPassword}
+              >
+                {savingPassword ? 'Saving…' : 'Save password'}
+              </Button>
+              <Button onClick={() => { setPwStep('idle'); setPasswordInfo(''); setPasswordError(''); }}>Cancel</Button>
+              <Button onClick={handleSendPasswordCode} disabled={savingPassword}>Send a new code</Button>
+            </Box>
           </>
         )}
       </SettingsCard>
