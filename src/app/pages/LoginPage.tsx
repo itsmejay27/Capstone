@@ -224,7 +224,14 @@ export default function LoginPage() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'var(--c-surface)', color: 'var(--c-slate-50)', overflowX: 'hidden' }}>
-      <Landing onSignIn={() => setOpenLoginModal(true)} />
+      <Landing
+        onSignIn={() => {
+          // Release focus from the landing button first: the dialog hides the page behind it
+          // from screen readers, and a focused element inside hidden content is an a11y error.
+          (document.activeElement as HTMLElement | null)?.blur();
+          setOpenLoginModal(true);
+        }}
+      />
 
       {/* ── 8. SIGN IN POPUP DIALOG (GOOGLE SIGN-IN ONLY + QUICK DEMO) ── */}
       <Dialog
