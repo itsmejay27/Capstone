@@ -9,6 +9,8 @@ export interface User {
   avatar?: string;
   /** False only for a new account that has not confirmed its email yet. Undefined = legacy/verified. */
   emailVerified?: boolean;
+  /** When the account accepted the Terms of Service; missing means not yet. */
+  termsAcceptedAt?: string;
 }
 
 export interface Classroom {

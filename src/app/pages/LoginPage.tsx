@@ -6,6 +6,7 @@ import { GOOGLE_CLIENT_ID } from '../config/authConfig';
 import { sendSignInCode, verifySignInCode } from '../services/otpService';
 import Landing from '../components/landing/Landing';
 import VerifyEmailGate from '../components/VerifyEmailGate';
+import TermsAccept from '../components/TermsAccept';
 import { useDeviceTrusted, trustDevice } from '../services/deviceTrust';
 import { checkAccountPassword } from '../services/otpService';
 import {
@@ -31,14 +32,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const { login, loginWithGoogle, loginWithVerifiedEmail, users, currentUser, markEmailVerified, logout } = useAuth();
+  const { login, loginWithGoogle, loginWithVerifiedEmail, users, currentUser, markEmailVerified, logout, acceptTerms } = useAuth();
 
   // A signed-in account that still has to confirm its email finishes here, inside the
   // sign-in dialog, rather than on a separate page.
   const me = currentUser ? users.find((u: any) => u.id === currentUser.id) || currentUser : null;
   const emailUnverified = Boolean(me && me.emailVerified === false && currentUser?.emailVerified !== true);
   const deviceTrusted = useDeviceTrusted(me?.email);
-  const needsVerification = emailUnverified || Boolean(me && !deviceTrusted);
+  const codeStepNeeded = emailUnverified || Boolean(me && !deviceTrusted);
+  // After the code step, an account that has not accepted the Terms does so here, once.
+  const termsNeeded = Boolean(me && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt);
+  const needsVerification = codeStepNeeded || termsNeeded;
   const onCodeVerified = () => {
     trustDevice(me?.email);
     if (emailUnverified) markEmailVerified();
@@ -294,7 +298,9 @@ export default function LoginPage() {
         </Box>
 
         <DialogContent sx={{ pt: 0, px: 3, pb: 3 }}>
-          {needsVerification && me ? (
+          {needsVerification && me && !codeStepNeeded ? (
+            <TermsAccept onAccept={acceptTerms} onCancel={() => { logout(); setOpenLoginModal(true); }} />
+          ) : needsVerification && me ? (
             <VerifyEmailGate
               embedded
               key={emailUnverified ? 'verify' : 'device'}
@@ -330,6 +336,9 @@ export default function LoginPage() {
             </Typography>
             <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)', fontWeight: 700, mt: 0.3, display: 'block' }}>
               AI-powered classes, exams and insight
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)', display: 'block', mt: 0.75 }}>
+              New here? You’ll be asked to accept the <a href="/terms" target="_blank" rel="noopener" style={{ color: 'inherit', fontWeight: 700 }}>Terms &amp; Privacy</a> before your account opens.
             </Typography>
           </Box>
 

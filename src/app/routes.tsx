@@ -13,8 +13,12 @@ import QuestionBank from './pages/QuestionBank';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import Billing from './pages/Billing';
+import Terms from './pages/Terms';
+import StudyHub from './pages/StudyHub';
 
 export const router = createBrowserRouter([
+  // Public: must be readable before an account exists.
+  { path: '/terms', Component: Terms },
   {
     path: '/',
     Component: RootLayout,
@@ -32,6 +36,7 @@ export const router = createBrowserRouter([
       { path: 'billing', Component: Billing },
       { path: 'reviewer-generator', Component: ReviewerGenerator },
       { path: 'reviewer', Component: Reviewer },
+      { path: 'study', Component: StudyHub },
       { path: 'exam/:examId/take', Component: TakeExam },
       { path: 'exam/:examId/results', Component: ExamResults },
     ],

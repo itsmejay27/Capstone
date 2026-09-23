@@ -58,7 +58,8 @@ export default function RootLayout() {
   const emailUnverified = Boolean(isAuthenticated && me && me.emailVerified === false && currentUser?.emailVerified !== true);
   // A new device or browser must be confirmed with an emailed code too.
   const deviceTrusted = useDeviceTrusted(me?.email);
-  const needsVerification = emailUnverified || Boolean(isAuthenticated && me && !deviceTrusted);
+  const termsNeeded = Boolean(isAuthenticated && me && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt);
+  const needsVerification = emailUnverified || Boolean(isAuthenticated && me && !deviceTrusted) || termsNeeded;
 
   useEffect(() => {
     if ((!isAuthenticated || needsVerification) && location.pathname !== '/') {

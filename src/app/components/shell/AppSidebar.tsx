@@ -65,6 +65,7 @@ export default function AppSidebar({
       : [
           { label: 'Reviewer Generator', icon: <AutoAwesome fontSize="small" />, path: '/reviewer-generator' },
           { label: 'My Reviewers', icon: <MenuBook fontSize="small" />, path: '/reviewer' },
+          { label: 'Study Hub', icon: <School fontSize="small" />, path: '/study' },
         ]),
   ];
 
