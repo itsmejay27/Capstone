@@ -27,6 +27,8 @@ interface AuthContextType {
   loginWithGoogle: (credential: string, role?: UserRole) => boolean;
   /** Call ONLY after the server has verified the one-time code for this email. */
   loginWithVerifiedEmail: (email: string, role?: UserRole) => boolean;
+  /** Call ONLY after the server has verified a code for the current user's email. */
+  markEmailVerified: () => void;
   logout: () => void;
   switchAccount: (userId: string) => void;
   /** Updates the signed-in user's display name and/or avatar. */
@@ -643,6 +645,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: payload.name || payload.email.split('@')[0],
       role: role,
       avatar: payload.picture,
+      // A new account must confirm its email with a one-time code before using the app.
+      emailVerified: false,
     };
 
     setUsers((prev) => [...prev, newUser]);
@@ -663,12 +667,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: '',
       name: email.split('@')[0],
       role,
+      emailVerified: true,
     };
+    if (existing && existing.emailVerified === false) {
+      user.emailVerified = true;
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, emailVerified: true } : u)));
+    }
     if (!existing) setUsers((prev) => [...prev, user]);
     setCurrentUser(user);
     localStorage.setItem('currentUserId', user.id);
     db.upsertUser(user);
     return true;
+  };
+
+  const markEmailVerified = () => {
+    if (!currentUser) return;
+    const email = currentUser.email.toLowerCase();
+    setUsers((prev) => prev.map((u) => (u.email.toLowerCase() === email ? { ...u, emailVerified: true } : u)));
+    setCurrentUser({ ...currentUser, emailVerified: true });
   };
 
   const logout = () => {
@@ -1065,6 +1081,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         loginWithGoogle,
         loginWithVerifiedEmail,
+        markEmailVerified,
         updateProfile,
         changePassword,
         logout,

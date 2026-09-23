@@ -27,6 +27,7 @@ export async function fetchUsers() {
     name: u.name,
     role: u.role,
     avatar: u.avatar || undefined,
+    emailVerified: u.email_verified !== false,
   }));
 }
 
