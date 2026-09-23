@@ -149,7 +149,9 @@ export default function LoginPage() {
   };
 
   useEffect(() => {
-    if (!googleClientId || !openLoginModal) return;
+    // Render whenever the sign-in form is on screen — including after the verification step
+    // closes, which remounts the button's container.
+    if (!googleClientId || !dialogOpen || needsVerification) return;
 
     const renderGoogleButton = (): boolean => {
       const gsi = window.google?.accounts?.id;
@@ -189,7 +191,7 @@ export default function LoginPage() {
       if (renderGoogleButton()) window.clearInterval(timer);
     }, 300);
     return () => window.clearInterval(timer);
-  }, [openLoginModal, googleClientId]);
+  }, [dialogOpen, needsVerification, googleClientId]);
 
 
   /**
@@ -225,7 +227,7 @@ export default function LoginPage() {
       setError(server.error || 'Too many attempts. Try again later.');
       return;
     }
-    if (login(addr, password)) {
+    if (login(addr, password, selectedRole)) {
       setPassword('');
       return;
     }
@@ -286,7 +288,7 @@ export default function LoginPage() {
         }}
       >
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-          <IconButton size="small" onClick={needsVerification ? logout : closeDialog} aria-label={needsVerification ? 'Cancel and sign out' : 'Close'}>
+          <IconButton size="small" onClick={needsVerification ? () => { logout(); setOpenLoginModal(true); } : closeDialog} aria-label={needsVerification ? 'Cancel and sign out' : 'Close'}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -299,7 +301,7 @@ export default function LoginPage() {
               purpose={emailUnverified ? 'verify' : 'new-device'}
               email={me.email}
               onVerified={onCodeVerified}
-              onSignOut={logout}
+              onSignOut={() => { logout(); setOpenLoginModal(true); }}
             />
           ) : (<>
           {/* Header */}

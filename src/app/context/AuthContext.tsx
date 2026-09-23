@@ -23,7 +23,7 @@ export interface AssignmentOptions {
 interface AuthContextType {
   currentUser: User | null;
   users: User[];
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string, role?: UserRole) => boolean;
   loginWithGoogle: (credential: string, role?: UserRole) => boolean;
   /** Call ONLY after the server has verified the one-time code for this email. */
   loginWithVerifiedEmail: (email: string, role?: UserRole) => boolean;
@@ -594,9 +594,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return applyUserChange({ password: newPassword });
   };
 
-  const login = (email: string, password: string): boolean => {
+  const login = (email: string, password: string, role?: UserRole): boolean => {
+    // Match the role picked on the login screen too: one email can own an instructor and a
+    // student profile, and ignoring the role opened whichever came first.
     const user = users.find(
       (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+        && (!role || u.role === role)
     );
     if (user) {
       setCurrentUser(user);

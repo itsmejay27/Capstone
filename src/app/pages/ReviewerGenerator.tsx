@@ -169,11 +169,43 @@ export default function ReviewerGenerator() {
   const availableMaterials = selectedClassroomId ? (classroomMaterials[selectedClassroomId] || []) : [];
   const selectedMaterial = availableMaterials.find((m) => m.id === selectedMaterialId);
 
+  /**
+   * Everything the AI should study from: the chosen class material (a teacher's handout or
+   * module), an uploaded file, or both. A material that only has a file link is downloaded
+   * and read the same way an upload is. Previously the chosen material was never sent.
+   */
+  const gatherSourceText = async (): Promise<string> => {
+    const parts: string[] = [];
+    if (selectedMaterial) {
+      if (selectedMaterial.content && String(selectedMaterial.content).trim()) {
+        parts.push(`From class material "${selectedMaterial.name}":\n${selectedMaterial.content}`);
+      } else if (selectedMaterial.fileUrl) {
+        try {
+          const res = await fetch(selectedMaterial.fileUrl);
+          const blob = await res.blob();
+          const file = new File([blob], selectedMaterial.name || 'material', { type: blob.type || selectedMaterial.type || '' });
+          const text = await extractFilesContent([file]);
+          if (text.trim()) parts.push(`From class material "${selectedMaterial.name}":\n${text}`);
+        } catch (err) {
+          console.warn('Could not read the class material:', err);
+          toast(`Could not read "${selectedMaterial.name}". Using your topic and uploads only.`, 'error');
+        }
+      }
+    }
+    if (uploadedFile) {
+      const text = await extractFilesContent([uploadedFile]);
+      if (text.trim()) parts.push(`From uploaded file "${uploadedFile.name}":\n${text}`);
+    }
+    return parts.join('\n\n');
+  };
+
   const handleGenerate = async () => {
-    if (!title.trim() && !subject.trim() && !promptText.trim()) return;
+    // A material or an upload is enough on its own — no need to also type a topic.
+    if (!title.trim() && !subject.trim() && !promptText.trim() && !selectedMaterial && !uploadedFile) return;
     setGenerating(true);
 
-    const effectiveSubject = subject.trim() || promptText.trim().substring(0, 40) || 'General Subject';
+    const sourceName = (selectedMaterial?.name || uploadedFile?.name || '').replace(/\.[^.]+$/, '');
+    const effectiveSubject = subject.trim() || promptText.trim().substring(0, 40) || sourceName || 'General Subject';
     const effectiveTitle = title.trim() || `Reviewer - ${effectiveSubject}`;
     const effectiveInstructions = promptText.trim() 
       ? `Topic / Instruction: ${promptText.trim()}`
@@ -184,7 +216,7 @@ export default function ReviewerGenerator() {
 
     if (aiEngine === 'gemini') {
       try {
-        const extractedText = await extractFilesContent([uploadedFile]);
+        const extractedText = await gatherSourceText();
         modules = await generateReviewerWithGemini({
           model: geminiModel,
           subject: effectiveSubject,
@@ -200,7 +232,7 @@ export default function ReviewerGenerator() {
       }
     } else {
       try {
-        const extractedText = await extractFilesContent([uploadedFile]);
+        const extractedText = await gatherSourceText();
         modules = await generateReviewerWithOllama({
           model: ollamaModel,
           subject: effectiveSubject,
@@ -219,8 +251,8 @@ export default function ReviewerGenerator() {
 
     const newReviewer = {
       id: `rev-${Date.now()}`,
-      title,
-      subject,
+      title: effectiveTitle,
+      subject: effectiveSubject,
       difficulty,
       difficultyLabel: config.label,
       moduleCount: modules.length || config.moduleCount,
@@ -527,7 +559,7 @@ export default function ReviewerGenerator() {
               variant="contained" color="secondary" size="large"
               startIcon={<AutoAwesome />}
               onClick={handleGenerate}
-              disabled={!title.trim() || !subject.trim()}
+              disabled={!title.trim() && !subject.trim() && !promptText.trim() && !selectedMaterial && !uploadedFile}
               sx={{
                 py: 1.5, fontWeight: 'bold',
                 background: 'linear-gradient(135deg, var(--c-purple-900) 0%, var(--c-emerald-400) 100%)',

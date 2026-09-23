@@ -35,15 +35,18 @@
   -webkit-mask-image: linear-gradient(to bottom, #000, transparent 90%);
 }
 
-/* Page entrance: rise, unblur, fade — the same curve the landing reveals use. */
-.ea-page { animation: ea-page-in .55s cubic-bezier(.2, .8, .2, 1) both; }
+/* Page entrance: rise, unblur, fade — the same curve the landing reveals use.
+   Fill mode is `backwards`, not `both`: a finished animation that keeps holding a transform
+   or filter makes the element the containing block for position:fixed descendants, which
+   pinned toasts and snackbars to the page content instead of the viewport. */
+.ea-page { animation: ea-page-in .55s cubic-bezier(.2, .8, .2, 1) backwards; }
 @keyframes ea-page-in {
   from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
   to   { opacity: 1; transform: none; filter: none; }
 }
 
 /* Children of a page's main container arrive one after another. */
-.ea-page > * > * { animation: ea-page-in .6s cubic-bezier(.2, .8, .2, 1) both; }
+.ea-page > * > * { animation: ea-page-in .6s cubic-bezier(.2, .8, .2, 1) backwards; }
 .ea-page > * > *:nth-child(1) { animation-delay: 40ms; }
 .ea-page > * > *:nth-child(2) { animation-delay: 100ms; }
 .ea-page > * > *:nth-child(3) { animation-delay: 160ms; }
