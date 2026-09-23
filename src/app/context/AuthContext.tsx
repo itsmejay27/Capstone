@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useMemo, createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole, MutationResult } from '../types';
 import { mockUsers, mockClassrooms, mockExams, mockQuestionBank, mockExamAttempts } from '../data/mockData';
 import { parseGoogleJwt } from '../utils/authUtils';
@@ -78,6 +78,8 @@ interface AuthContextType {
   saveComment: (comment: any) => Promise<MutationResult>;
   deleteComment: (commentId: string) => Promise<MutationResult>;
   archiveClassroom: (classroomId: string) => void;
+  /** Instructor-only edits to a class's own fields (e.g. its banner theme). */
+  updateClassroom: (classroomId: string, changes: Record<string, any>) => void;
   unarchiveClassroom: (classroomId: string) => void;
 }
 
@@ -701,6 +703,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateClassroom = (classroomId: string, changes: Record<string, any>) => {
+    const target = classrooms.find((c: any) => c.id === classroomId);
+    if (!target || target.instructorId !== currentUser?.id) return;
+    const updated = { ...target, ...changes };
+    setClassrooms((prev) => prev.map((c: any) => (c.id === classroomId ? updated : c)));
+    db.upsertClassroom(updated);
+  };
+
   const addClassroom = (classroom: any) => {
     setClassrooms((prev) => [...prev, classroom]);
     db.upsertClassroom(classroom);
@@ -723,7 +733,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  const saveExamToRepository = (exam: any) => {
+  const saveExamToRepository = (rawExam: any) => {
+    // Every library item is stamped with its owner; the owner filter hides anything without one.
+    const exam = { ...rawExam, createdBy: rawExam?.createdBy || currentUser?.id };
     setSavedExams((prev) => {
       // Check if already exists, then overwrite/update
       const idx = prev.findIndex((e) => e.id === exam.id);
@@ -950,7 +962,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     db.upsertExamAttempt(attempt);
   };
 
-  const saveQuestionBankItem = (item: any) => {
+  const saveQuestionBankItem = (rawItem: any) => {
+    const item = { ...rawItem, createdBy: rawItem?.createdBy || currentUser?.id };
     setQuestionBank((prev) => {
       const idx = prev.findIndex((q) => q.id === item.id);
       if (idx > -1) {
@@ -968,7 +981,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     db.deleteQuestionBankItemDb(itemId);
   };
 
-  const saveReviewer = (reviewer: any) => {
+  const saveReviewer = (rawReviewer: any) => {
+    const reviewer = { ...rawReviewer, createdBy: rawReviewer?.createdBy || currentUser?.id };
     setReviewers((prev) => [...prev, reviewer]);
     db.upsertReviewer(reviewer);
   };
@@ -1073,6 +1087,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Private libraries: each account sees only what it created. The tables are shared, so
+  // without this every account saw every other account's exams and questions.
+  const ownedBy = (item: any) => Boolean(currentUser && item?.createdBy && item.createdBy === currentUser.id);
+  const mySavedExams = useMemo(() => savedExams.filter(ownedBy), [savedExams, currentUser?.id]);
+  const myQuestionBank = useMemo(() => questionBank.filter(ownedBy), [questionBank, currentUser?.id]);
+  const myReviewers = useMemo(() => reviewers.filter(ownedBy), [reviewers, currentUser?.id]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -1090,10 +1111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         classrooms,
         exams,
-        savedExams,
+        savedExams: mySavedExams,
         examAttempts,
-        reviewers,
-        questionBank,
+        reviewers: myReviewers,
+        questionBank: myQuestionBank,
         classroomMaterials,
         announcements,
         topics,
@@ -1125,6 +1146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         saveComment,
         deleteComment,
         archiveClassroom,
+        updateClassroom,
         unarchiveClassroom,
       }}
     >

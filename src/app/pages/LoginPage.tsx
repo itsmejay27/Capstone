@@ -6,6 +6,8 @@ import { GOOGLE_CLIENT_ID } from '../config/authConfig';
 import { sendSignInCode, verifySignInCode } from '../services/otpService';
 import Landing from '../components/landing/Landing';
 import VerifyEmailGate from '../components/VerifyEmailGate';
+import { useDeviceTrusted, trustDevice } from '../services/deviceTrust';
+import { checkAccountPassword } from '../services/otpService';
 import {
   Container, Button, Typography, Box, Alert, ToggleButtonGroup, ToggleButton, IconButton, Dialog, DialogContent, TextField, InputAdornment,
 } from '@mui/material';
@@ -34,7 +36,13 @@ export default function LoginPage() {
   // A signed-in account that still has to confirm its email finishes here, inside the
   // sign-in dialog, rather than on a separate page.
   const me = currentUser ? users.find((u: any) => u.id === currentUser.id) || currentUser : null;
-  const needsVerification = Boolean(me && me.emailVerified === false && currentUser?.emailVerified !== true);
+  const emailUnverified = Boolean(me && me.emailVerified === false && currentUser?.emailVerified !== true);
+  const deviceTrusted = useDeviceTrusted(me?.email);
+  const needsVerification = emailUnverified || Boolean(me && !deviceTrusted);
+  const onCodeVerified = () => {
+    trustDevice(me?.email);
+    if (emailUnverified) markEmailVerified();
+  };
   const dialogOpen = openLoginModal || needsVerification;
   const closeDialog = () => { if (!needsVerification) setOpenLoginModal(false); };
 
@@ -87,6 +95,8 @@ export default function LoginPage() {
       return;
     }
     loginWithVerifiedEmail(email.trim(), selectedRole);
+    // The code proved this person controls the inbox, so this browser is trusted too.
+    trustDevice(email.trim());
     setOpenLoginModal(false);
     navigate('/dashboard');
   };
@@ -187,23 +197,39 @@ export default function LoginPage() {
    * email and a wrong password; the message stays deliberately vague about which, so the
    * form cannot be used to enumerate registered accounts.
    */
-  const handleCredentialLogin = (e: React.FormEvent) => {
+  /**
+   * Email + password sign-in. The password is checked on the server against a salted hash
+   * (account-auth); the browser never compares passwords itself. Older demo accounts that
+   * only have a local password still work through the legacy check. The message stays vague
+   * about which part was wrong, so the form cannot be used to find registered emails.
+   * A browser that has not been used with this account before still has to enter an
+   * emailed code next (the layout shows that step).
+   */
+  const handleCredentialLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!email.trim() || !password) {
+    const addr = email.trim().toLowerCase();
+    if (!addr || !password) {
       setError('Enter your email and password.');
       return;
     }
     setSubmitting(true);
-    const ok = login(email.trim(), password);
+    const server = await checkAccountPassword(addr, password);
     setSubmitting(false);
-    if (ok) {
+    if (server.ok) {
+      loginWithVerifiedEmail(addr, selectedRole);
       setPassword('');
-      setOpenLoginModal(false);
-      navigate('/dashboard');
-    } else {
-      setError('That email and password do not match an account.');
+      return;
     }
+    if (/too many/i.test(server.error || '')) {
+      setError(server.error || 'Too many attempts. Try again later.');
+      return;
+    }
+    if (login(addr, password)) {
+      setPassword('');
+      return;
+    }
+    setError('That email and password do not match an account.');
   };
 
   const handleFallbackGoogleLogin = () => {
@@ -267,7 +293,14 @@ export default function LoginPage() {
 
         <DialogContent sx={{ pt: 0, px: 3, pb: 3 }}>
           {needsVerification && me ? (
-            <VerifyEmailGate embedded email={me.email} onVerified={markEmailVerified} onSignOut={logout} />
+            <VerifyEmailGate
+              embedded
+              key={emailUnverified ? 'verify' : 'device'}
+              purpose={emailUnverified ? 'verify' : 'new-device'}
+              email={me.email}
+              onVerified={onCodeVerified}
+              onSignOut={logout}
+            />
           ) : (<>
           {/* Header */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>

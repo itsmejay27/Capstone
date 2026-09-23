@@ -70,16 +70,43 @@ function db(url, key) {
   };
 }
 
-function emailHtml(code) {
-  return `<!doctype html><html><body style="margin:0;background:#f6f6f8;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#16161d;">
+const PURPOSES = {
+  verify: {
+    subject: (c) => `${c} is your Aspire e Learning code`,
+    heading: 'Your verification code',
+    intro: 'Enter this code in Aspire e Learning to verify your email.',
+  },
+  'new-device': {
+    subject: (c) => `New sign-in to Aspire e Learning — code ${c}`,
+    heading: 'New sign-in on a device',
+    intro: 'Someone is signing in to your Aspire e Learning account from a new device or browser. If this is you, enter this code to continue.',
+  },
+  'set-password': {
+    subject: (c) => `${c} — confirm your new Aspire e Learning password`,
+    heading: 'Set your password',
+    intro: 'Enter this code to confirm it is you before your email-and-password sign-in is set up.',
+  },
+  reauth: {
+    subject: (c) => `${c} — confirm it is you`,
+    heading: 'Confirm it is you',
+    intro: 'A protected action was requested in your Aspire e Learning account (changing your profile, deleting or exporting content). Enter this code to allow it.',
+  },
+};
+
+function emailHtml(code, purpose) {
+  const p = PURPOSES[purpose] || PURPOSES.verify;
+  const warn = purpose === 'verify' ? '' :
+    '<p style="margin:14px 0 0;font-size:13px;color:#b91c1c;"><b>Not you?</b> Do not share this code. Your account stays locked without it; consider setting a new password.</p>';
+  return `<!doctype html><html><body style="margin:0;background:#f5f8fc;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#0b1626;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px 12px;"><tr><td align="center">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#fff;border:1px solid #e8e8ed;border-radius:14px;">
-      <tr><td style="padding:18px 24px;border-bottom:1px solid #e8e8ed;font-size:13px;font-weight:700;color:#10b981;">Aspire e Learning</td></tr>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#fff;border:1px solid #e3eaf3;border-radius:14px;">
+      <tr><td style="padding:18px 24px;border-bottom:1px solid #e3eaf3;font-size:14px;font-weight:800;color:#0ea5c6;">Aspire e Learning</td></tr>
       <tr><td style="padding:26px 24px;">
-        <h1 style="margin:0 0 10px;font-size:19px;">Your verification code</h1>
-        <p style="margin:0 0 18px;font-size:14px;color:#5c5c6b;">Enter this code in Aspire e Learning to verify your email. It expires in 10 minutes.</p>
-        <div style="font-size:32px;font-weight:800;letter-spacing:8px;font-family:monospace;background:#f6f6f8;border-radius:10px;padding:14px;text-align:center;">${code}</div>
-        <p style="margin:18px 0 0;font-size:12px;color:#8e8e9e;">If you did not try to sign in, you can ignore this email. Never share this code with anyone.</p>
+        <h1 style="margin:0 0 10px;font-size:19px;">${p.heading}</h1>
+        <p style="margin:0 0 18px;font-size:14px;color:#3c4a5e;">${p.intro} It expires in 10 minutes.</p>
+        <div style="font-size:32px;font-weight:800;letter-spacing:8px;font-family:monospace;background:#f3f7fb;border-radius:10px;padding:14px;text-align:center;">${code}</div>
+        ${warn}
+        <p style="margin:18px 0 0;font-size:12px;color:#6b7a90;">Never share this code with anyone. Aspire e Learning will never ask you for it.</p>
       </td></tr>
     </table>
   </td></tr></table></body></html>`;
@@ -98,6 +125,7 @@ Deno.serve(async (req) => {
   let payload;
   try { payload = await req.json(); } catch { return json({ error: 'Body must be JSON' }, 400); }
   const action = payload?.action;
+  const purpose = typeof payload?.purpose === 'string' && PURPOSES[payload.purpose] ? payload.purpose : 'verify';
   const email = String(payload?.email || '').trim().toLowerCase();
   if (!isEmail(email)) return json({ error: 'Enter a valid email address.' }, 400);
 
@@ -130,7 +158,7 @@ Deno.serve(async (req) => {
       const res = await fetch(RESEND_ENDPOINT, {
         method: 'POST',
         headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from, to: [email], subject: `${code} is your Aspire e Learning code`, html: emailHtml(code) }),
+        body: JSON.stringify({ from, to: [email], subject: (PURPOSES[purpose] || PURPOSES.verify).subject(code), html: emailHtml(code, purpose) }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

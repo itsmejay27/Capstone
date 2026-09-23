@@ -36,6 +36,7 @@ import {
   DialogActions,
   Snackbar,
   Alert,
+  Menu,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -59,7 +60,10 @@ import {
   Campaign,
   Download,
   AssignmentTurnedIn,
+  Palette as PaletteIcon,
+  Link as LinkIcon,
 } from '@mui/icons-material';
+import { CLASS_THEMES, classThemeFor, BANNER_GRID } from '../theme/classThemes';
 import { useState } from 'react';
 
 // Academic grade converter standard for OMSC (Occidental Mindoro State College)
@@ -136,6 +140,7 @@ export default function ClassroomDetail() {
     saveSubmission,
     saveComment,
     deleteComment,
+    updateClassroom,
   } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -152,6 +157,8 @@ export default function ClassroomDetail() {
   const students = users.filter((u) => classroom?.students?.includes(u.id));
 
   const isInstructor = currentUser?.role === 'instructor';
+  const [themeAnchor, setThemeAnchor] = useState<HTMLElement | null>(null);
+  const classTheme = classThemeFor(classroom?.theme);
   const materials = classroomMaterials[classroomId || ''] || [];
   const classAnnouncements = announcements[classroomId || ''] || [];
   const classTopics = topics[classroomId || ''] || [];
@@ -267,6 +274,16 @@ export default function ClassroomDetail() {
     }
   };
 
+  const handleCopyInviteLink = async () => {
+    const link = `${window.location.origin}/?join=${encodeURIComponent(classroom.classCode)}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setUploadToast({ severity: 'success', message: `Invite link copied: ${link}` });
+    } catch {
+      window.prompt('Copy this invite link:', link);
+    }
+  };
+
   const handleCopyClassCode = () => {
     navigator.clipboard.writeText(classroom.classCode);
     setCopyToast(true);
@@ -300,23 +317,61 @@ export default function ClassroomDetail() {
           sx={{
             mb: 3,
             borderRadius: 3.5,
-            bgcolor: 'var(--c-banner-from)',
             color: 'white',
             overflow: 'hidden',
-            border: '1px solid var(--c-banner-to)',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+            position: 'relative',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 24px 60px -30px rgba(0,0,0,0.6)',
+            // The instructor's chosen theme, with the landing page's faint grid over it.
+            backgroundImage: `${BANNER_GRID}, ${classTheme.background}`,
+            // Grid lines tile; the theme's two gradient layers must not.
+            backgroundSize: '44px 44px, 44px 44px, auto, auto',
+            transition: 'background-image .3s ease',
           }}
         >
+          {isInstructor && (
+            <Tooltip title="Change class theme">
+              <IconButton
+                onClick={(e) => setThemeAnchor(e.currentTarget)}
+                aria-label="Change class theme"
+                sx={{ position: 'absolute', top: 12, right: 12, zIndex: 1, color: 'white', bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
+              >
+                <PaletteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Menu anchorEl={themeAnchor} open={Boolean(themeAnchor)} onClose={() => setThemeAnchor(null)}>
+            <Box sx={{ p: 1.5, display: 'grid', gridTemplateColumns: 'repeat(4, 64px)', gap: 1 }}>
+              {CLASS_THEMES.map((t) => (
+                <Box
+                  key={t.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${t.name} theme`}
+                  onClick={() => { updateClassroom(classroom.id, { theme: t.id }); setThemeAnchor(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { updateClassroom(classroom.id, { theme: t.id }); setThemeAnchor(null); } }}
+                  sx={{ cursor: 'pointer', textAlign: 'center' }}
+                >
+                  <Box sx={{
+                    height: 40, borderRadius: '10px', backgroundImage: t.background,
+                    outline: classTheme.id === t.id ? `2px solid ${t.swatch}` : '1px solid var(--c-border)',
+                    outlineOffset: 2, transition: 'transform .15s', '&:hover': { transform: 'scale(1.06)' },
+                  }} />
+                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.68rem' }}>{t.name}</Typography>
+                </Box>
+              ))}
+            </Box>
+          </Menu>
           <Box sx={{ p: { xs: 3, md: 4 }, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, gap: 3 }}>
             <Box>
               <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: '-0.02em', mb: 0.5, fontSize: { xs: '1.6rem', md: '2.1rem' } }}>
                 {classroom.name}
               </Typography>
-              <Typography variant="subtitle1" sx={{ color: 'var(--c-banner-ink-dim)', fontWeight: 600 }}>
+              <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
                 {classroom.subject} &bull; Section {classroom.section}
               </Typography>
               {classroom.description && (
-                <Typography variant="body2" sx={{ color: 'var(--c-slate-300)', mt: 1, maxWidth: 650, lineHeight: 1.5 }}>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.78)', mt: 1, maxWidth: 650, lineHeight: 1.5 }}>
                   {classroom.description}
                 </Typography>
               )}
@@ -342,6 +397,21 @@ export default function ClassroomDetail() {
                     }}
                   />
                 </Tooltip>
+
+                {isInstructor && (
+                  <Tooltip title="Copy a link students can open to join this class">
+                    <Chip
+                      icon={<LinkIcon sx={{ color: 'white !important', fontSize: '15px !important' }} />}
+                      label="Copy invite link"
+                      onClick={handleCopyInviteLink}
+                      sx={{
+                        bgcolor: 'rgba(255,255,255,0.12)', color: 'white', fontWeight: 800, fontSize: '0.75rem',
+                        cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' },
+                      }}
+                    />
+                  </Tooltip>
+                )}
 
                 <Chip
                   icon={<People sx={{ color: 'white !important', fontSize: '14px !important' }} />}

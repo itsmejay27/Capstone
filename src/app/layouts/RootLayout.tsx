@@ -2,6 +2,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { commentActivityFor, getCommentsSeenAt, unreadCount } from '../services/commentActivity';
+import { useDeviceTrusted } from '../services/deviceTrust';
 import { Box } from '@mui/material';
 import AppShell from '../components/shell/AppShell';
 
@@ -54,7 +55,10 @@ export default function RootLayout() {
   // Verification happens in the sign-in dialog on the landing page, so an unverified
   // account is kept on '/' instead of being sent into the app.
   const me = currentUser ? users.find((u: any) => u.id === currentUser.id) || currentUser : null;
-  const needsVerification = Boolean(isAuthenticated && me && me.emailVerified === false && currentUser?.emailVerified !== true);
+  const emailUnverified = Boolean(isAuthenticated && me && me.emailVerified === false && currentUser?.emailVerified !== true);
+  // A new device or browser must be confirmed with an emailed code too.
+  const deviceTrusted = useDeviceTrusted(me?.email);
+  const needsVerification = emailUnverified || Boolean(isAuthenticated && me && !deviceTrusted);
 
   useEffect(() => {
     if ((!isAuthenticated || needsVerification) && location.pathname !== '/') {

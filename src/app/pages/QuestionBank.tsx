@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useReauth } from '../components/ReauthProvider';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import {
@@ -43,6 +44,7 @@ import {
 } from '../components/ui-kit';
 
 export default function QuestionBank() {
+  const requireReauth = useReauth();
   const { currentUser, questionBank, saveQuestionBankItem, deleteQuestionBankItem } = useAuth();
   const { toast, ToastHost } = useToast();
   const { confirm, ConfirmHost } = useConfirm();
@@ -89,6 +91,7 @@ export default function QuestionBank() {
       tone: 'danger',
     });
     if (!ok) return;
+    if (!(await requireReauth('Deleting from your question bank cannot be undone.'))) return;
     deleteQuestionBankItem(question.id);
     toast('Question deleted.');
   };
@@ -101,6 +104,7 @@ export default function QuestionBank() {
       tone: 'danger',
     });
     if (!ok) return;
+    if (!(await requireReauth('Emptying your question bank cannot be undone.'))) return;
     // Snapshot the ids first: deleting from the live array while iterating it would skip
     // every other entry.
     for (const id of questionBank.map((q: any) => q.id)) deleteQuestionBankItem(id);

@@ -231,8 +231,17 @@ export function createAppTheme(mode: 'light' | 'dark') {
         arrow: { color: 'var(--c-banner-from)' },
       },
     },
+    // Standard alerts: MUI derives a pale text colour from the severity that disappears on a
+    // dark surface. Use the theme's own ink on a tinted fill with a coloured edge instead,
+    // which reads in both light and dark.
     MuiAlert: {
-      styleOverrides: { root: { borderRadius: radius.lg, fontSize: '0.85rem', alignItems: 'flex-start' } },
+      styleOverrides: {
+        root: { borderRadius: radius.lg, fontSize: '0.85rem', alignItems: 'flex-start', color: 'var(--c-ink)' },
+        standardInfo: { backgroundColor: 'var(--c-sky-50)', border: '1px solid var(--c-sky-200)', '& .MuiAlert-icon': { color: 'var(--c-sky-600)' } },
+        standardSuccess: { backgroundColor: 'var(--c-green-50)', border: '1px solid var(--c-green-200)', '& .MuiAlert-icon': { color: 'var(--c-green-600)' } },
+        standardWarning: { backgroundColor: 'var(--c-amber-50)', border: '1px solid var(--c-amber-200)', '& .MuiAlert-icon': { color: 'var(--c-amber-600)' } },
+        standardError: { backgroundColor: 'var(--c-red-50)', border: '1px solid var(--c-red-200)', '& .MuiAlert-icon': { color: 'var(--c-red-600)' } },
+      },
     },
 
     // ── Tabs ──

@@ -16,6 +16,7 @@ import {
   CardGrid, EntityCard, FolderCard, StatusPill, StatTile, EmptyState, Field, FieldRow,
 } from '../components/ui-kit';
 import { palette, radius, font, tintFor } from '../theme/tokens';
+import { classThemeFor } from '../theme/classThemes';
 import { useIsMobile } from '../hooks/useResponsive';
 
 /**
@@ -313,6 +314,7 @@ export default function Dashboard() {
               <FolderCard
                 key={classroom.id}
                 id={classroom.id}
+                bannerBackground={classroom.theme ? classThemeFor(classroom.theme).background : undefined}
                 title={classroom.name}
                 meta={`${classroom.students?.length || 0} student${classroom.students?.length === 1 ? '' : 's'}`}
                 members={membersOf(classroom)}

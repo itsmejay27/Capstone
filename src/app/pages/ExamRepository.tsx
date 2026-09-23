@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { useReauth } from '../components/ReauthProvider';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import {
@@ -212,6 +213,7 @@ const ALTERNATIVE_QUESTIONS: Record<string, any[]> = {
 };
 
 export default function ExamRepository() {
+  const requireReauth = useReauth();
   const { toast, ToastHost } = useToast();
   const { confirm, ConfirmHost } = useConfirm();
   const {
@@ -715,67 +717,79 @@ export default function ExamRepository() {
               const tint = tintFor(exam.id);
               const sourceCount = Array.isArray(exam.sourceFiles) ? exam.sourceFiles.length : 0;
               return (
-                <Box key={exam.id} sx={{ position: 'relative', pt: '13px' }}>
-                  {/* The folder tab. */}
+                <Box
+                  key={exam.id}
+                  sx={{
+                    // Tab and card move as one: the hover lift lives on this wrapper, so the
+                    // tab can no longer be left behind with a gap under it.
+                    position: 'relative', pt: '14px', height: '100%',
+                    transition: 'transform .2s ease',
+                    '&:hover': { transform: 'translateY(-3px)' },
+                    '&:hover .folder-body': { boxShadow: '0 20px 44px -22px var(--glow-a), var(--shadow-md)', borderColor: 'var(--c-emerald-200)' },
+                  }}
+                >
+                  {/* The folder tab: same fill as the header band, no seam where they meet. */}
                   <Box
+                    aria-hidden
                     sx={{
-                      position: 'absolute', top: 0, left: 18, width: 92, height: 14,
+                      position: 'absolute', top: 0, left: 16, width: 96, height: 16, zIndex: 1,
                       borderTopLeftRadius: '10px', borderTopRightRadius: '10px',
                       background: tint.from,
-                      borderTop: '1px solid var(--c-border)',
-                      borderLeft: '1px solid var(--c-border)',
-                      borderRight: '1px solid var(--c-border)',
+                      border: '1px solid var(--c-border)', borderBottom: 'none',
                     }}
                   />
                   <Paper
                     elevation={0}
+                    className="folder-body"
                     sx={{
                       position: 'relative',
-                      height: 'calc(100% - 13px)',
+                      height: 'calc(100% - 14px)',
                       display: 'flex',
                       flexDirection: 'column',
                       p: 2.25,
-                      borderRadius: '14px',
+                      borderRadius: '4px 16px 16px 16px',
+                      overflow: 'hidden',
                       border: '1px solid var(--c-border)',
                       bgcolor: 'var(--c-surface)',
                       boxShadow: 'var(--shadow-xs)',
-                      transition: 'transform .15s ease, box-shadow .15s ease, border-color .15s ease',
-                      '&:hover': {
-                        transform: 'translateY(-2px)',
-                        boxShadow: 'var(--shadow-md)',
-                        borderColor: 'var(--c-border-strong)',
-                      },
+                      transition: 'box-shadow .2s ease, border-color .2s ease',
                     }}
                   >
-                    {/* Tinted header band, echoing the folder tab. */}
+                    {/* Header band in the folder's colour, fading into the card. */}
                     <Box
                       sx={{
                         mx: -2.25, mt: -2.25, mb: 1.75, px: 2.25, py: 1.75,
-                        background: `linear-gradient(160deg, ${tint.from} 0%, ${tint.to} 100%)`,
+                        background: `linear-gradient(180deg, ${tint.from} 0%, ${tint.to} 100%)`,
                         borderBottom: '1px solid var(--c-border)',
                         display: 'flex', alignItems: 'center', gap: 1.25,
+                        position: 'relative', zIndex: 2,
                       }}
                     >
                       <Box
                         sx={{
-                          width: 34, height: 34, borderRadius: '9px', flexShrink: 0,
+                          width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
                           bgcolor: 'var(--c-surface)', border: '1px solid var(--c-border)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: tint.ink,
+                          color: 'var(--c-emerald-600)', boxShadow: 'var(--shadow-xs)',
                         }}
                       >
                         <Quiz sx={{ fontSize: 19 }} />
                       </Box>
-                      <Typography
-                        sx={{
-                          fontFamily: font.mono, fontSize: '0.88rem', fontWeight: 600,
-                          color: tint.ink, minWidth: 0,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}
-                        title={exam.title}
-                      >
-                        {exam.title}
-                      </Typography>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          sx={{
+                            fontSize: '0.95rem', fontWeight: 800, letterSpacing: '-0.01em',
+                            color: 'var(--c-ink)', minWidth: 0,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}
+                          title={exam.title}
+                        >
+                          {exam.title}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)', fontWeight: 600 }}>
+                          {exam.questions.length} question{exam.questions.length === 1 ? '' : 's'}
+                        </Typography>
+                      </Box>
                     </Box>
 
                     {/* Two-line clamp on a plain Box. `-webkit-line-clamp` on the Typography
@@ -846,7 +860,7 @@ export default function ExamRepository() {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Print exam">
-                        <IconButton size="small" onClick={() => setPrintTarget(exam)} sx={{ width: 32, height: 32, border: '1px solid var(--c-border)' }}>
+                        <IconButton size="small" onClick={async () => { if (await requireReauth('Printing or saving an exam exports its questions and answers.')) setPrintTarget(exam); }} sx={{ width: 32, height: 32, border: '1px solid var(--c-border)' }}>
                           <Print sx={{ fontSize: 17 }} />
                         </IconButton>
                       </Tooltip>
@@ -866,7 +880,7 @@ export default function ExamRepository() {
                               confirmLabel: 'Delete',
                               tone: 'danger',
                             });
-                            if (ok) {
+                            if (ok && await requireReauth('Deleting an exam template cannot be undone.')) {
                               deleteExamFromRepository(exam.id);
                               toast('Template deleted.');
                             }
