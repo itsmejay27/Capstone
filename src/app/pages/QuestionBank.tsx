@@ -26,6 +26,7 @@ import {
   DeleteSweep,
   LibraryBooks,
   CheckCircle,
+  ArrowBack,
 } from '@mui/icons-material';
 import { useIsMobile } from '../hooks/useResponsive';
 import {
@@ -36,12 +37,15 @@ import {
   FilterPill,
   FilterBar,
   EmptyState,
+  FolderCard,
   Field,
   FieldRow,
   palette,
   radius,
   font,
 } from '../components/ui-kit';
+
+const UNSORTED = '__unsorted';
 
 export default function QuestionBank() {
   const requireReauth = useReauth();
@@ -140,11 +144,29 @@ export default function QuestionBank() {
 
   const isInstructor = currentUser?.role === 'instructor';
 
+  // Folders: one per subject (questions added from an exam carry the exam's title), so a
+  // large bank opens as a short grid instead of one very long list. Searching or filtering
+  // by type/difficulty still searches across every folder.
+  const folders = (() => {
+    const map = new Map<string, number>();
+    for (const q of questionBank as any[]) {
+      const key = q.subject || UNSORTED;
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([key, count]) => ({ key, count, label: key === UNSORTED ? 'Unsorted' : key }))
+      .sort((a, b) => (a.key === UNSORTED ? 1 : b.key === UNSORTED ? -1 : a.label.localeCompare(b.label)));
+  })();
+  const showFolders = filterSubject === 'all' && !searchTerm.trim()
+    && filterType === 'all' && filterDifficulty === 'all' && questionBank.length > 0;
+  const openFolderLabel = filterSubject === UNSORTED ? 'Unsorted' : filterSubject;
+
   const filteredQuestions = questionBank.filter((q: any) => {
     const matchesSearch = q.question.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || q.type === filterType;
     const matchesDifficulty = filterDifficulty === 'all' || q.difficulty === filterDifficulty;
-    const matchesSubject = filterSubject === 'all' || q.subject === filterSubject;
+    const matchesSubject = filterSubject === 'all'
+      || (filterSubject === UNSORTED ? !q.subject : q.subject === filterSubject);
     return matchesSearch && matchesType && matchesDifficulty && matchesSubject;
   });
 
@@ -260,7 +282,34 @@ export default function QuestionBank() {
         )}
       </FilterBar>
 
-      <SectionHeading title="Questions" count={filteredQuestions.length} />
+      {showFolders ? (
+        <>
+          <SectionHeading title="Folders" count={folders.length} />
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' },
+              gap: 2, mb: 4,
+            }}
+          >
+            {folders.map((f) => (
+              <FolderCard
+                key={f.key}
+                id={f.key}
+                title={f.label}
+                meta={`${f.count} question${f.count === 1 ? '' : 's'}`}
+                onClick={() => setFilterSubject(f.key)}
+              />
+            ))}
+          </Box>
+        </>
+      ) : (<>
+      {filterSubject !== 'all' && (
+        <Button startIcon={<ArrowBack />} onClick={() => setFilterSubject('all')} sx={{ mb: 1, textTransform: 'none', fontWeight: 700 }}>
+          All folders
+        </Button>
+      )}
+      <SectionHeading title={filterSubject !== 'all' ? openFolderLabel : 'Questions'} count={filteredQuestions.length} />
 
       {filteredQuestions.length === 0 ? (
         <EmptyState
@@ -402,6 +451,7 @@ export default function QuestionBank() {
           ))}
         </Stack>
       )}
+      </>)}
 
       <Dialog
         open={openDialog}
