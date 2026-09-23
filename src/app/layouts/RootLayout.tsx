@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { commentActivityFor, getCommentsSeenAt, unreadCount } from '../services/commentActivity';
 import { useDeviceTrusted } from '../services/deviceTrust';
+import { hasAcceptedTermsLocally, rememberTermsAccepted, saveAccount } from '../services/savedAccounts';
 import { Box } from '@mui/material';
 import AppShell from '../components/shell/AppShell';
 
@@ -27,6 +28,7 @@ export default function RootLayout() {
     exams,
     examAttempts,
     comments,
+    accountSyncing,
   } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,16 +60,27 @@ export default function RootLayout() {
   const emailUnverified = Boolean(isAuthenticated && me && me.emailVerified === false && currentUser?.emailVerified !== true);
   // A new device or browser must be confirmed with an emailed code too.
   const deviceTrusted = useDeviceTrusted(me?.email);
-  const termsNeeded = Boolean(isAuthenticated && me && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt);
+  const termsNeeded = Boolean(isAuthenticated && me && !accountSyncing && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt && !hasAcceptedTermsLocally(me.id));
   const needsVerification = emailUnverified || Boolean(isAuthenticated && me && !deviceTrusted) || termsNeeded;
 
+  // Remember an account on this device once it is fully signed in, so the switcher can
+  // return to it later without another code.
   useEffect(() => {
+    if (isAuthenticated && me && !needsVerification && !accountSyncing) {
+      saveAccount(me.id);
+      if (me.termsAcceptedAt) rememberTermsAccepted(me.id);
+    }
+  }, [isAuthenticated, me?.id, me?.termsAcceptedAt, needsVerification, accountSyncing]);
+
+  // While the profile is still loading, stay put instead of flashing a gate or bouncing.
+  useEffect(() => {
+    if (accountSyncing && isAuthenticated) return;
     if ((!isAuthenticated || needsVerification) && location.pathname !== '/') {
       navigate('/');
     } else if (isAuthenticated && !needsVerification && location.pathname === '/') {
       navigate('/dashboard');
     }
-  }, [isAuthenticated, needsVerification, navigate, location.pathname]);
+  }, [isAuthenticated, needsVerification, accountSyncing, navigate, location.pathname]);
 
   /**
    * Badge count for the rail: work that actually needs the current user's attention.
