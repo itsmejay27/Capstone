@@ -442,14 +442,14 @@ export default function TakeExam() {
                               }
                               sx={{
                                 border: isSelected ? '2px solid var(--c-emerald-500)' : '1px solid var(--c-slate-200)',
-                                bgcolor: isSelected ? 'rgba(16,185,129,0.04)' : 'transparent',
+                                bgcolor: isSelected ? 'rgba(14,165,198,0.04)' : 'transparent',
                                 borderRadius: 3,
                                 mb: 1.5,
                                 mr: 0,
                                 p: 2,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  bgcolor: isSelected ? 'rgba(16,185,129,0.06)' : 'var(--c-slate-50)',
+                                  bgcolor: isSelected ? 'rgba(14,165,198,0.06)' : 'var(--c-slate-50)',
                                   borderColor: isSelected ? 'var(--c-emerald-500)' : 'var(--c-slate-300)',
                                 },
                               }}
@@ -477,14 +477,14 @@ export default function TakeExam() {
                               label={val === 'true' ? 'True (Factual statement)' : 'False (Incorrect statement)'}
                               sx={{
                                 border: isSelected ? '2px solid var(--c-emerald-500)' : '1px solid var(--c-slate-200)',
-                                bgcolor: isSelected ? 'rgba(16,185,129,0.04)' : 'transparent',
+                                bgcolor: isSelected ? 'rgba(14,165,198,0.04)' : 'transparent',
                                 borderRadius: 3,
                                 mb: 1.5,
                                 mr: 0,
                                 p: 2,
                                 transition: 'all 0.15s ease',
                                 '&:hover': {
-                                  bgcolor: isSelected ? 'rgba(16,185,129,0.06)' : 'var(--c-slate-50)',
+                                  bgcolor: isSelected ? 'rgba(14,165,198,0.06)' : 'var(--c-slate-50)',
                                   borderColor: isSelected ? 'var(--c-emerald-500)' : 'var(--c-slate-300)',
                                 },
                               }}
@@ -552,7 +552,7 @@ export default function TakeExam() {
                 py: 2,
                 mb: 2,
                 borderRadius: 3,
-                bgcolor: timeRemaining < 300 ? 'rgba(239,68,68,0.05)' : 'rgba(16,185,129,0.04)',
+                bgcolor: timeRemaining < 300 ? 'rgba(239,68,68,0.05)' : 'rgba(14,165,198,0.04)',
                 border: timeRemaining < 300 ? '1px solid var(--c-red-200)' : '1px solid var(--c-emerald-100)',
               }}
             >
@@ -633,10 +633,10 @@ export default function TakeExam() {
                 textTransform: 'none',
                 fontSize: '0.95rem',
                 background: 'linear-gradient(135deg, var(--c-emerald-500) 0%, var(--c-emerald-600) 100%)',
-                boxShadow: '0 4px 15px rgba(16,185,129,0.3)',
+                boxShadow: '0 4px 15px rgba(14,165,198,0.3)',
                 '&:hover': {
                   transform: 'translateY(-1px)',
-                  boxShadow: '0 6px 20px rgba(16,185,129,0.4)',
+                  boxShadow: '0 6px 20px rgba(14,165,198,0.4)',
                 }
               }}
             >

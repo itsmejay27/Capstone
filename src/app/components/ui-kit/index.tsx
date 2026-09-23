@@ -57,8 +57,18 @@ export function PageHeader({
         }}
       >
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="h2" sx={{ color: palette.ink, wordBreak: 'break-word' }}>
-            {title}
+          <Typography variant="h2" sx={{ color: palette.ink, wordBreak: 'break-word', letterSpacing: '-0.025em' }}>
+            {/* Landing-page flourish: the last word of a multi-word title in serif italic. */}
+            {(() => {
+              const cut = title.lastIndexOf(' ');
+              if (cut <= 0) return title;
+              return (
+                <>
+                  {title.slice(0, cut)}{' '}
+                  <span className="ea-accent" style={{ fontSize: '1.1em', color: palette.primary }}>{title.slice(cut + 1)}</span>
+                </>
+              );
+            })()}
           </Typography>
           {subtitle && (
             <Typography variant="body2" sx={{ color: palette.inkSecondary, mt: 0.5 }}>

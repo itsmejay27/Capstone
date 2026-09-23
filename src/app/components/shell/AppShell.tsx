@@ -1,10 +1,11 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
+import '../../theme/app-motion.css';
 import {
   Box, Drawer, IconButton, Avatar, Menu, MenuItem, Typography, Divider, Chip, Tooltip,
 } from '@mui/material';
 import {
-  Menu as MenuIcon, AccountCircle, ExitToApp, SwapHoriz,
+  Menu as MenuIcon, AccountCircle, ExitToApp,
   LightMode, DarkMode, Settings as SettingsIcon,
 } from '@mui/icons-material';
 import AppSidebar from './AppSidebar';
@@ -57,6 +58,7 @@ export default function AppShell({
 }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const location = useLocation();
   const { mode, toggle } = useThemeMode();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => readStored(COLLAPSED_KEY, false));
@@ -91,7 +93,7 @@ export default function AppShell({
   );
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: palette.canvas }}>
+    <Box className="ea-app" sx={{ minHeight: '100vh', bgcolor: palette.canvas }}>
       {/* Desktop rail */}
       {!isMobile && (
         <Box
@@ -194,16 +196,6 @@ export default function AppShell({
                   <Typography variant="caption" sx={{ color: palette.inkTertiary }} noWrap>{currentUser.email}</Typography>
                 </Box>
                 <Divider sx={{ my: 0.5 }} />
-                {users.filter((u: any) => u.id !== currentUser.id).slice(0, 4).map((u: any) => (
-                  <MenuItem key={u.id} onClick={() => { onSwitchAccount(u.id); setAnchorEl(null); }}>
-                    <SwapHoriz fontSize="small" sx={{ mr: 1, color: palette.inkTertiary }} />
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }} noWrap>{u.name}</Typography>
-                      <Typography variant="caption" sx={{ color: palette.inkTertiary }}>{u.role}</Typography>
-                    </Box>
-                  </MenuItem>
-                ))}
-                <Divider sx={{ my: 0.5 }} />
                 <MenuItem onClick={() => { navigate('/settings'); setAnchorEl(null); }}>
                   <SettingsIcon fontSize="small" sx={{ mr: 1, color: palette.inkTertiary }} />
                   <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Settings</Typography>
@@ -217,7 +209,10 @@ export default function AppShell({
           )}
         </Box>
 
-        <Box component="main" sx={{ minWidth: 0 }}>{children}</Box>
+        {/* Keyed on the route so every page plays the landing page's rise-in once. */}
+        <Box component="main" sx={{ minWidth: 0, position: 'relative' }}>
+          <div key={location.pathname} className="ea-page">{children}</div>
+        </Box>
       </Box>
     </Box>
   );

@@ -996,7 +996,7 @@ export default function ExamGenerator() {
           width: 150,
           height: 150,
           borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0) 70%)',
+          background: 'radial-gradient(circle, rgba(14,165,198,0.15) 0%, rgba(14,165,198,0) 70%)',
         }} />
 
         <Box sx={{ display: 'flex', alignItems: 'center', zIndex: 1 }}>
@@ -1687,7 +1687,7 @@ export default function ExamGenerator() {
 
               {/* Sidebar Matrix Manifest (Upgraded Design) */}
               <Grid size={{ xs: 12, md: 4 }}>
-                <Card variant="outlined" sx={{ borderRadius: 4, borderColor: 'var(--c-emerald-500)', bgcolor: 'rgba(16,185,129,0.01)', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Card variant="outlined" sx={{ borderRadius: 4, borderColor: 'var(--c-emerald-500)', bgcolor: 'rgba(14,165,198,0.01)', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
 
                   {/* Indigo Mini Header Banner */}
                   <Box sx={{ background: 'linear-gradient(135deg, var(--c-emerald-500) 0%, var(--c-emerald-600) 100%)', p: 3, color: 'white', textAlign: 'center' }}>
@@ -1765,7 +1765,7 @@ export default function ExamGenerator() {
                               <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>Anti-Cheat Drawer (E):</Typography>
                               <Typography variant="body2" fontWeight="bold" color="var(--c-slate-800)">{extraCount} Questions</Typography>
                             </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.8, bgcolor: 'rgba(16, 185, 129, 0.05)', borderRadius: 3, border: '1px solid rgba(16,185,129,0.1)' }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1.8, bgcolor: 'rgba(14, 165, 198, 0.05)', borderRadius: 3, border: '1px solid rgba(14,165,198,0.1)' }}>
                               <Typography variant="subtitle2" fontWeight="bold" color="primary.dark">Total Pool Size:</Typography>
                               <Typography variant="subtitle2" fontWeight="black" color="primary.dark">{totalGeneratedCount} Questions</Typography>
                             </Box>
@@ -1792,9 +1792,9 @@ export default function ExamGenerator() {
                     mb: 3,
                     animation: 'pulseSpinBlue 3s infinite ease-in-out',
                     '@keyframes pulseSpinBlue': {
-                      '0%': { transform: 'rotate(0deg) scale(1)', filter: 'drop-shadow(0 0 0px rgba(16,185,129,0))' },
-                      '50%': { transform: 'rotate(180deg) scale(1.15)', filter: 'drop-shadow(0 0 15px rgba(16,185,129,0.4))' },
-                      '100%': { transform: 'rotate(360deg) scale(1)', filter: 'drop-shadow(0 0 0px rgba(16,185,129,0))' },
+                      '0%': { transform: 'rotate(0deg) scale(1)', filter: 'drop-shadow(0 0 0px rgba(14,165,198,0))' },
+                      '50%': { transform: 'rotate(180deg) scale(1.15)', filter: 'drop-shadow(0 0 15px rgba(14,165,198,0.4))' },
+                      '100%': { transform: 'rotate(360deg) scale(1)', filter: 'drop-shadow(0 0 0px rgba(14,165,198,0))' },
                     }
                   }}
                 />

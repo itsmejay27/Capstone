@@ -690,10 +690,10 @@ export default function Reviewer() {
 
                   {/* Option 1: Study Flashcards */}
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid var(--c-slate-200)', transition: 'all 0.2s', '&:hover': { borderColor: 'var(--c-emerald-500)', bgcolor: 'rgba(16,185,129,0.02)' } }}>
+                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid var(--c-slate-200)', transition: 'all 0.2s', '&:hover': { borderColor: 'var(--c-emerald-500)', bgcolor: 'rgba(14,165,198,0.02)' } }}>
                       <CardActionArea sx={{ p: 2.5 }} onClick={() => { setPhase('flashcards'); setFlashcardIdx(0); setIsFlipped(false); }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                          <IconButton size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.08)', color: 'var(--c-emerald-500)' }}>
+                          <IconButton size="small" sx={{ bgcolor: 'rgba(14, 165, 198, 0.08)', color: 'var(--c-emerald-500)' }}>
                             <SwapHoriz fontSize="small" />
                           </IconButton>
                           <Typography variant="subtitle1" fontWeight="bold">Interactive Flashcards</Typography>
@@ -707,10 +707,10 @@ export default function Reviewer() {
 
                   {/* Option 2: Take Quiz */}
                   <Grid size={{ xs: 12, sm: 6 }}>
-                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid var(--c-slate-200)', transition: 'all 0.2s', '&:hover': { borderColor: 'var(--c-emerald-500)', bgcolor: 'rgba(16,185,129,0.02)' } }}>
+                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid var(--c-slate-200)', transition: 'all 0.2s', '&:hover': { borderColor: 'var(--c-emerald-500)', bgcolor: 'rgba(14,165,198,0.02)' } }}>
                       <CardActionArea sx={{ p: 2.5 }} onClick={startQuiz}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                          <IconButton size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.08)', color: 'var(--c-emerald-500)' }}>
+                          <IconButton size="small" sx={{ bgcolor: 'rgba(14, 165, 198, 0.08)', color: 'var(--c-emerald-500)' }}>
                             <QuizIcon fontSize="small" />
                           </IconButton>
                           <Typography variant="subtitle1" fontWeight="bold">Practice Assessment Quiz</Typography>
@@ -751,7 +751,7 @@ export default function Reviewer() {
                       cursor: 'pointer',
                       borderRadius: 5,
                       border: isFlipped ? '2px solid var(--c-emerald-500)' : '2px solid var(--c-emerald-500)',
-                      boxShadow: isFlipped ? '0 12px 25px rgba(16,185,129,0.05)' : '0 12px 25px rgba(16,185,129,0.05)',
+                      boxShadow: isFlipped ? '0 12px 25px rgba(14,165,198,0.05)' : '0 12px 25px rgba(14,165,198,0.05)',
                       background: isFlipped
                         ? 'linear-gradient(135deg, var(--c-green-50) 0%, var(--c-emerald-50) 100%)'
                         : 'linear-gradient(135deg, var(--c-slate-50) 0%, var(--c-slate-100) 100%)',
@@ -806,7 +806,7 @@ export default function Reviewer() {
                             : String(q.correctAnswer).toUpperCase()}
                         </Typography>
 
-                        <Divider sx={{ width: '80%', my: 1, borderColor: 'rgba(16,185,129,0.15)' }} />
+                        <Divider sx={{ width: '80%', my: 1, borderColor: 'rgba(14,165,198,0.15)' }} />
 
                         <Typography variant="body2" sx={{ color: 'var(--c-gray-700)', fontStyle: 'italic', px: 3, lineHeight: 1.6 }}>
                           <strong>Explanation:</strong> {q.explanation || 'No detailed explanation provided for this conceptual item.'}

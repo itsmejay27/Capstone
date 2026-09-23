@@ -19,12 +19,12 @@ export interface ColorPair {
 
 export const COLOR_PAIRS: ColorPair[] = [
   // ── Slate scale, inverted for dark ──
-  { name: 'slate-50', light: '#f8fafc', dark: '#0f1626' },
-  { name: 'gray-50', light: '#f9fafb', dark: '#0f1626' },
-  { name: 'slate-100', light: '#f1f5f9', dark: '#1a2338' },
-  { name: 'gray-100', light: '#f3f4f6', dark: '#1a2338' },
-  { name: 'slate-200', light: '#e2e8f0', dark: '#25304a' },
-  { name: 'gray-200', light: '#e5e7eb', dark: '#25304a' },
+  { name: 'slate-50', light: '#f8fafc', dark: '#0b111b' },
+  { name: 'gray-50', light: '#f9fafb', dark: '#0b111b' },
+  { name: 'slate-100', light: '#f1f5f9', dark: '#111a28' },
+  { name: 'gray-100', light: '#f3f4f6', dark: '#111a28' },
+  { name: 'slate-200', light: '#e2e8f0', dark: '#172233' },
+  { name: 'gray-200', light: '#e5e7eb', dark: '#172233' },
   { name: 'slate-300', light: '#cbd5e1', dark: '#33415c' },
   { name: 'gray-300', light: '#d1d5db', dark: '#33415c' },
   { name: 'slate-400', light: '#94a3b8', dark: '#7482a0' },
@@ -41,23 +41,23 @@ export const COLOR_PAIRS: ColorPair[] = [
   { name: 'gray-900', light: '#111827', dark: '#e8edf7' },
 
   // ── Emerald / green ──
-  { name: 'emerald-600', light: '#059669', dark: '#10b981' },
-  { name: 'emerald-700', light: '#047857', dark: '#34d399' },
-  { name: 'emerald-800', light: '#065f46', dark: '#6ee7b7' },
-  { name: 'emerald-900', light: '#064e3b', dark: '#a7f3d0' },
+  { name: 'emerald-600', light: '#0891b2', dark: '#38bdf8' },
+  { name: 'emerald-700', light: '#0e7490', dark: '#7dd3fc' },
+  { name: 'emerald-800', light: '#155e75', dark: '#bae6fd' },
+  { name: 'emerald-900', light: '#164e63', dark: '#e0f2fe' },
   { name: 'green-800', light: '#166534', dark: '#86efac' },
   { name: 'green-700', light: '#15803d', dark: '#4ade80' },
   { name: 'green-600', light: '#16a34a', dark: '#4ade80' },
-  { name: 'emerald-50', light: '#ecfdf5', dark: 'rgba(16, 185, 129, 0.13)' },
-  { name: 'emerald-100', light: '#d1fae5', dark: 'rgba(16, 185, 129, 0.18)' },
+  { name: 'emerald-50', light: '#ecfeff', dark: 'rgba(56, 189, 248, 0.12)' },
+  { name: 'emerald-100', light: '#cffafe', dark: 'rgba(56, 189, 248, 0.18)' },
   { name: 'green-100', light: '#dcfce7', dark: 'rgba(74, 222, 128, 0.16)' },
   { name: 'green-50', light: '#f0fdf4', dark: 'rgba(74, 222, 128, 0.09)' },
-  { name: 'emerald-200', light: '#a7f3d0', dark: 'rgba(16, 185, 129, 0.38)' },
+  { name: 'emerald-200', light: '#a5f3fc', dark: 'rgba(56, 189, 248, 0.36)' },
   { name: 'green-300', light: '#86efac', dark: 'rgba(74, 222, 128, 0.45)' },
   { name: 'green-200', light: '#bbf7d0', dark: 'rgba(74, 222, 128, 0.35)' },
-  { name: 'emerald-400', light: '#34d399', dark: '#6ee7b7' },
-  { name: 'emerald-300', light: '#6ee7b7', dark: '#a7f3d0' },
-  { name: 'emerald-500', light: '#10b981', dark: '#34d399' },
+  { name: 'emerald-400', light: '#22d3ee', dark: '#7dd3fc' },
+  { name: 'emerald-300', light: '#67e8f9', dark: '#bae6fd' },
+  { name: 'emerald-500', light: '#06b6d4', dark: '#38bdf8' },
 
   // ── Red / danger ──
   { name: 'red-600', light: '#dc2626', dark: '#f87171' },
@@ -103,9 +103,9 @@ export const COLOR_PAIRS: ColorPair[] = [
   { name: 'blue-50', light: '#eff6ff', dark: 'rgba(96, 165, 250, 0.08)' },
 
   // ── Teal / cyan accent ──
-  { name: 'teal-600', light: '#0d9488', dark: '#2dd4bf' },
-  { name: 'teal-700', light: '#0f766e', dark: '#5eead4' },
-  { name: 'teal-100', light: '#ccfbf1', dark: 'rgba(45, 212, 191, 0.16)' },
+  { name: 'teal-600', light: '#2563eb', dark: '#60a5fa' },
+  { name: 'teal-700', light: '#1d4ed8', dark: '#93c5fd' },
+  { name: 'teal-100', light: '#dbeafe', dark: 'rgba(96, 165, 250, 0.16)' },
   { name: 'cyan-800', light: '#155e75', dark: '#67e8f9' },
   { name: 'cyan-100', light: '#cffafe', dark: 'rgba(34, 211, 238, 0.14)' },
   { name: 'cyan-50', light: '#ecfeff', dark: 'rgba(34, 211, 238, 0.08)' },
@@ -122,21 +122,21 @@ export const COLOR_PAIRS: ColorPair[] = [
   { name: 'pink-800', light: '#9d174d', dark: '#f9a8d4' },
 
   // ── Panels that stay dark in both themes (white text sits on them) ──
-  { name: 'banner-from', light: '#1e293b', dark: '#18243c' },
-  { name: 'banner-to', light: '#0f172a', dark: '#0d1526' },
+  { name: 'banner-from', light: '#0b1a2e', dark: '#0b1a2e' },
+  { name: 'banner-to', light: '#05070c', dark: '#05070c' },
   { name: 'banner-ink', light: '#ffffff', dark: '#e8edf7' },
   { name: 'banner-ink-dim', light: '#c3cddf', dark: '#a3b0c7' },
 
   // ── Neutral surfaces the token palette is built from ──
-  { name: 'canvas', light: '#eceef3', dark: '#0b1120' },
-  { name: 'surface', light: '#ffffff', dark: '#131b2e' },
-  { name: 'surface-muted', light: '#f6f7fa', dark: '#18223a' },
-  { name: 'surface-sunken', light: '#e4e7ee', dark: '#1c2740' },
-  { name: 'border', light: '#d5d9e2', dark: '#25304a' },
-  { name: 'border-strong', light: '#bcc2d0', dark: '#33415c' },
-  { name: 'ink', light: '#16161d', dark: '#e8edf7' },
-  { name: 'ink-secondary', light: '#5c5c6b', dark: '#a3b0c7' },
-  { name: 'ink-tertiary', light: '#7a7a8c', dark: '#7482a0' },
+  { name: 'canvas', light: '#f5f8fc', dark: '#05070c' },
+  { name: 'surface', light: '#ffffff', dark: '#0b111b' },
+  { name: 'surface-muted', light: '#f3f7fb', dark: '#0f1724' },
+  { name: 'surface-sunken', light: '#eaf1f9', dark: '#131c2b' },
+  { name: 'border', light: '#dbe3ee', dark: '#172233' },
+  { name: 'border-strong', light: '#c3cfdf', dark: '#23324a' },
+  { name: 'ink', light: '#0b1626', dark: '#eef4fb' },
+  { name: 'ink-secondary', light: '#3c4a5e', dark: '#a8b6c8' },
+  { name: 'ink-tertiary', light: '#6b7a90', dark: '#6f7f95' },
   { name: 'ink-disabled', light: '#b4b4c0', dark: '#55627d' },
 ];
 
@@ -154,17 +154,17 @@ const EFFECTS_LIGHT = `  --shadow-xs: 0 1px 2px rgba(22, 22, 29, 0.07);
   --shadow-sm: 0 1px 3px rgba(22, 22, 29, 0.10), 0 1px 2px rgba(22, 22, 29, 0.06);
   --shadow-md: 0 6px 16px rgba(22, 22, 29, 0.10);
   --shadow-lg: 0 16px 34px rgba(22, 22, 29, 0.16);
-  --shadow-focus-ring: rgba(5, 150, 105, 0.22);
-  --glow-a: rgba(5, 150, 105, 0.10);
-  --glow-b: rgba(13, 148, 136, 0.09);`;
+  --shadow-focus-ring: rgba(8, 145, 178, 0.24);
+  --glow-a: rgba(14, 165, 198, 0.12);
+  --glow-b: rgba(37, 99, 235, 0.08);`;
 
 const EFFECTS_DARK = `  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.36), 0 1px 2px rgba(0, 0, 0, 0.24);
   --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.40);
   --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.55);
-  --shadow-focus-ring: rgba(16, 185, 129, 0.30);
-  --glow-a: rgba(16, 185, 129, 0.20);
-  --glow-b: rgba(34, 211, 238, 0.16);`;
+  --shadow-focus-ring: rgba(56, 189, 248, 0.32);
+  --glow-a: rgba(56, 189, 248, 0.16);
+  --glow-b: rgba(96, 165, 250, 0.10);`;
 
 /**
  * Cross-fade between themes.
