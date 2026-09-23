@@ -111,7 +111,7 @@ export default async function handler(req: any, res: any) {
               quantity: 1,
             }],
             payment_method_types: PAYMENT_METHODS,
-            description: `e Aspire Learning — ${plan.name} plan`,
+            description: `Aspire e Learning — ${plan.name} plan`,
             reference_number: reference,
             success_url: `${origin}/billing?billing=success`,
             cancel_url: `${origin}/billing?billing=cancelled`,

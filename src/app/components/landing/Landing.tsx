@@ -8,7 +8,7 @@ import { useThemeMode } from '../../context/ThemeModeContext';
 import './landing.css';
 
 /**
- * e Aspire Learning — public landing page.
+ * Aspire e Learning — public landing page.
  *
  * Visual language: a dark, glowing perspective grid floor, serif-italic accent words,
  * floating icon chips, a bento feature grid and headings that assemble word by word as they
@@ -16,7 +16,7 @@ import './landing.css';
  * and the page shares the app's theme toggle so the choice carries into the app.
  */
 
-export const BRAND = 'e Aspire Learning';
+export const BRAND = 'Aspire e Learning';
 
 /** Adds `ea-in` to any .ea-reveal / .ea-words element once it scrolls into view. */
 function useReveal(root: React.RefObject<HTMLElement>) {
@@ -80,7 +80,7 @@ const AUDIENCES = [
 ];
 
 const FAQS = [
-  { q: 'Who is e Aspire Learning for?', a: 'Any teacher, school or training team. Create a class, invite learners with a code or link, and run exams, assignments and announcements in one place.' },
+  { q: 'Who is Aspire e Learning for?', a: 'Any teacher, school or training team. Create a class, invite learners with a code or link, and run exams, assignments and announcements in one place.' },
   { q: 'How does the AI build an exam?', a: 'Upload your lesson files or a Table of Specifications. The AI drafts questions across the topics and cognitive levels you choose, and you review and edit every item before it is published.' },
   { q: 'Can I reuse questions I already have?', a: 'Yes. Import an existing exam file, save questions to your question bank, and pull them into new exams whenever you need them.' },
   { q: 'Is there a free plan?', a: 'Yes. The free plan covers the essentials. Paid plans add more classes and monthly exams, and you can pay with QR Ph through any bank or e-wallet app.' },
@@ -132,7 +132,7 @@ export default function Landing({ onSignIn }: { onSignIn: () => void }) {
       <nav className="ea-nav">
         <div className="ea-wrap ea-nav-row">
           <a className="ea-brand" href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
-            <span className="ea-logo">e</span>
+            <span className="ea-logo">A</span>
             {BRAND}
           </a>
           <div className="ea-links">
@@ -417,7 +417,7 @@ export default function Landing({ onSignIn }: { onSignIn: () => void }) {
         <div className="ea-wrap">
           <div className="ea-foot-grid">
             <div>
-              <div className="ea-brand" style={{ marginBottom: 12 }}><span className="ea-logo">e</span>{BRAND}</div>
+              <div className="ea-brand" style={{ marginBottom: 12 }}><span className="ea-logo">A</span>{BRAND}</div>
               <p style={{ margin: 0, color: 'var(--ea-ink-2)', fontSize: '.86rem', lineHeight: 1.6, maxWidth: 300 }}>
                 AI-powered exams, classes and insight for every educator.
               </p>

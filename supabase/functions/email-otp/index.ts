@@ -74,10 +74,10 @@ function emailHtml(code) {
   return `<!doctype html><html><body style="margin:0;background:#f6f6f8;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#16161d;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px 12px;"><tr><td align="center">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#fff;border:1px solid #e8e8ed;border-radius:14px;">
-      <tr><td style="padding:18px 24px;border-bottom:1px solid #e8e8ed;font-size:13px;font-weight:700;color:#10b981;">e Aspire Learning</td></tr>
+      <tr><td style="padding:18px 24px;border-bottom:1px solid #e8e8ed;font-size:13px;font-weight:700;color:#10b981;">Aspire e Learning</td></tr>
       <tr><td style="padding:26px 24px;">
         <h1 style="margin:0 0 10px;font-size:19px;">Your verification code</h1>
-        <p style="margin:0 0 18px;font-size:14px;color:#5c5c6b;">Enter this code in e Aspire Learning to verify your email. It expires in 10 minutes.</p>
+        <p style="margin:0 0 18px;font-size:14px;color:#5c5c6b;">Enter this code in Aspire e Learning to verify your email. It expires in 10 minutes.</p>
         <div style="font-size:32px;font-weight:800;letter-spacing:8px;font-family:monospace;background:#f6f6f8;border-radius:10px;padding:14px;text-align:center;">${code}</div>
         <p style="margin:18px 0 0;font-size:12px;color:#8e8e9e;">If you did not try to sign in, you can ignore this email. Never share this code with anyone.</p>
       </td></tr>
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const resendKey = Deno.env.get('RESEND_API_KEY');
-  const from = Deno.env.get('RESEND_FROM') || 'e Aspire Learning <onboarding@resend.dev>';
+  const from = Deno.env.get('RESEND_FROM') || 'Aspire e Learning <no-reply@aspire-e-learning.site>';
   if (!supabaseUrl || !serviceKey) return json({ error: 'Server is not configured.' }, 500);
 
   let payload;
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       const res = await fetch(RESEND_ENDPOINT, {
         method: 'POST',
         headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from, to: [email], subject: `${code} is your e Aspire Learning code`, html: emailHtml(code) }),
+        body: JSON.stringify({ from, to: [email], subject: `${code} is your Aspire e Learning code`, html: emailHtml(code) }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
