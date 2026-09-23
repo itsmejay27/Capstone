@@ -801,7 +801,18 @@ export async function generateReviewerWithGemini(params: GeminiReviewerParams): 
     ? `${params.subject} - Focus on: ${params.customInstructions.trim()}`
     : params.subject;
 
-  const promptText = `Generate a complete study reviewer strictly for: "${topicPrompt}".
+  // The student's actual material (class handout, module or upload). Without it the model
+  // could only write generic text about the topic name.
+  const sourceBlock = params.uploadedText?.trim()
+    ? `
+Base every lesson and question ONLY on this source material (ignore headers, page numbers and form metadata):
+---
+${params.uploadedText.trim().slice(0, 24000)}
+---
+`
+    : '';
+
+  const promptText = `Generate a complete study reviewer strictly for: "${topicPrompt}".${sourceBlock}
 Difficulty: ${params.difficulty}
 Create exactly ${count} structured modules.
 Each module must contain:
@@ -1678,3 +1689,39 @@ export function buildTopicDrivenModules(subject: string, difficulty: string, mod
 }
 
 
+
+
+/**
+ * General-purpose JSON generation for the study tools (flashcards, summaries, concept maps,
+ * adaptive practice). Tries the Gemini models in order and returns the parsed object, or
+ * throws with a readable message when every model fails.
+ */
+export async function generateStudyJson(systemPrompt: string, promptText: string, opts: { model?: string; maxTokens?: number } = {}): Promise<any> {
+  const key = getStoredGeminiApiKey().trim();
+  const modelsToTry = Array.from(new Set([opts.model || 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash']));
+  let lastError = '';
+  for (const model of modelsToTry) {
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 60000);
+      const res = await fetch(geminiEndpoint(model, key), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: promptText }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.3, maxOutputTokens: opts.maxTokens || 6144 },
+        }),
+      });
+      clearTimeout(t);
+      if (!res.ok) { lastError = `HTTP ${res.status}`; continue; }
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      return JSON.parse(raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim());
+    } catch (e: any) {
+      lastError = e?.name === 'AbortError' ? 'timed out' : (e?.message || String(e));
+    }
+  }
+  throw new Error(`The AI could not generate this right now (${lastError || 'no response'}). Try again in a moment.`);
+}

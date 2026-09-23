@@ -86,3 +86,11 @@
   .ea-page, .ea-page > * > * { animation: none !important; }
   .ea-page .MuiCard-root:hover, .ea-app .MuiButton-containedPrimary:hover { transform: none; }
 }
+
+/* ── Exam guard ── no selection and nothing printed while an exam is open. */
+body.exam-guard-active .exam-guarded { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+body.exam-guard-active .exam-guarded input,
+body.exam-guard-active .exam-guarded textarea { user-select: text; -webkit-user-select: text; }
+@media print {
+  body.exam-guard-active * { visibility: hidden !important; }
+}

@@ -29,6 +29,8 @@ interface AuthContextType {
   loginWithVerifiedEmail: (email: string, role?: UserRole) => boolean;
   /** Call ONLY after the server has verified a code for the current user's email. */
   markEmailVerified: () => void;
+  /** Records that the signed-in account accepted the Terms of Service. */
+  acceptTerms: () => void;
   logout: () => void;
   switchAccount: (userId: string) => void;
   /** Updates the signed-in user's display name and/or avatar. */
@@ -685,6 +687,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const acceptTerms = () => {
+    if (!currentUser) return;
+    const at = new Date().toISOString();
+    const updated = { ...currentUser, termsAcceptedAt: at };
+    setUsers((prev) => prev.map((u) => (u.id === currentUser.id ? { ...u, termsAcceptedAt: at } : u)));
+    setCurrentUser(updated);
+    db.upsertUser(updated);
+  };
+
   const markEmailVerified = () => {
     if (!currentUser) return;
     const email = currentUser.email.toLowerCase();
@@ -1106,6 +1117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithGoogle,
         loginWithVerifiedEmail,
         markEmailVerified,
+        acceptTerms,
         updateProfile,
         changePassword,
         logout,

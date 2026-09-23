@@ -27,11 +27,12 @@ export async function fetchUsers() {
     name: u.name,
     role: u.role,
     avatar: u.avatar || undefined,
+    termsAcceptedAt: u.terms_accepted_at || undefined,
     emailVerified: u.email_verified !== false,
   }));
 }
 
-export async function upsertUser(user: { id: string; email: string; password?: string; name: string; role: string; avatar?: string }) {
+export async function upsertUser(user: { id: string; email: string; password?: string; name: string; role: string; avatar?: string; termsAcceptedAt?: string }) {
   if (!supabase) return;
   try {
     const { error } = await supabase
@@ -44,6 +45,7 @@ export async function upsertUser(user: { id: string; email: string; password?: s
           name: user.name,
           role: user.role,
           avatar: user.avatar || null,
+          ...(user.termsAcceptedAt ? { terms_accepted_at: user.termsAcceptedAt } : {}),
         },
         // Conflict on the primary key, never on email: the id is what every other
         // table's foreign key points at, so it must stay stable.
@@ -401,6 +403,8 @@ export async function fetchExamAttempts() {
     // impossible without it, because a stored multiple-choice answer is an index into the
     // order THIS student saw, not into the master question's option order.
     questions: Array.isArray(a.questions) ? a.questions : [],
+    timing: a.timing || undefined,
+    integrity: a.integrity || undefined,
     score: a.score ?? undefined,
     startedAt: a.started_at,
     submittedAt: a.submitted_at || undefined,
@@ -419,6 +423,8 @@ export async function upsertExamAttempt(attempt: any) {
       score: attempt.score ?? null,
       started_at: attempt.startedAt,
       submitted_at: attempt.submittedAt || null,
+      timing: attempt.timing || null,
+      integrity: attempt.integrity || null,
     });
     if (error) warn('upsertExamAttempt', error);
   } catch (e) {
@@ -847,4 +853,24 @@ export async function fetchUserSubscription(userId: string) {
     currentPeriodEnd: row.current_period_end || undefined,
     amountCentavos: row.amount_centavos ?? undefined,
   };
+}
+
+// ---- study tools (student) ----
+export async function fetchStudyItems(userId: string) {
+  if (!supabase || !userId) return [];
+  const { data, error } = await supabase.from('study_items').select('*').eq('user_id', userId).order('updated_at', { ascending: false });
+  if (error) { warn('fetchStudyItems', error); return []; }
+  return (data || []).map((r: any) => ({ id: r.id, userId: r.user_id, kind: r.kind, title: r.title, data: r.data || {}, createdAt: r.created_at, updatedAt: r.updated_at }));
+}
+export async function upsertStudyItem(item: { id: string; userId: string; kind: string; title: string; data: any }) {
+  if (!supabase) return;
+  const { error } = await supabase.from('study_items').upsert({
+    id: item.id, user_id: item.userId, kind: item.kind, title: item.title, data: item.data, updated_at: new Date().toISOString(),
+  });
+  if (error) warn('upsertStudyItem', error);
+}
+export async function deleteStudyItem(id: string) {
+  if (!supabase) return;
+  const { error } = await supabase.from('study_items').delete().eq('id', id);
+  if (error) warn('deleteStudyItem', error);
 }

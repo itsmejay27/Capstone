@@ -64,6 +64,7 @@ import {
   Link as LinkIcon,
 } from '@mui/icons-material';
 import { CLASS_THEMES, classThemeFor, BANNER_GRID } from '../theme/classThemes';
+import AttemptInsight from '../components/AttemptInsight';
 import { useState } from 'react';
 
 // Academic grade converter standard for OMSC (Occidental Mindoro State College)
@@ -908,6 +909,7 @@ export default function ClassroomDetail() {
                                 size="small"
                                 sx={{ bgcolor: result.bg, color: result.color, fontWeight: 800, fontSize: '0.72rem' }}
                               />
+                              <AttemptInsight attempt={attempt} studentName={student.name} />
                             </TableCell>
                           );
                         })}

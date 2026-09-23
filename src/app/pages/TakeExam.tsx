@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useExamGuard } from '../hooks/useExamGuard';
+import { useToast } from '../components/Toast';
 import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -48,6 +50,14 @@ export default function TakeExam() {
   const [submitted, setSubmitted] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [preparedAttempt, setPreparedAttempt] = useState<any | null>(null);
+
+  // Integrity + timing while the exam is open (see useExamGuard). Warnings are throttled so
+  // a held key does not stack toasts.
+  const { toast, ToastHost } = useToast();
+  const lastWarn = useRef(0);
+  const guard = useExamGuard(hasStarted && !submitted, (msg) => {
+    if (Date.now() - lastWarn.current > 2500) { lastWarn.current = Date.now(); toast(msg, 'error'); }
+  }, { timing: attempt?.timing, integrity: attempt?.integrity });
 
   // Initialize randomized subset or load existing attempt
   useEffect(() => {
@@ -245,12 +255,15 @@ export default function TakeExam() {
   const seconds = timeRemaining % 60;
 
   const handleAnswerChange = (qId: string, value: any) => {
+    guard.focusQuestion(qId);
     const updatedAnswers = { ...answers, [qId]: value };
     setAnswers(updatedAnswers);
 
     const updatedAttempt = {
       ...attempt,
       answers: updatedAnswers,
+      // Saved as the student goes, so timing survives a refresh or a dropped connection.
+      ...guard.snapshot(activeQuestions.length),
     };
     submitExamAttempt(updatedAttempt);
   };
@@ -291,6 +304,7 @@ export default function TakeExam() {
     const finalizedAttempt = {
       ...attempt,
       answers,
+      ...guard.snapshot(activeQuestions.length),
       score,
       submittedAt: new Date().toISOString(),
       // Recorded so a submission accepted after the due date is visible when grading,
@@ -326,7 +340,29 @@ export default function TakeExam() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container
+      maxWidth="lg"
+      className="exam-guarded"
+      sx={{
+        py: 4, position: 'relative',
+        // Blurred whenever the window loses focus — screen-capture tools and other apps
+        // take focus first, so what they capture is unreadable.
+        filter: guard.obscured ? 'blur(14px)' : 'none',
+        transition: 'filter .12s ease',
+      }}
+    >
+      {/* Faint name watermark: a photo of the screen still identifies whose exam it is. */}
+      <Box
+        aria-hidden
+        sx={{
+          pointerEvents: 'none', position: 'fixed', inset: 0, zIndex: 1300, opacity: 0.05,
+          backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(
+            `<svg xmlns='http://www.w3.org/2000/svg' width='360' height='200'><text x='20' y='110' transform='rotate(-20 180 100)' font-family='sans-serif' font-size='16' fill='currentColor'>${(currentUser?.email || '').replace(/[<>&]/g, '')} · ${new Date().toLocaleDateString()}</text></svg>`
+          )}")`,
+          color: 'var(--c-ink)',
+        }}
+      />
+      {ToastHost}
 
       {/* High-End Header Banner */}
       <Box sx={{
@@ -372,6 +408,9 @@ export default function TakeExam() {
               <Card
                 id={q.id}
                 key={q.id}
+                data-question-id={q.id}
+                onPointerDown={() => guard.focusQuestion(q.id)}
+                onFocusCapture={() => guard.focusQuestion(q.id)}
                 variant="outlined"
                 sx={{
                   borderRadius: 4,
