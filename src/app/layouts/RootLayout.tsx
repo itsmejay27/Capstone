@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { commentActivityFor, getCommentsSeenAt, unreadCount } from '../services/commentActivity';
 import { Box } from '@mui/material';
 import AppShell from '../components/shell/AppShell';
+import VerifyEmailGate from '../components/VerifyEmailGate';
 
 /**
  * Root layout.
@@ -26,6 +27,7 @@ export default function RootLayout() {
     exams,
     examAttempts,
     comments,
+    markEmailVerified,
   } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,6 +101,14 @@ export default function RootLayout() {
     switchAccount(userId);
     navigate('/dashboard');
   };
+
+  // A new account must confirm its email before it can use the app. Read the flag from the
+  // users list too, since a background refresh may already have the server's answer.
+  const me = currentUser ? users.find((u: any) => u.id === currentUser.id) || currentUser : null;
+  const needsVerification = Boolean(isAuthenticated && me && me.emailVerified === false && currentUser?.emailVerified !== true);
+  if (needsVerification && me) {
+    return <VerifyEmailGate email={me.email} onVerified={markEmailVerified} onSignOut={handleLogout} />;
+  }
 
   return (
     <>

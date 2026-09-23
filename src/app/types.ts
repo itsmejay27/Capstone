@@ -7,6 +7,8 @@ export interface User {
   name: string;
   role: UserRole;
   avatar?: string;
+  /** False only for a new account that has not confirmed its email yet. Undefined = legacy/verified. */
+  emailVerified?: boolean;
 }
 
 export interface Classroom {
