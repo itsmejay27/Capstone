@@ -7,10 +7,10 @@ import { sendSignInCode, verifySignInCode } from '../services/otpService';
 import Landing from '../components/landing/Landing';
 import VerifyEmailGate from '../components/VerifyEmailGate';
 import {
-  Container, Paper, Button, Typography, Box, Alert, Avatar, Chip, ToggleButtonGroup, ToggleButton, IconButton, Dialog, DialogContent, TextField, InputAdornment,
+  Container, Button, Typography, Box, Alert, ToggleButtonGroup, ToggleButton, IconButton, Dialog, DialogContent, TextField, InputAdornment,
 } from '@mui/material';
 import {
-  School, RecordVoiceOver, Person, AutoAwesome, Close as CloseIcon, Visibility, VisibilityOff,
+  RecordVoiceOver, Person, Close as CloseIcon, Visibility, VisibilityOff,
 } from '@mui/icons-material';
 
 declare global {
@@ -181,12 +181,6 @@ export default function LoginPage() {
     return () => window.clearInterval(timer);
   }, [openLoginModal, googleClientId]);
 
-  const quickLogin = (userEmail: string, userPassword: string) => {
-    if (login(userEmail, userPassword)) {
-      setOpenLoginModal(false);
-      navigate('/dashboard');
-    }
-  };
 
   /**
    * Email + password sign-in. `login` is synchronous and returns false for both an unknown
@@ -227,7 +221,7 @@ export default function LoginPage() {
     ? 'linear-gradient(135deg, var(--c-emerald-600) 0%, var(--c-teal-600) 100%)'
     : 'linear-gradient(135deg, var(--c-sky-600) 0%, var(--c-teal-600) 100%)';
   const roleShadow = isInstructorRole
-    ? '0 10px 25px rgba(16, 185, 129, 0.40)'
+    ? '0 10px 25px rgba(14, 165, 198, 0.40)'
     : '0 10px 25px rgba(56, 189, 248, 0.40)';
 
   return (
@@ -241,20 +235,27 @@ export default function LoginPage() {
         }}
       />
 
-      {/* ── 8. SIGN IN POPUP DIALOG (GOOGLE SIGN-IN ONLY + QUICK DEMO) ── */}
+      {/* ── Sign-in dialog ── */}
       <Dialog
         open={dialogOpen}
         onClose={closeDialog}
         maxWidth="xs"
         fullWidth
+        slotProps={{ backdrop: { sx: { backdropFilter: 'blur(6px)', bgcolor: 'rgba(3, 6, 12, 0.55)' } } }}
         PaperProps={{
           sx: {
-            borderRadius: 4,
+            borderRadius: '22px',
             p: 1,
             bgcolor: 'var(--c-surface)',
-            border: '1px solid var(--c-border)',
-            backgroundImage: 'none',
-            boxShadow: '0 25px 70px rgba(0,0,0,0.65)',
+            border: '1px solid var(--c-border-strong)',
+            // Landing-page glow: a cyan bloom behind the header.
+            backgroundImage: 'radial-gradient(120% 60% at 50% -10%, var(--glow-a), transparent 60%)',
+            boxShadow: '0 30px 80px -20px rgba(0,0,0,0.6), 0 0 60px -20px var(--glow-a)',
+            animation: 'ea-dialog-in .4s cubic-bezier(.2,.8,.2,1) both',
+            '@keyframes ea-dialog-in': {
+              from: { opacity: 0, transform: 'translateY(16px) scale(.98)', filter: 'blur(6px)' },
+              to: { opacity: 1, transform: 'none', filter: 'none' },
+            },
           },
         }}
       >
@@ -284,10 +285,13 @@ export default function LoginPage() {
                 boxShadow: roleShadow,
               }}
             >
-              <School sx={{ fontSize: 32, color: '#ffffff' }} />
+              <Box component="span" sx={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontSize: '2rem', color: '#fff', lineHeight: 1 }}>A</Box>
             </Box>
-            <Typography variant="h5" component="h1" sx={{ fontWeight: 900, color: 'var(--c-ink)', letterSpacing: '-0.02em' }}>
-              Aspire e Learning
+            <Typography variant="h5" component="h1" sx={{ fontWeight: 700, color: 'var(--c-ink)', letterSpacing: '-0.03em' }}>
+              Welcome to{' '}
+              <Box component="span" sx={{ fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic', fontWeight: 400, fontSize: '1.15em', color: 'var(--c-emerald-600)' }}>
+                Aspire e Learning
+              </Box>
             </Typography>
             <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)', fontWeight: 700, mt: 0.3, display: 'block' }}>
               AI-powered classes, exams and insight
@@ -496,81 +500,6 @@ export default function LoginPage() {
             )}
           </Box>
 
-          {/* Quick Demo Sign-In Bar */}
-          <Box sx={{ pt: 2.5, borderTop: '1px dashed var(--c-border)' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: 'var(--c-ink-secondary)', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.72rem' }}>
-                <AutoAwesome sx={{ fontSize: 14, color: 'var(--c-emerald-600)' }} /> Quick Demo Sign-In
-              </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>
-                Click to auto-login
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
-              {users.map((u) => {
-                const isInstructorUser = u.role === 'instructor';
-                return (
-                  <Paper
-                    key={u.id}
-                    variant="outlined"
-                    onClick={() => {
-                      setSelectedRole(u.role);
-                      quickLogin(u.email, u.password || 'instructor123');
-                    }}
-                    sx={{
-                      p: 1,
-                      borderRadius: 2.5,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1.2,
-                      bgcolor: 'var(--c-surface-muted)',
-                      borderColor: 'var(--c-border)',
-                      transition: 'all 0.15s ease',
-                      '&:hover': {
-                        borderColor: isInstructorUser ? 'var(--c-emerald-500)' : 'var(--c-sky-400)',
-                        bgcolor: isInstructorUser ? 'var(--c-emerald-50)' : 'var(--c-sky-100)',
-                        transform: 'translateY(-1px)',
-                      },
-                    }}
-                  >
-                    <Avatar
-                      src={u.avatar}
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        fontSize: '0.75rem',
-                        fontWeight: 800,
-                        bgcolor: isInstructorUser ? 'var(--c-emerald-700)' : 'var(--c-sky-600)',
-                        color: '#ffffff',
-                      }}
-                    >
-                      {u.name.charAt(0)}
-                    </Avatar>
-                    <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                      <Typography variant="caption" noWrap sx={{ fontWeight: 800, color: 'var(--c-ink)', display: 'block', fontSize: '0.72rem', lineHeight: 1.1 }}>
-                        {u.name.split(' ')[0]}
-                      </Typography>
-                      <Chip
-                        label={u.role}
-                        size="small"
-                        sx={{
-                          height: 15,
-                          fontSize: '0.55rem',
-                          fontWeight: 800,
-                          bgcolor: isInstructorUser ? 'var(--c-emerald-100)' : 'var(--c-sky-100)',
-                          color: isInstructorUser ? 'var(--c-emerald-800)' : 'var(--c-sky-800)',
-                          p: 0,
-                          mt: 0.2,
-                        }}
-                      />
-                    </Box>
-                  </Paper>
-                );
-              })}
-            </Box>
-          </Box>
           </>)}
         </DialogContent>
       </Dialog>

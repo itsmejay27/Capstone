@@ -117,9 +117,10 @@ export default function AppSidebar({
           <Box
             sx={{
               width: 28, height: 28, borderRadius: '8px', flexShrink: 0,
-              background: `linear-gradient(135deg, ${palette.primary}, ${palette.instructor})`,
+              background: 'linear-gradient(135deg, var(--c-emerald-500), var(--c-teal-600))',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 800, fontSize: '0.85rem',
+              color: '#fff', fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: 'italic',
+              fontSize: '1.1rem', boxShadow: '0 6px 18px -6px var(--glow-a)',
             }}
           >
             A

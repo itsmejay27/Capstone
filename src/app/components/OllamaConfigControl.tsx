@@ -250,7 +250,7 @@ export default function OllamaConfigControl({
                   cursor: 'pointer',
                   borderWidth: 2,
                   borderColor: engine === 'ollama' ? 'primary.main' : 'var(--c-slate-200)',
-                  bgcolor: engine === 'ollama' ? 'rgba(16, 185, 129, 0.04)' : 'inherit',
+                  bgcolor: engine === 'ollama' ? 'rgba(14, 165, 198, 0.04)' : 'inherit',
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
