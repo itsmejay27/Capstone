@@ -257,7 +257,7 @@ export default function ExamRepository() {
       section: assignedClass?.section || '',
       subject: assignedClass?.subject || '',
       instructorName: author?.name || currentUser?.name || '',
-      schoolName: 'Occidental Mindoro State College',
+      schoolName: '',
     };
   }, [printTarget, classrooms, users, currentUser]);
 
