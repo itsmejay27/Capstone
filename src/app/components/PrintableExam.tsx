@@ -27,11 +27,11 @@ const OMSC_BLUE = '#1d3f8f';
  */
 function PlaceholderSeal() {
   return (
-    <svg className="omsc-seal" viewBox="0 0 100 100" role="img" aria-label="e Aspire Learning seal">
+    <svg className="omsc-seal" viewBox="0 0 100 100" role="img" aria-label="Aspire e Learning seal">
       <circle cx="50" cy="50" r="47" fill="none" stroke={OMSC_BLUE} strokeWidth="3" />
       <circle cx="50" cy="50" r="39" fill="none" stroke={OMSC_BLUE} strokeWidth="1.2" />
       <text x="50" y="45" textAnchor="middle" fontSize="19" fontWeight="bold" fill={OMSC_BLUE} fontFamily="Georgia, serif">
-        e
+        A
       </text>
       <text x="50" y="60" textAnchor="middle" fontSize="7.5" fill={OMSC_BLUE} fontFamily="Georgia, serif">
         ASPIRE
@@ -137,7 +137,7 @@ export default function PrintableExam({
         <div className="omsc-letterhead-text">
           {/* A school's own letterhead when one is set; otherwise the platform name. */}
           {header.schoolName && <p className="omsc-republic">Republic of the Philippines</p>}
-          <p className="omsc-college">{header.schoolName || 'e Aspire Learning'}</p>
+          <p className="omsc-college">{header.schoolName || 'Aspire e Learning'}</p>
           {header.subject && <p className="omsc-program">{header.subject}</p>}
         </div>
       </div>

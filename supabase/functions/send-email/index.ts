@@ -9,7 +9,7 @@
  *     call would fail anyway.
  *
  * The key therefore lives ONLY as a Supabase secret, never in the repo or the bundle:
- *     supabase secrets set RESEND_API_KEY=re_xxx RESEND_FROM="e Aspire Learning <no-reply@yourdomain>"
+ *     supabase secrets set RESEND_API_KEY=re_xxx RESEND_FROM="Aspire e Learning <no-reply@yourdomain>"
  *     supabase functions deploy send-email
  *
  * Deploy note: this function is invoked with the project's anon key, which every visitor
@@ -80,17 +80,17 @@ function renderHtml({ heading, intro, body, ctaUrl, ctaLabel, className }) {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e8e8ed;border-radius:14px;overflow:hidden;">
         <tr><td style="padding:18px 24px;border-bottom:1px solid #e8e8ed;">
-          <span style="font-size:13px;font-weight:700;color:#4f46e5;letter-spacing:.02em;">e Aspire Learning</span>
+          <span style="font-size:13px;font-weight:700;color:#4f46e5;letter-spacing:.02em;">Aspire e Learning</span>
           ${className ? `<div style="font-size:12px;color:#8e8e9e;margin-top:2px;">${esc(className)}</div>` : ''}
         </td></tr>
         <tr><td style="padding:26px 24px;">
           <h1 style="margin:0 0 10px;font-size:19px;font-weight:800;line-height:1.3;">${esc(heading)}</h1>
           <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#5c5c6b;">${esc(intro)}</p>
           ${body ? `<div style="font-size:14px;line-height:1.65;color:#16161d;border-left:3px solid #e8e8ed;padding-left:14px;margin:16px 0;">${esc(body)}</div>` : ''}
-          ${ctaUrl ? `<a href="${esc(ctaUrl)}" style="display:inline-block;margin-top:8px;background:#4f46e5;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 20px;border-radius:10px;">${esc(ctaLabel || 'Open e Aspire Learning')}</a>` : ''}
+          ${ctaUrl ? `<a href="${esc(ctaUrl)}" style="display:inline-block;margin-top:8px;background:#4f46e5;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 20px;border-radius:10px;">${esc(ctaLabel || 'Open Aspire e Learning')}</a>` : ''}
         </td></tr>
         <tr><td style="padding:16px 24px;background:#fafafb;border-top:1px solid #e8e8ed;font-size:11px;color:#8e8e9e;">
-          Sent by e Aspire Learning. You are receiving this because you are enrolled in this class.
+          Sent by Aspire e Learning. You are receiving this because you are enrolled in this class.
         </td></tr>
       </table>
     </td></tr>
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
   }
 
   const apiKey = Deno.env.get('RESEND_API_KEY');
-  const from = Deno.env.get('RESEND_FROM') || 'e Aspire Learning <onboarding@resend.dev>';
+  const from = Deno.env.get('RESEND_FROM') || 'Aspire e Learning <no-reply@aspire-e-learning.site>';
 
   if (!apiKey) {
     // Configuration problem, not a caller problem — say so explicitly so it is debuggable.

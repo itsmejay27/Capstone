@@ -287,7 +287,7 @@ export default function LoginPage() {
               <School sx={{ fontSize: 32, color: '#ffffff' }} />
             </Box>
             <Typography variant="h5" component="h1" sx={{ fontWeight: 900, color: 'var(--c-ink)', letterSpacing: '-0.02em' }}>
-              e Aspire Learning
+              Aspire e Learning
             </Typography>
             <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)', fontWeight: 700, mt: 0.3, display: 'block' }}>
               AI-powered classes, exams and insight
