@@ -27,17 +27,17 @@ const OMSC_BLUE = '#1d3f8f';
  */
 function PlaceholderSeal() {
   return (
-    <svg className="omsc-seal" viewBox="0 0 100 100" role="img" aria-label="OMSC seal">
+    <svg className="omsc-seal" viewBox="0 0 100 100" role="img" aria-label="e Aspire Learning seal">
       <circle cx="50" cy="50" r="47" fill="none" stroke={OMSC_BLUE} strokeWidth="3" />
       <circle cx="50" cy="50" r="39" fill="none" stroke={OMSC_BLUE} strokeWidth="1.2" />
       <text x="50" y="45" textAnchor="middle" fontSize="19" fontWeight="bold" fill={OMSC_BLUE} fontFamily="Georgia, serif">
-        OMSC
+        e
       </text>
       <text x="50" y="60" textAnchor="middle" fontSize="7.5" fill={OMSC_BLUE} fontFamily="Georgia, serif">
-        OCCIDENTAL
+        ASPIRE
       </text>
       <text x="50" y="69" textAnchor="middle" fontSize="7.5" fill={OMSC_BLUE} fontFamily="Georgia, serif">
-        MINDORO
+        LEARNING
       </text>
     </svg>
   );
@@ -135,9 +135,9 @@ export default function PrintableExam({
           <PlaceholderSeal />
         )}
         <div className="omsc-letterhead-text">
-          <p className="omsc-republic">Republic of the Philippines</p>
-          <p className="omsc-college">{header.schoolName || 'Occidental Mindoro State College'}</p>
-          <p className="omsc-campus">Mamburao, Occidental Mindoro</p>
+          {/* A school's own letterhead when one is set; otherwise the platform name. */}
+          {header.schoolName && <p className="omsc-republic">Republic of the Philippines</p>}
+          <p className="omsc-college">{header.schoolName || 'e Aspire Learning'}</p>
           {header.subject && <p className="omsc-program">{header.subject}</p>}
         </div>
       </div>

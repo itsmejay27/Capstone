@@ -788,7 +788,7 @@ export default function ClassroomDetail() {
               <Box>
                 <Typography variant="h6" fontWeight={900} sx={{ color: 'var(--c-slate-900)' }}>Academic Gradebook</Typography>
                 <Typography variant="caption" sx={{ color: 'var(--c-slate-500)' }}>
-                  Occidental Mindoro State College Base-65 Transmutation Standard (65% Passing = 3.00)
+                  Base-65 Transmutation Standard (65% Passing = 3.00)
                 </Typography>
               </Box>
             </Box>

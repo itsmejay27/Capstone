@@ -122,11 +122,11 @@ export default function AppSidebar({
               color: '#fff', fontWeight: 800, fontSize: '0.85rem',
             }}
           >
-            O
+            e
           </Box>
           {!collapsed && (
             <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: palette.ink, letterSpacing: '-0.02em' }} noWrap>
-              OMSC
+              e Aspire Learning
             </Typography>
           )}
         </Box>
