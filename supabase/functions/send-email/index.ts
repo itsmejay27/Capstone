@@ -80,7 +80,7 @@ function renderHtml({ heading, intro, body, ctaUrl, ctaLabel, className }) {
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e8e8ed;border-radius:14px;overflow:hidden;">
         <tr><td style="padding:18px 24px;border-bottom:1px solid #e8e8ed;">
-          <span style="font-size:13px;font-weight:700;color:#4f46e5;letter-spacing:.02em;">e ASPIRE LEARNING</span>
+          <span style="font-size:13px;font-weight:700;color:#4f46e5;letter-spacing:.02em;">e Aspire Learning</span>
           ${className ? `<div style="font-size:12px;color:#8e8e9e;margin-top:2px;">${esc(className)}</div>` : ''}
         </td></tr>
         <tr><td style="padding:26px 24px;">

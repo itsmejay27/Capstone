@@ -74,7 +74,7 @@ function emailHtml(code) {
   return `<!doctype html><html><body style="margin:0;background:#f6f6f8;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#16161d;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px 12px;"><tr><td align="center">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#fff;border:1px solid #e8e8ed;border-radius:14px;">
-      <tr><td style="padding:18px 24px;border-bottom:1px solid #e8e8ed;font-size:13px;font-weight:700;color:#10b981;">e ASPIRE LEARNING</td></tr>
+      <tr><td style="padding:18px 24px;border-bottom:1px solid #e8e8ed;font-size:13px;font-weight:700;color:#10b981;">e Aspire Learning</td></tr>
       <tr><td style="padding:26px 24px;">
         <h1 style="margin:0 0 10px;font-size:19px;">Your verification code</h1>
         <p style="margin:0 0 18px;font-size:14px;color:#5c5c6b;">Enter this code in e Aspire Learning to verify your email. It expires in 10 minutes.</p>
