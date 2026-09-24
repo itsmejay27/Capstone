@@ -26,7 +26,7 @@ import {
   Computer,
   AutoAwesome,
 } from '@mui/icons-material';
-import { checkOllamaConnection, OllamaConnectionState, getOllamaServerUrl, setOllamaServerUrl } from '../services/ollamaService';
+import { checkOllamaConnection, OllamaConnectionState, getOllamaServerUrl, setOllamaServerUrl, refreshSharedOllamaUrl, getActiveOllamaUrl } from '../services/ollamaService';
 import { useAuth } from '../context/AuthContext';
 import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel } from '../services/geminiService';
 
@@ -121,8 +121,12 @@ export default function OllamaConfigControl({
     handleCheckConnection();
   };
 
+  const [activeUrl, setActiveUrl] = useState(() => getActiveOllamaUrl());
   const handleCheckConnection = useCallback(async () => {
     setLoading(true);
+    // Pick up the address the laptop published, so nobody has to type it.
+    await refreshSharedOllamaUrl();
+    setActiveUrl(getActiveOllamaUrl());
     const res = await checkOllamaConnection(ollamaUrl);
     setOllamaStatus(res);
     setLoading(false);
@@ -424,8 +428,18 @@ export default function OllamaConfigControl({
         {/* Remote Ollama: use a laptop's Ollama from the live site or a phone on mobile data */}
         {engine === 'ollama' && (
           <Box sx={{ mt: 1.5, p: 1.5, borderRadius: 2, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.75 }}>
-              Ollama server address (optional)
+            <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.25 }}>
+              Ollama server
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              {activeUrl && !serverSaved
+                ? `Connected automatically to the shared laptop (${activeUrl}).`
+                : activeUrl
+                  ? `Using your own address (${activeUrl}).`
+                  : 'No laptop is sharing Ollama right now. Start scripts\\start-ollama-tunnel.bat on the laptop, or use Gemini.'}
+            </Typography>
+            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>
+              Use a different address (optional)
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               <TextField
@@ -434,7 +448,7 @@ export default function OllamaConfigControl({
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
                 error={Boolean(serverError)}
-                helperText={serverError || (serverSaved ? `Using ${serverSaved}` : 'Empty = Ollama on this computer')}
+                helperText={serverError || (serverSaved ? `Using ${serverSaved}` : 'Leave empty to use the shared laptop automatically')}
                 sx={{ flex: '1 1 260px' }}
                 inputProps={{ 'aria-label': 'Ollama server address', autoCapitalize: 'none', autoCorrect: 'off' }}
               />
@@ -448,9 +462,8 @@ export default function OllamaConfigControl({
               )}
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-              To use your laptop's Ollama from anywhere, run on the laptop:{' '}
-              <code>cloudflared tunnel --url http://localhost:11434 --http-host-header localhost:11434</code>{' '}
-              and paste the https address here. It is saved to your account, so your phone uses it too.
+              The laptop shares Ollama by running <code>scripts\start-ollama-tunnel.bat</code>; this page then
+              connects to it on every device automatically.
             </Typography>
             {!loading && !ollamaStatus.connected && ollamaStatus.error && (
               <Typography variant="caption" sx={{ display: 'block', mt: 0.75, color: 'var(--c-red-600)', fontWeight: 600 }}>
