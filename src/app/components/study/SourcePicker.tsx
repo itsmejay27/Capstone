@@ -3,7 +3,7 @@ import { teachesClass } from '../../services/classAccess';
 import { Box, TextField, MenuItem, Button, Typography, Chip } from '@mui/material';
 import { Upload, School } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
-import { extractFilesContent } from '../../services/ollamaService';
+import { extractFilesContent } from '../../services/generationUtils';
 
 /**
  * What a study tool learns from: a material from one of the student's classes, an uploaded

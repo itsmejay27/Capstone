@@ -40,8 +40,6 @@ interface AuthContextType {
   markEmailVerified: () => void;
   /** Records that the signed-in account accepted the Terms of Service. */
   acceptTerms: () => void;
-  /** Saves the remote Ollama address on the account, so every device of this user uses it. */
-  saveOllamaServerUrl: (url: string) => Promise<MutationResult>;
   logout: () => void;
   switchAccount: (userId: string) => void;
   /** Owner only: returns the class's instructor invite link, creating its token if needed. */
@@ -741,8 +739,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     db.upsertUser(updated);
   };
 
-  const saveOllamaServerUrl = (url: string) => applyUserChange({ ollamaServerUrl: url.trim().replace(/\/+$/, '') });
-
   const markEmailVerified = () => {
     if (!currentUser) return;
     const email = currentUser.email.toLowerCase();
@@ -1219,7 +1215,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithVerifiedEmail,
         markEmailVerified,
         acceptTerms,
-        saveOllamaServerUrl,
         accountSyncing,
         getCoteachLink,
         removeCoInstructor,

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -8,60 +8,40 @@ import {
   RadioGroup,
   Radio,
   Chip,
-  Button,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Autocomplete,
-  CircularProgress,
   Paper,
   TextField,
 } from '@mui/material';
-import {
-  SmartToy,
-  CheckCircle,
-  Error as ErrorIcon,
-  Refresh,
-  Computer,
-  AutoAwesome,
-} from '@mui/icons-material';
-import { checkOllamaConnection, OllamaConnectionState, getOllamaServerUrl, setOllamaServerUrl, refreshSharedOllamaUrl, getActiveOllamaUrl } from '../services/ollamaService';
+import { SmartToy, AutoAwesome } from '@mui/icons-material';
 import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel } from '../services/geminiService';
 
-export type AIEngineType = 'gemini' | 'nvidia' | 'ollama';
+export type AIEngineType = 'gemini' | 'nvidia';
 
-interface OllamaConfigControlProps {
+interface AIEngineControlProps {
   engine: AIEngineType;
   onEngineChange: (engine: AIEngineType) => void;
-  selectedModel: string;
-  onModelChange: (model: string) => void;
-  ollamaUrl?: string;
-  onUrlChange?: (url: string) => void;
   geminiModel?: string;
   onGeminiModelChange?: (model: string) => void;
   nvidiaModel?: string;
   onNvidiaModelChange?: (model: string) => void;
-  onConnectionStatusChange?: (connected: boolean) => void;
+  /** Engines to offer; the reviewer generator only supports Gemini. */
+  engines?: AIEngineType[];
 }
 
-export default function OllamaConfigControl({
+/** Picks the AI engine (Google Gemini or NVIDIA cloud) and its model. */
+export default function AIEngineControl({
   engine,
   onEngineChange,
-  selectedModel,
-  onModelChange,
-  ollamaUrl = '/api/ollama',
   geminiModel = 'gemini-3.5-flash-lite',
   onGeminiModelChange,
   nvidiaModel = 'meta/llama-3.3-70b-instruct',
   onNvidiaModelChange,
-  onConnectionStatusChange,
-}: OllamaConfigControlProps) {
-  const [loading, setLoading] = useState(false);
-  // A hand-typed address is no longer offered: the laptop publishes its own. Drop any old one
-  // saved on this device so it cannot shadow the live address.
-  useEffect(() => { if (getOllamaServerUrl()) setOllamaServerUrl(''); }, []);
-
+  engines = ['gemini', 'nvidia'],
+}: AIEngineControlProps) {
   // The NVIDIA catalogue changes over time, so it is read when that engine is selected
   // rather than shipped as a fixed list that eventually 410s.
   const [nvidiaModels, setNvidiaModels] = useState<NvidiaModel[]>([]);
@@ -87,37 +67,6 @@ export default function OllamaConfigControl({
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine]);
-
-  const [ollamaStatus, setOllamaStatus] = useState<OllamaConnectionState>({
-    connected: false,
-    models: [],
-    activeModel: '',
-  });
-
-  const [activeUrl, setActiveUrl] = useState(() => getActiveOllamaUrl());
-  const handleCheckConnection = useCallback(async () => {
-    setLoading(true);
-    // Pick up the address the laptop published, so nobody has to type it.
-    await refreshSharedOllamaUrl();
-    setActiveUrl(getActiveOllamaUrl());
-    const res = await checkOllamaConnection(ollamaUrl);
-    setOllamaStatus(res);
-    setLoading(false);
-
-    if (res.connected) {
-      const active = res.activeModel || res.models[0] || 'llama3.2:latest';
-      if (!selectedModel || !res.models.includes(selectedModel)) {
-        onModelChange(active);
-      }
-    }
-    if (onConnectionStatusChange) {
-      onConnectionStatusChange(res.connected);
-    }
-  }, [ollamaUrl, selectedModel, onModelChange, onConnectionStatusChange]);
-
-  useEffect(() => {
-    handleCheckConnection();
-  }, [handleCheckConnection]);
 
   return (
     <Card variant="outlined" sx={{ borderRadius: 3, borderColor: engine === 'gemini' ? 'secondary.main' : 'primary.main', p: 0.5 }}>
@@ -149,31 +98,7 @@ export default function OllamaConfigControl({
               size="small"
               sx={{ fontWeight: 'bold' }}
             />
-          ) : loading ? (
-            <Chip
-              icon={<CircularProgress size={12} color="inherit" />}
-              label="Checking Ollama..."
-              size="small"
-              variant="outlined"
-            />
-          ) : ollamaStatus.connected ? (
-            <Chip
-              icon={<CheckCircle sx={{ color: 'var(--c-green-600) !important' }} />}
-              label="Ollama Connected"
-              color="success"
-              variant="outlined"
-              size="small"
-              sx={{ fontWeight: 'bold' }}
-            />
-          ) : (
-            <Chip
-              icon={<ErrorIcon sx={{ color: 'var(--c-red-600) !important' }} />}
-              label="Ollama Offline"
-              color="error"
-              variant="outlined"
-              size="small"
-            />
-          )}
+          ) : null}
         </Box>
 
         {/* Engine Selection Radios */}
@@ -216,6 +141,7 @@ export default function OllamaConfigControl({
             </Grid>
 
             {/* NVIDIA NIM (cloud Llama) Option */}
+            {engines.includes('nvidia') && (
             <Grid size={{ xs: 12, sm: 6 }}>
               <Paper
                 variant="outlined"
@@ -245,37 +171,8 @@ export default function OllamaConfigControl({
                 </Box>
               </Paper>
             </Grid>
+            )}
 
-            {/* Local Ollama Option */}
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <Paper
-                variant="outlined"
-                onClick={() => onEngineChange('ollama')}
-                sx={{
-                  p: 1.5,
-                  borderRadius: 2,
-                  cursor: 'pointer',
-                  borderWidth: 2,
-                  borderColor: engine === 'ollama' ? 'primary.main' : 'var(--c-slate-200)',
-                  bgcolor: engine === 'ollama' ? 'rgba(14, 165, 198, 0.04)' : 'inherit',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                }}
-              >
-                <Radio value="ollama" checked={engine === 'ollama'} size="small" />
-                <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-                    <Computer fontSize="small" color="primary" />
-                    <Typography variant="body2" fontWeight="bold">Local Ollama AI</Typography>
-                  </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.75rem' }}>
-                    Runs locally on your laptop (Offline / Private)
-                  </Typography>
-                </Box>
-              </Paper>
-            </Grid>
           </Grid>
         </RadioGroup>
 
@@ -339,8 +236,8 @@ export default function OllamaConfigControl({
           </>
         )}
 
-        {/* Model Selector Dropdown (Gemini or Ollama; NVIDIA has its own above) */}
-        {engine === 'nvidia' ? null : engine === 'gemini' ? (
+        {/* Gemini model selector (NVIDIA has its own above) */}
+        {engine === 'gemini' && (
           <FormControl fullWidth size="small">
             <InputLabel id="gemini-model-label">Select Gemini Model</InputLabel>
             <Select
@@ -357,66 +254,6 @@ export default function OllamaConfigControl({
               ))}
             </Select>
           </FormControl>
-        ) : (
-          <Grid container spacing={1.5} alignItems="center">
-            <Grid size={{ xs: 12, sm: 8 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="ollama-model-label">Select Ollama Model</InputLabel>
-                <Select
-                  labelId="ollama-model-label"
-                  value={selectedModel || (ollamaStatus.models[0] || 'llama3.2:latest')}
-                  label="Select Ollama Model"
-                  onChange={(e) => onModelChange(e.target.value)}
-                  disabled={!ollamaStatus.connected}
-                  sx={{ borderRadius: 2, bgcolor: 'var(--c-surface)' }}
-                >
-                  {ollamaStatus.models.length > 0 ? (
-                    ollamaStatus.models.map((m) => (
-                      <MenuItem key={m} value={m}>
-                        {m} {m.includes('1b') ? '⚡⚡ (Ultra-Fast 1B - Recommended)' : m.includes('3.2') || m.includes('3b') ? '⚡ (Fast 3B)' : m.includes('8b') || m.includes('llama3:latest') ? '🐢 (Slower 8B)' : ''}
-                      </MenuItem>
-                    ))
-                  ) : (
-                    <MenuItem value="llama3.2:latest">llama3.2:latest ⚡ (Fast 3B)</MenuItem>
-                  )}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                size="small"
-                startIcon={<Refresh />}
-                onClick={handleCheckConnection}
-                disabled={loading}
-                sx={{ borderRadius: 2, textTransform: 'none', height: 40 }}
-              >
-                {loading ? 'Testing...' : 'Test Connection'}
-              </Button>
-            </Grid>
-          </Grid>
-        )}
-
-        {/* The laptop publishes its address automatically; only its status is shown. */}
-        {engine === 'ollama' && (
-          <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: activeUrl ? 'text.secondary' : 'var(--c-amber-700)', fontWeight: 600 }}>
-            {activeUrl
-              ? (ollamaStatus.connected
-                  ? 'Using the shared laptop automatically.'
-                  : 'The shared laptop is not answering right now. Check that it is on and still sharing, or use Gemini.')
-              : 'No laptop is sharing Ollama right now. Start scripts\\start-ollama-tunnel.bat on the laptop, or use Gemini.'}
-          </Typography>
-        )}
-
-        {/* Speed Tip Banner for Local Ollama */}
-        {engine === 'ollama' && (
-          <Box sx={{ mt: 1.5, p: 1.2, bgcolor: 'var(--c-slate-50)', borderRadius: 2, border: '1px dashed var(--c-slate-300)' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-              <Box component="span" sx={{ fontWeight: 'bold', color: 'var(--c-green-600)' }}>⚡ Laptop Speed Tip:</Box>
-              Select <strong>llama3.2:latest</strong> (3B) or 1B models for 3x–5x faster execution. (Run <code>ollama pull llama3.2:1b</code> in terminal for ultra-fast 1B generation).
-            </Typography>
-          </Box>
         )}
       </CardContent>
     </Card>

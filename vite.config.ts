@@ -41,17 +41,7 @@ export default defineConfig(({ mode }) => {
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
   server: {
-    // Lets a Cloudflare quick tunnel (cloudflared tunnel --url http://localhost:5173) reach
-    // the dev server, so a phone on mobile data can open this machine's copy of the app.
-    allowedHosts: ['.trycloudflare.com'],
     proxy: {
-      '/api/ollama': {
-        target: 'http://localhost:11434',
-        changeOrigin: true,
-        timeout: 120000,
-        proxyTimeout: 120000,
-        rewrite: (path) => path.replace(/^\/api\/ollama/, ''),
-      },
       '/api': {
         target: apiTarget,
         changeOrigin: true,

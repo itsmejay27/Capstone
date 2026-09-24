@@ -3,7 +3,7 @@
  * Connects directly to Google Gemini REST API for fast cloud question generation.
  */
 
-import { getDifficultyPromptDirective } from './ollamaService';
+import { getDifficultyPromptDirective } from './generationUtils';
 import { TOSData, buildTOSConstraintText, normaliseCogLevel, isAdministrativeMetadata } from './tosParser';
 import { geminiEndpoint, isGeminiAvailable } from './geminiEndpoint';
 
