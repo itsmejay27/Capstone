@@ -23,6 +23,9 @@ export const OLLAMA_REMOTE_MESSAGE =
  */
 export function isOllamaReachable(): boolean {
   if (typeof window === 'undefined') return false;
+  // The dev server always proxies /api/ollama to Ollama on the machine it runs on, however
+  // the page was reached (localhost, Wi-Fi address or a tunnel).
+  if (import.meta.env?.DEV) return true;
   const host = window.location.hostname;
   if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local')) return true;
   // A phone or another computer on the same Wi-Fi opening the dev server by the PC's address
