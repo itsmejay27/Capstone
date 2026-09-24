@@ -531,20 +531,9 @@ export default function ExamGenerator() {
           setGeneratedQuestions(withBankedQuestions(finalQuestions));
         } catch (err: any) {
           console.error('Ollama Generation error:', err);
-          const fallbackQuestions = buildTopicDrivenQuestions({
-            model: ollamaModel,
-            mcCount,
-            tfCount,
-            saCount,
-            essayCount,
-            extraCount: isTosActive ? 0 : extraCount,
-            difficulty,
-            topics: effectiveTopics,
-            generationPrompt: effectivePrompt,
-            tosData: effectiveTos,
-          });
-          setGeneratedQuestions(withBankedQuestions(fallbackQuestions));
-          setGenerationError(`Notice: Ollama local AI connection issue (${err.message || err}). Generated using topic-driven engine fallback.`);
+          // No template questions here: they looked like real Ollama output. Report the problem
+          // so the instructor can fix the connection or switch engines.
+          setGenerationError(`Ollama could not generate this exam: ${err.message || err}`);
         } finally {
           setGenerating(false);
         }

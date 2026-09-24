@@ -28,11 +28,12 @@ export async function fetchUsers() {
     role: u.role,
     avatar: u.avatar || undefined,
     termsAcceptedAt: u.terms_accepted_at || undefined,
+    ollamaServerUrl: u.ollama_server_url || undefined,
     emailVerified: u.email_verified !== false,
   }));
 }
 
-export async function upsertUser(user: { id: string; email: string; password?: string; name: string; role: string; avatar?: string; termsAcceptedAt?: string }) {
+export async function upsertUser(user: { id: string; email: string; password?: string; name: string; role: string; avatar?: string; termsAcceptedAt?: string; ollamaServerUrl?: string }) {
   if (!supabase) return;
   try {
     const { error } = await supabase
@@ -46,6 +47,7 @@ export async function upsertUser(user: { id: string; email: string; password?: s
           role: user.role,
           avatar: user.avatar || null,
           ...(user.termsAcceptedAt ? { terms_accepted_at: user.termsAcceptedAt } : {}),
+          ...(user.ollamaServerUrl !== undefined ? { ollama_server_url: user.ollamaServerUrl || null } : {}),
         },
         // Conflict on the primary key, never on email: the id is what every other
         // table's foreign key points at, so it must stay stable.

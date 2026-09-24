@@ -9,8 +9,8 @@ import { TOSData, buildTOSConstraintText, normaliseCogLevel, extractFileText, is
 export const DEFAULT_OLLAMA_URL = '/api/ollama';
 
 export const OLLAMA_REMOTE_MESSAGE =
-  'Ollama runs on your own computer, so it is only available when you run this app locally. ' +
-  'Use Gemini for the deployed site.';
+  'Ollama runs on your own computer. To use it here, start a Cloudflare tunnel to Ollama on that ' +
+  'computer and paste its https address in "Ollama server address" below, or use Gemini.';
 
 /**
  * Whether contacting Ollama can possibly succeed from the current page.
@@ -21,8 +21,32 @@ export const OLLAMA_REMOTE_MESSAGE =
  * CORS headers for it. Probing from a deployed origin can therefore only fail — noisily,
  * several times per page load — so it is skipped entirely.
  */
+/**
+ * A remote Ollama address, e.g. a Cloudflare tunnel to the instructor's laptop
+ * (https://xxxx.trycloudflare.com). When set, every Ollama call goes there instead of the
+ * local proxy, so the deployed site and phones on mobile data can use that laptop.
+ */
+const SERVER_KEY = 'ollamaServerUrl:v1';
+export function getOllamaServerUrl(): string {
+  try { return (localStorage.getItem(SERVER_KEY) || '').trim().replace(/\/+$/, ''); } catch { return ''; }
+}
+export function setOllamaServerUrl(url: string) {
+  const clean = url.trim().replace(/\/+$/, '');
+  try {
+    if (clean) localStorage.setItem(SERVER_KEY, clean); else localStorage.removeItem(SERVER_KEY);
+  } catch { /* storage blocked */ }
+}
+
+/** Where to send Ollama requests: the remote server if one is set, else the local proxy. */
+function ollamaEndpoints(base: string): string[] {
+  const remote = getOllamaServerUrl();
+  if (remote) return [remote];
+  return Array.from(new Set([base.replace(/\/$/, ''), 'http://localhost:11434', 'http://127.0.0.1:11434']));
+}
+
 export function isOllamaReachable(): boolean {
   if (typeof window === 'undefined') return false;
+  if (getOllamaServerUrl()) return true;
   // The dev server always proxies /api/ollama to Ollama on the machine it runs on, however
   // the page was reached (localhost, Wi-Fi address or a tunnel).
   if (import.meta.env?.DEV) return true;
@@ -77,7 +101,7 @@ export async function checkOllamaConnection(baseUrl: string = DEFAULT_OLLAMA_URL
   if (!isOllamaReachable()) {
     return { connected: false, models: [], activeModel: '', error: OLLAMA_REMOTE_MESSAGE };
   }
-  const endpointsToTry = [baseUrl, 'http://localhost:11434', 'http://127.0.0.1:11434'];
+  const endpointsToTry = ollamaEndpoints(baseUrl);
 
   for (const endpoint of endpointsToTry) {
     try {
@@ -107,7 +131,9 @@ export async function checkOllamaConnection(baseUrl: string = DEFAULT_OLLAMA_URL
     connected: false,
     models: [],
     activeModel: '',
-    error: 'Could not connect to Ollama. Make sure Ollama is running on your laptop (e.g., run "ollama serve" in terminal).',
+    error: getOllamaServerUrl()
+      ? `Could not reach Ollama at ${getOllamaServerUrl()}. Check that the laptop is on, Ollama and the tunnel are running, the address is the current one, and OLLAMA_ORIGINS is set.`
+      : 'Could not connect to Ollama. Make sure Ollama is running on this computer.',
   };
 }
 
@@ -297,7 +323,7 @@ export function getDifficultyPromptDirective(difficulty: string): DifficultyDire
 export async function generateExamWithOllama(params: ExamGenerationParams): Promise<any[]> {
   const userUrl = (params.baseUrl || DEFAULT_OLLAMA_URL).replace(/\/$/, '');
   if (!isOllamaReachable()) throw new Error(OLLAMA_REMOTE_MESSAGE);
-  const endpointsToTry = Array.from(new Set([userUrl, 'http://localhost:11434', 'http://127.0.0.1:11434']));
+  const endpointsToTry = ollamaEndpoints(userUrl);
   const isTosMode = Boolean(params.tosData && (params.tosData.totalItems > 0 || params.tosData.rawText));
 
   let totalQuestions = params.mcCount + params.tfCount + params.saCount + params.essayCount + params.extraCount;
@@ -477,7 +503,7 @@ Respond ONLY with valid JSON matching this schema:
     try {
       const cleanEndpoint = endpoint.replace(/\/$/, '');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      const timeoutId = setTimeout(() => controller.abort(), 180000);
 
       const response = await fetch(`${cleanEndpoint}/api/chat`, {
         method: 'POST',
@@ -535,15 +561,19 @@ Respond ONLY with valid JSON matching this schema:
       }
     } catch (err: any) {
       connectionError = err.name === 'AbortError'
-        ? 'Ollama request timed out after 60s'
+        ? 'Ollama did not start answering within 3 minutes'
         : (err.message || 'Connection failed');
     }
   }
 
   // If local Ollama returned empty or parse error, fallback to topic generator
+  // Say so instead of quietly substituting template questions, which looked like Ollama
+  // "only generating the demo".
   if (rawQuestions.length === 0) {
-    console.warn(`Ollama API call could not be completed (${connectionError || 'No response'}), using topic fallback engine.`);
-    rawQuestions = buildTopicDrivenQuestions(params as any);
+    throw new Error(
+      `Ollama did not return any questions (${connectionError || 'empty or unreadable answer'}). ` +
+      'Check that Ollama is running and the model is loaded, then try fewer questions or a smaller model (e.g. llama3.2:3b).'
+    );
   }
 
   // Build target question type quotas to ensure user's requested types are strictly fulfilled
@@ -713,7 +743,7 @@ export async function regenerateQuestionWithOllama(
 ): Promise<any> {
   const userUrl = baseUrl.replace(/\/$/, '');
   if (!isOllamaReachable()) throw new Error(OLLAMA_REMOTE_MESSAGE);
-  const endpointsToTry = Array.from(new Set([userUrl, 'http://localhost:11434', 'http://127.0.0.1:11434']));
+  const endpointsToTry = ollamaEndpoints(userUrl);
   const topic = questionItem.topic || 'Subject Matter';
   const itemDiff = questionItem.difficulty || 'medium';
   const diffDirective = getDifficultyPromptDirective(itemDiff);
@@ -778,7 +808,7 @@ Respond with JSON:
     try {
       const cleanUrl = endpoint.replace(/\/$/, '');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for question regeneration
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
 
       const response = await fetch(`${cleanUrl}/api/chat`, {
         method: 'POST',
@@ -851,7 +881,7 @@ Respond with JSON:
 export async function generateReviewerWithOllama(params: ReviewerGenerationParams): Promise<any[]> {
   const userUrl = (params.baseUrl || DEFAULT_OLLAMA_URL).replace(/\/$/, '');
   if (!isOllamaReachable()) throw new Error(OLLAMA_REMOTE_MESSAGE);
-  const endpointsToTry = Array.from(new Set([userUrl, 'http://localhost:11434', 'http://127.0.0.1:11434']));
+  const endpointsToTry = ollamaEndpoints(userUrl);
 
   const moduleCounts = { easy: 3, normal: 4, hard: 5 };
   const itemsPerModule = { easy: 4, normal: 5, hard: 6 };
@@ -903,7 +933,7 @@ Respond ONLY with valid JSON:
     try {
       const cleanEndpoint = endpoint.replace(/\/$/, '');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000);
+      const timeoutId = setTimeout(() => controller.abort(), 180000);
 
       const response = await fetch(`${cleanEndpoint}/api/chat`, {
         method: 'POST',
@@ -985,6 +1015,8 @@ Respond ONLY with valid JSON:
     }));
   }
 
-  console.warn(`Ollama reviewer generation failed (${connectionError || 'No response'}), using topic fallback engine.`);
-  return buildTopicDrivenModules(params.subject, params.difficulty, targetCount, itemsCount);
+  throw new Error(
+    `Ollama did not return a reviewer (${connectionError || 'empty or unreadable answer'}). ` +
+    'Check that Ollama is running, then try again or pick a smaller model (e.g. llama3.2:3b).'
+  );
 }

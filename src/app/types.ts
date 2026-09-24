@@ -11,6 +11,8 @@ export interface User {
   emailVerified?: boolean;
   /** When the account accepted the Terms of Service; missing means not yet. */
   termsAcceptedAt?: string;
+  /** Remote Ollama address (e.g. a Cloudflare tunnel to the instructor's laptop). */
+  ollamaServerUrl?: string;
 }
 
 export interface Classroom {
