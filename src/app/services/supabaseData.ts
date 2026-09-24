@@ -75,6 +75,8 @@ export async function fetchClassrooms() {
     level: c.level || '',
     room: c.room || '',
     theme: c.theme || undefined,
+    coInstructors: Array.isArray(c.co_instructors) ? c.co_instructors : [],
+    coteachToken: c.coteach_token || undefined,
     students: (c.classroom_students || []).map((s: any) => s.student_id),
     createdAt: c.created_at,
     description: c.description || undefined,
@@ -95,6 +97,8 @@ export async function upsertClassroom(classroom: any) {
     level: classroom.level || null,
     room: classroom.room || null,
     theme: classroom.theme || null,
+    co_instructors: Array.isArray(classroom.coInstructors) ? classroom.coInstructors : [],
+    coteach_token: classroom.coteachToken || null,
       description: classroom.description || null,
       is_archived: !!classroom.isArchived,
     });
@@ -405,6 +409,10 @@ export async function fetchExamAttempts() {
     questions: Array.isArray(a.questions) ? a.questions : [],
     timing: a.timing || undefined,
     integrity: a.integrity || undefined,
+    manualScores: a.manual_scores || undefined,
+    gradingStatus: a.grading_status || undefined,
+    gradedAt: a.graded_at || undefined,
+    feedback: a.feedback || undefined,
     score: a.score ?? undefined,
     startedAt: a.started_at,
     submittedAt: a.submitted_at || undefined,
@@ -425,6 +433,10 @@ export async function upsertExamAttempt(attempt: any) {
       submitted_at: attempt.submittedAt || null,
       timing: attempt.timing || null,
       integrity: attempt.integrity || null,
+      manual_scores: attempt.manualScores || null,
+      grading_status: attempt.gradingStatus || null,
+      graded_at: attempt.gradedAt || null,
+      feedback: attempt.feedback || null,
     });
     if (error) warn('upsertExamAttempt', error);
   } catch (e) {
@@ -873,4 +885,19 @@ export async function deleteStudyItem(id: string) {
   if (!supabase) return;
   const { error } = await supabase.from('study_items').delete().eq('id', id);
   if (error) warn('deleteStudyItem', error);
+}
+
+// ---- instructor grade sheets (class record) ----
+export async function fetchGradeSheet(classroomId: string): Promise<any | null> {
+  if (!supabase) return null;
+  const { data, error } = await supabase.from('grade_sheets').select('data').eq('classroom_id', classroomId).maybeSingle();
+  if (error) { warn('fetchGradeSheet', error); return null; }
+  return data?.data || null;
+}
+
+export async function saveGradeSheet(classroomId: string, sheet: any): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.from('grade_sheets').upsert({ classroom_id: classroomId, data: sheet, updated_at: new Date().toISOString() });
+  if (error) { warn('saveGradeSheet', error); return false; }
+  return true;
 }

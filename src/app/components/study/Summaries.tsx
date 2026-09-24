@@ -2,6 +2,19 @@ import { useState } from 'react';
 import { Box, Paper, Typography, Button, Alert, CircularProgress, IconButton, TextField, Chip } from '@mui/material';
 import { Article, ArrowBack, AutoAwesome, Delete } from '@mui/icons-material';
 import SourcePicker, { useSourcePicker } from './SourcePicker';
+import StudyOptions, { useStudyOptions, LANGUAGE } from './StudyOptions';
+
+const LENGTH = { key: 'length', label: 'Length', choices: [
+  { value: 'short', label: 'Short (quick review)' }, { value: 'standard', label: 'Standard (one page)' }, { value: 'detailed', label: 'Detailed' },
+] };
+const LEVEL = { key: 'level', label: 'Reading level', choices: [
+  { value: 'simple', label: 'Simple words' }, { value: 'college', label: 'College level' }, { value: 'technical', label: 'Technical' },
+] };
+const LENGTH_RULE: Record<string, string> = {
+  short: '(overview 2 sentences, 5-7 key points, 6-10 terms)',
+  standard: '(overview 2-4 sentences, 8-12 key points, 10-20 terms)',
+  detailed: '(overview 4-6 sentences, 12-20 key points, 15-30 terms, each key point may have one example)',
+};
 import { generateStudyJson } from '../../services/geminiService';
 import { newId, type useStudyItems } from '../../services/studyStore';
 
@@ -10,6 +23,7 @@ interface Summary { overview: string; keyPoints: string[]; terms: { term: string
 
 export default function Summaries({ store }: { store: Store }) {
   const picker = useSourcePicker();
+  const opts = useStudyOptions([LENGTH, LEVEL, LANGUAGE], { length: 'standard', level: 'college', language: 'English' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -24,7 +38,8 @@ export default function Summaries({ store }: { store: Store }) {
       const out = await generateStudyJson(
         'You write one-page study summaries: a short overview, the key points a student must remember, and a glossary of key terms with plain-language definitions. Be accurate and concise.',
         `Summarise "${src.label}".${src.text ? `\nUse ONLY this material:\n---\n${src.text}\n---` : ''}
-Respond as JSON: {"overview":"2-4 sentences","keyPoints":["..."],"terms":[{"term":"...","definition":"..."}]}  (6-12 key points, 8-20 terms)`
+Write at a ${opts.values.level} reading level, in ${opts.values.language}.
+Respond as JSON: {"overview":"...","keyPoints":["..."],"terms":[{"term":"...","definition":"..."}]}  ${LENGTH_RULE[opts.values.length] || ''}`
       );
       const data: Summary = { overview: String(out.overview || ''), keyPoints: (out.keyPoints || []).map(String), terms: (out.terms || []).filter((t: any) => t.term).map((t: any) => ({ term: String(t.term), definition: String(t.definition || '') })) };
       if (!data.overview && !data.keyPoints.length) throw new Error('The AI returned an empty summary. Try again.');
@@ -68,6 +83,7 @@ Respond as JSON: {"overview":"2-4 sentences","keyPoints":["..."],"terms":[{"term
       <Paper sx={{ p: 2.5, mb: 3, borderRadius: '16px' }}>
         <Typography sx={{ fontWeight: 800, mb: 1.5 }}>New summary &amp; glossary</Typography>
         <SourcePicker picker={picker} />
+        <StudyOptions opts={opts} />
         {error && <Alert severity="error" sx={{ mt: 1.5 }}>{error}</Alert>}
         <Button variant="contained" startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <AutoAwesome />} disabled={!picker.ready || busy} onClick={create} sx={{ mt: 1.5 }}>
           {busy ? 'Summarising…' : 'Summarise'}

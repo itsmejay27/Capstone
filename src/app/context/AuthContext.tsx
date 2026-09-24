@@ -2,8 +2,9 @@ import { useMemo, createContext, useContext, useState, useEffect, ReactNode } fr
 import { User, UserRole, MutationResult } from '../types';
 import { mockUsers, mockClassrooms, mockExams, mockQuestionBank, mockExamAttempts } from '../data/mockData';
 import { parseGoogleJwt } from '../utils/authUtils';
-import { forgetAccount, getSavedAccountIds, rememberTermsAccepted, hasAcceptedTermsLocally } from '../services/savedAccounts';
-import { untrustDevice } from '../services/deviceTrust';
+import { forgetAccount, getSavedAccountIds, rememberTermsAccepted } from '../services/savedAccounts';
+import { untrustDevice, isDeviceTrusted } from '../services/deviceTrust';
+import { syncGoogleAuthUser } from '../services/otpService';
 import * as db from '../services/supabaseData';
 import { removeClassroomFile } from '../services/fileStorage';
 import { notifyAnnouncement, notifyAssignment, notifyComment } from '../services/emailService';
@@ -41,6 +42,12 @@ interface AuthContextType {
   acceptTerms: () => void;
   logout: () => void;
   switchAccount: (userId: string) => void;
+  /** Owner only: returns the class's instructor invite link, creating its token if needed. */
+  getCoteachLink: (classroomId: string) => string | null;
+  /** Owner only: removes a co-instructor from the class. */
+  removeCoInstructor: (classroomId: string, userId: string) => void;
+  /** Adds the signed-in instructor to the class whose invite token this is. */
+  joinAsCoInstructor: (token: string) => 'joined' | 'already' | 'owner' | 'not-found' | 'not-instructor';
   /** Updates the signed-in user's display name and/or avatar. */
   updateProfile: (changes: { name?: string; avatar?: string }) => Promise<MutationResult>;
   /** Changes the signed-in user's password after verifying the current one. */
@@ -648,9 +655,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profiles.find((u) => u.role === role) || (profiles.length > 0 ? profiles[0] : undefined);
 
   const enter = (user: User) => {
-    const withLocalTerms = !user.termsAcceptedAt && hasAcceptedTermsLocally(user.id)
-      ? { ...user, termsAcceptedAt: new Date().toISOString() }
-      : user;
+    const withLocalTerms = user;
     setCurrentUser(withLocalTerms);
     localStorage.setItem('currentUserId', withLocalTerms.id);
     try { localStorage.setItem('lastLoginRole', withLocalTerms.role); } catch { /* storage blocked */ }
@@ -662,6 +667,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!payload || !payload.email) {
       return false;
     }
+    syncGoogleAuthUser(credential);
     setAccountSyncing(true);
     try {
       const profiles = await profilesFor(payload.email);
@@ -685,10 +691,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: payload.name || payload.email.split('@')[0],
         role: role,
         avatar: payload.picture,
-        // A new account must confirm its email with a one-time code before using the app.
-        emailVerified: false,
+        // A new account must confirm its email with a one-time code, unless this browser
+        // already confirmed this email before.
+        emailVerified: isDeviceTrusted(payload.email),
       };
-      setUsers((prev) => [...prev, newUser]);
+      // Replace any stale cached copy with the same id (e.g. a profile deleted on the server),
+      // so its old Terms or verification status does not carry over.
+      setUsers((prev) => [...prev.filter((u) => u.id !== newUser.id), newUser]);
       enter(newUser);
       return true;
     } finally {
@@ -778,6 +787,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const updated = { ...target, ...changes };
     setClassrooms((prev) => prev.map((c: any) => (c.id === classroomId ? updated : c)));
     db.upsertClassroom(updated);
+  };
+
+  const getCoteachLink = (classroomId: string): string | null => {
+    const target = classrooms.find((c: any) => c.id === classroomId);
+    if (!target || target.instructorId !== currentUser?.id) return null;
+    let token = target.coteachToken;
+    if (!token) {
+      token = crypto.randomUUID().replace(/-/g, '');
+      const updated = { ...target, coteachToken: token };
+      setClassrooms((prev) => prev.map((c: any) => (c.id === classroomId ? updated : c)));
+      db.upsertClassroom(updated);
+    }
+    return `${window.location.origin}/?coteach=${token}`;
+  };
+
+  const removeCoInstructor = (classroomId: string, userId: string) => {
+    const target = classrooms.find((c: any) => c.id === classroomId);
+    if (!target || target.instructorId !== currentUser?.id) return;
+    const updated = { ...target, coInstructors: (target.coInstructors || []).filter((id: string) => id !== userId) };
+    setClassrooms((prev) => prev.map((c: any) => (c.id === classroomId ? updated : c)));
+    db.upsertClassroom(updated);
+  };
+
+  const joinAsCoInstructor = (token: string) => {
+    if (!currentUser || currentUser.role !== 'instructor') return 'not-instructor' as const;
+    const target = classrooms.find((c: any) => c.coteachToken && c.coteachToken === token);
+    if (!target) return 'not-found' as const;
+    if (target.instructorId === currentUser.id) return 'owner' as const;
+    if ((target.coInstructors || []).includes(currentUser.id)) return 'already' as const;
+    const updated = { ...target, coInstructors: [...(target.coInstructors || []), currentUser.id] };
+    setClassrooms((prev) => prev.map((c: any) => (c.id === target.id ? updated : c)));
+    db.upsertClassroom(updated);
+    return 'joined' as const;
   };
 
   const addClassroom = (classroom: any) => {
@@ -1174,6 +1216,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         markEmailVerified,
         acceptTerms,
         accountSyncing,
+        getCoteachLink,
+        removeCoInstructor,
+        joinAsCoInstructor,
         leaveForAnotherAccount,
         removeSavedAccount,
         updateProfile,

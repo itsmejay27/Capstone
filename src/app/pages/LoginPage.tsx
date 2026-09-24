@@ -8,7 +8,6 @@ import Landing from '../components/landing/Landing';
 import VerifyEmailGate from '../components/VerifyEmailGate';
 import TermsAccept from '../components/TermsAccept';
 import { useDeviceTrusted, trustDevice } from '../services/deviceTrust';
-import { hasAcceptedTermsLocally } from '../services/savedAccounts';
 import { checkAccountPassword } from '../services/otpService';
 import {
   Container, Button, Typography, Box, Alert, ToggleButtonGroup, ToggleButton, IconButton, Dialog, DialogContent, TextField, InputAdornment,
@@ -42,9 +41,9 @@ export default function LoginPage() {
   const me = currentUser ? users.find((u: any) => u.id === currentUser.id) || currentUser : null;
   const emailUnverified = Boolean(me && me.emailVerified === false && currentUser?.emailVerified !== true);
   const deviceTrusted = useDeviceTrusted(me?.email);
-  const codeStepNeeded = emailUnverified || Boolean(me && !deviceTrusted);
+  const codeStepNeeded = !accountSyncing && (emailUnverified || Boolean(me && !deviceTrusted));
   // After the code step, an account that has not accepted the Terms does so here, once.
-  const termsNeeded = Boolean(me && !accountSyncing && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt && !hasAcceptedTermsLocally(me.id));
+  const termsNeeded = Boolean(me && !accountSyncing && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt);
   const needsVerification = codeStepNeeded || termsNeeded;
   const onCodeVerified = () => {
     trustDevice(me?.email);

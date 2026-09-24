@@ -1,3 +1,4 @@
+import { teachesClass } from '../services/classAccess';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
@@ -164,7 +165,7 @@ export default function ReviewerGenerator() {
   const userClassrooms = classrooms.filter((c) =>
     currentUser?.role === 'student'
       ? c.students.includes(currentUser?.id || '')
-      : c.instructorId === currentUser?.id
+      : teachesClass(c, currentUser?.id)
   );
   const availableMaterials = selectedClassroomId ? (classroomMaterials[selectedClassroomId] || []) : [];
   const selectedMaterial = availableMaterials.find((m) => m.id === selectedMaterialId);

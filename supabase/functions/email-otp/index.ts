@@ -112,6 +112,24 @@ function emailHtml(code, purpose) {
   </td></tr></table></body></html>`;
 }
 
+
+/**
+ * Mirrors a verified person into Supabase Authentication (Dashboard > Authentication > Users),
+ * so the project's user list shows everyone who signs in. "Already registered" is fine.
+ */
+async function ensureAuthUser(url, serviceKey, email, meta = {}) {
+  try {
+    const res = await fetch(`${url}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, email_confirm: true, user_metadata: meta }),
+    });
+    if (!res.ok && res.status !== 422) console.warn('[auth-user] create failed', res.status, await res.text());
+  } catch (e) {
+    console.warn('[auth-user] create failed', e?.message || e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -201,6 +219,7 @@ Deno.serve(async (req) => {
         method: 'PATCH',
         body: JSON.stringify({ email_verified: true }),
       });
+      await ensureAuthUser(supabaseUrl, serviceKey, email, { provider: 'email' });
       return json({ ok: true, email });
     }
 

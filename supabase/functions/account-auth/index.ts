@@ -63,6 +63,24 @@ function passwordProblem(p) {
   return null;
 }
 
+
+/**
+ * Mirrors a verified person into Supabase Authentication (Dashboard > Authentication > Users),
+ * so the project's user list shows everyone who signs in. "Already registered" is fine.
+ */
+async function ensureAuthUser(url, serviceKey, email, meta = {}) {
+  try {
+    const res = await fetch(`${url}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, email_confirm: true, user_metadata: meta }),
+    });
+    if (!res.ok && res.status !== 422) console.warn('[auth-user] create failed', res.status, await res.text());
+  } catch (e) {
+    console.warn('[auth-user] create failed', e?.message || e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -111,6 +129,7 @@ Deno.serve(async (req) => {
       // Owning the inbox also proves the email.
       await q('verified_emails?on_conflict=email', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ email, verified_at: now }) });
       await q(`users?email=ilike.${enc}`, { method: 'PATCH', body: JSON.stringify({ email_verified: true }) });
+      await ensureAuthUser(url, serviceKey, email, { provider: 'password' });
       return json({ ok: true });
     }
 
@@ -129,6 +148,7 @@ Deno.serve(async (req) => {
         await q('auth_failures', { method: 'POST', body: JSON.stringify({ email }) });
         return json({ error: 'That email and password do not match an account.' }, 401);
       }
+      await ensureAuthUser(url, serviceKey, email, { provider: 'password' });
       return json({ ok: true });
     }
 

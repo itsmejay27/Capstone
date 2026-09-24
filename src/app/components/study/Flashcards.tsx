@@ -2,6 +2,23 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Paper, Typography, Button, LinearProgress, Chip, IconButton, Alert, CircularProgress } from '@mui/material';
 import { Style, Delete, ArrowBack, AutoAwesome, Replay } from '@mui/icons-material';
 import SourcePicker, { useSourcePicker } from './SourcePicker';
+import StudyOptions, { useStudyOptions, countField, DIFFICULTY, LANGUAGE, difficultyRule } from './StudyOptions';
+
+const CARD_STYLE = {
+  key: 'style', label: 'Card style',
+  choices: [
+    { value: 'qa', label: 'Question → answer' },
+    { value: 'term', label: 'Term → definition' },
+    { value: 'cloze', label: 'Fill in the blank' },
+    { value: 'mixed', label: 'Mixed' },
+  ],
+};
+const STYLE_RULE: Record<string, string> = {
+  qa: 'Front is a question; back is the answer.',
+  term: 'Front is a key term or concept; back is its definition in plain words.',
+  cloze: 'Front is a sentence with one key word replaced by "____"; back is the missing word plus a short note.',
+  mixed: 'Mix question→answer, term→definition and fill-in-the-blank cards.',
+};
 import { generateStudyJson } from '../../services/geminiService';
 import { newCard, review, isDue, retention, type SrsCard, type Grade } from '../../services/srs';
 import { newId, logStudySession, type useStudyItems } from '../../services/studyStore';
@@ -11,6 +28,7 @@ interface Deck { cards: SrsCard[]; source: string }
 
 export default function Flashcards({ store }: { store: Store }) {
   const picker = useSourcePicker();
+  const opts = useStudyOptions([countField('Number of cards', [10, 15, 20, 30, 40, 50]), DIFFICULTY, CARD_STYLE, LANGUAGE], { count: '20', difficulty: 'medium', style: 'qa', language: 'English' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -22,14 +40,17 @@ export default function Flashcards({ store }: { store: Store }) {
     try {
       const src = await picker.resolve();
       const out = await generateStudyJson(
-        'You write concise, accurate study flashcards. Front: a question or term. Back: a short, correct answer (max 2 sentences). No trivia about document headers.',
-        `Create 20 flashcards for "${src.label}".${src.text ? `\nUse ONLY this material:\n---\n${src.text}\n---` : ''}
+        'You write concise, accurate study flashcards. Back: a short, correct answer (max 2 sentences). No trivia about document headers. Cover the material evenly and never repeat a card.',
+        `Create exactly ${opts.values.count} flashcards for "${src.label}".
+${STYLE_RULE[opts.values.style] || ''}
+${difficultyRule(opts.values.difficulty)}
+Write every card in ${opts.values.language}.${src.text ? `\nUse ONLY this material:\n---\n${src.text}\n---` : ''}
 Respond as JSON: {"cards":[{"front":"...","back":"...","topic":"short subtopic"}]}`
       );
       const cards: SrsCard[] = (out.cards || []).filter((c: any) => c.front && c.back)
         .map((c: any, i: number) => newCard(`c${i}-${Date.now()}`, String(c.front), String(c.back), c.topic ? String(c.topic) : undefined));
       if (!cards.length) throw new Error('The AI returned no cards. Try a more specific topic or a different material.');
-      const saved = store.save({ id: newId('deck'), kind: 'deck', title: src.label, data: { cards, source: src.label } });
+      const saved = store.save({ id: newId('deck'), kind: 'deck', title: src.label, data: { cards, source: src.label, settings: opts.label() } });
       if (saved) setOpenId(saved.id);
     } catch (e: any) { setError(e.message || String(e)); }
     setBusy(false);
@@ -42,9 +63,10 @@ Respond as JSON: {"cards":[{"front":"...","back":"...","topic":"short subtopic"}
       <Paper sx={{ p: 2.5, mb: 3, borderRadius: '16px' }}>
         <Typography sx={{ fontWeight: 800, mb: 1.5 }}>New flashcard deck</Typography>
         <SourcePicker picker={picker} />
+        <StudyOptions opts={opts} />
         {error && <Alert severity="error" sx={{ mt: 1.5 }}>{error}</Alert>}
         <Button variant="contained" startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <AutoAwesome />} disabled={!picker.ready || busy} onClick={create} sx={{ mt: 1.5 }}>
-          {busy ? 'Making cards…' : 'Generate 20 cards'}
+          {busy ? 'Making cards…' : `Generate ${opts.values.count} cards`}
         </Button>
       </Paper>
 
@@ -66,6 +88,7 @@ Respond as JSON: {"cards":[{"front":"...","back":"...","topic":"short subtopic"}
                   <Chip size="small" color={due ? 'primary' : 'default'} label={due ? `${due} due now` : 'All caught up'} />
                   <Chip size="small" label={`${Math.round(retention(d.data.cards) * 100)}% learned`} />
                 </Box>
+                {(d.data as any).settings && <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'var(--c-ink-tertiary)' }}>{(d.data as any).settings}</Typography>}
               </Paper>
             );
           })}

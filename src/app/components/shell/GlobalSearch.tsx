@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { teachesClass } from '../../services/classAccess';
 import { useNavigate } from 'react-router';
 import {
   Autocomplete, TextField, InputAdornment, Box, Typography, Chip,
@@ -65,7 +66,7 @@ export default function GlobalSearch() {
 
     // Only the classes this user belongs to — search must not leak another section's work.
     const myClassrooms = (classrooms || []).filter((c: any) =>
-      isInstructor ? c.instructorId === currentUser?.id : c.students?.includes(currentUser?.id)
+      isInstructor ? teachesClass(c, currentUser?.id) : c.students?.includes(currentUser?.id)
     );
     for (const c of myClassrooms) {
       if (matches(c.name, c.subject, c.section, c.classCode)) {

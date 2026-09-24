@@ -76,8 +76,17 @@ export function useExamGuard(active: boolean, onViolation?: (message: string) =>
     const onCopy = (e: ClipboardEvent) => { e.preventDefault(); bump('copyAttempts', 'Copying is disabled during the exam.'); };
     const onPaste = (e: ClipboardEvent) => { e.preventDefault(); bump('pasteAttempts', 'Pasting is disabled during the exam.'); };
     const onContext = (e: MouseEvent) => { e.preventDefault(); bump('rightClicks', 'Right-click is disabled during the exam.'); };
+    // The Windows/Command key is pressed before S in Win+Shift+S (and before 3/4/5 on a Mac),
+    // so blank the exam the moment it goes down: the snip then captures a blank page.
+    let hideTimer = 0;
+    const hideFor = (ms: number) => {
+      setObscured(true);
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => { if (document.hasFocus()) setObscured(false); }, ms);
+    };
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
+      if (e.key === 'Meta' || e.key === 'OS' || e.key === 'PrintScreen') hideFor(3000);
       const mod = e.ctrlKey || e.metaKey;
       if (e.key === 'PrintScreen' || (e.metaKey && e.shiftKey && ['3', '4', '5', 's'].includes(k)) || (e.key === 'S' && e.shiftKey && e.metaKey)) {
         e.preventDefault(); bump('screenshotAttempts', 'Screenshots are not allowed during the exam. This was recorded.');
@@ -95,6 +104,7 @@ export function useExamGuard(active: boolean, onViolation?: (message: string) =>
     const onKeyUp = (e: KeyboardEvent) => {
       // Windows puts the capture on the clipboard; overwrite it.
       if (e.key === 'PrintScreen') {
+        hideFor(3000);
         navigator.clipboard?.writeText('Screenshots are disabled during this exam.').catch(() => {});
         bump('screenshotAttempts', 'Screenshots are not allowed during the exam. This was recorded.');
       }
@@ -104,6 +114,9 @@ export function useExamGuard(active: boolean, onViolation?: (message: string) =>
     };
     const onBlur = () => setObscured(true);
     const onFocus = () => setObscured(false);
+    // Leaving the page with the mouse (to reach a snipping tool or another app) hides it too.
+    const onMouseOut = (e: MouseEvent) => { if (!e.relatedTarget) setObscured(true); };
+    const onMouseOver = () => { if (document.hasFocus()) setObscured(false); };
 
     document.addEventListener('copy', onCopy);
     document.addEventListener('cut', onCopy);
@@ -114,6 +127,8 @@ export function useExamGuard(active: boolean, onViolation?: (message: string) =>
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('blur', onBlur);
     window.addEventListener('focus', onFocus);
+    document.addEventListener('mouseout', onMouseOut);
+    document.addEventListener('mouseover', onMouseOver);
     document.body.classList.add('exam-guard-active');
     return () => {
       document.removeEventListener('copy', onCopy);
@@ -125,6 +140,9 @@ export function useExamGuard(active: boolean, onViolation?: (message: string) =>
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('blur', onBlur);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('mouseout', onMouseOut);
+      document.removeEventListener('mouseover', onMouseOver);
+      window.clearTimeout(hideTimer);
       document.body.classList.remove('exam-guard-active');
     };
   }, [active]);

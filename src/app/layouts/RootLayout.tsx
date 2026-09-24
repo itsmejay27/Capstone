@@ -1,10 +1,11 @@
 import { Outlet, useNavigate, useLocation } from 'react-router';
+import { teachesClass } from '../services/classAccess';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { commentActivityFor, getCommentsSeenAt, unreadCount } from '../services/commentActivity';
 import { useDeviceTrusted } from '../services/deviceTrust';
-import { hasAcceptedTermsLocally, rememberTermsAccepted, saveAccount } from '../services/savedAccounts';
-import { Box } from '@mui/material';
+import { rememberTermsAccepted, saveAccount } from '../services/savedAccounts';
+import { Box, Snackbar, Alert } from '@mui/material';
 import AppShell from '../components/shell/AppShell';
 
 /**
@@ -29,7 +30,9 @@ export default function RootLayout() {
     examAttempts,
     comments,
     accountSyncing,
+    joinAsCoInstructor,
   } = useAuth();
+  const [coteachNotice, setCoteachNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -38,7 +41,7 @@ export default function RootLayout() {
   const userClassrooms = classrooms
     ? classrooms.filter((classroom: any) =>
         isInstructor
-          ? classroom.instructorId === currentUser?.id
+          ? teachesClass(classroom, currentUser?.id)
           : classroom.students?.includes(currentUser?.id || '')
       )
     : [];
@@ -50,6 +53,10 @@ export default function RootLayout() {
     if (code) {
       try { sessionStorage.setItem('pendingJoinCode', code); } catch { /* blocked storage */ }
     }
+    const coteach = new URLSearchParams(location.search).get('coteach');
+    if (coteach) {
+      try { sessionStorage.setItem('pendingCoteach', coteach); } catch { /* blocked storage */ }
+    }
   }, [location.search]);
 
   // A new account must confirm its email before it can use the app. Read the flag from the
@@ -60,7 +67,7 @@ export default function RootLayout() {
   const emailUnverified = Boolean(isAuthenticated && me && me.emailVerified === false && currentUser?.emailVerified !== true);
   // A new device or browser must be confirmed with an emailed code too.
   const deviceTrusted = useDeviceTrusted(me?.email);
-  const termsNeeded = Boolean(isAuthenticated && me && !accountSyncing && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt && !hasAcceptedTermsLocally(me.id));
+  const termsNeeded = Boolean(isAuthenticated && me && !accountSyncing && !me.termsAcceptedAt && !currentUser?.termsAcceptedAt);
   const needsVerification = emailUnverified || Boolean(isAuthenticated && me && !deviceTrusted) || termsNeeded;
 
   // Remember an account on this device once it is fully signed in, so the switcher can
@@ -71,6 +78,26 @@ export default function RootLayout() {
       if (me.termsAcceptedAt) rememberTermsAccepted(me.id);
     }
   }, [isAuthenticated, me?.id, me?.termsAcceptedAt, needsVerification, accountSyncing]);
+
+  // An instructor invite link (?coteach=TOKEN) is applied once the account is fully in and
+  // the classes have loaded.
+  useEffect(() => {
+    if (!isAuthenticated || needsVerification || accountSyncing) return;
+    let token: string | null = null;
+    try { token = sessionStorage.getItem('pendingCoteach'); } catch { /* blocked */ }
+    if (!token) return;
+    const r = joinAsCoInstructor(token);
+    if (r === 'not-found' && (classrooms || []).length === 0) return; // classes not loaded yet
+    try { sessionStorage.removeItem('pendingCoteach'); } catch { /* blocked */ }
+    const text = {
+      joined: 'You were added as a co-instructor. The class is now on your dashboard.',
+      already: 'You already co-teach this class.',
+      owner: 'You own this class already.',
+      'not-found': 'That instructor invite link is not valid anymore.',
+      'not-instructor': 'Instructor invite links only work for instructor accounts. Switch to an instructor account and open the link again.',
+    }[r];
+    setCoteachNotice({ ok: r === 'joined' || r === 'already' || r === 'owner', text });
+  }, [isAuthenticated, needsVerification, accountSyncing, classrooms]);
 
   // While the profile is still loading, stay put instead of flashing a gate or bouncing.
   useEffect(() => {
@@ -138,6 +165,9 @@ export default function RootLayout() {
           notificationCount={notificationCount}
         >
           <Outlet />
+          <Snackbar open={Boolean(coteachNotice)} autoHideDuration={7000} onClose={() => setCoteachNotice(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+            <Alert severity={coteachNotice?.ok ? 'success' : 'warning'} onClose={() => setCoteachNotice(null)} variant="filled">{coteachNotice?.text}</Alert>
+          </Snackbar>
         </AppShell>
       ) : (
         <Box sx={{ minHeight: '100vh' }}>
