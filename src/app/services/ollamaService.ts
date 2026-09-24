@@ -37,16 +37,42 @@ export function setOllamaServerUrl(url: string) {
   } catch { /* storage blocked */ }
 }
 
+/**
+ * The site-wide Ollama address, published automatically by the laptop's tunnel script
+ * (scripts/ollama-tunnel.ps1) through the `ollama-register` function. Everyone uses it unless
+ * they set their own address.
+ */
+const SHARED_KEY = 'ollamaSharedUrl:v1';
+function getSharedOllamaUrl(): string {
+  try { return (localStorage.getItem(SHARED_KEY) || '').trim().replace(/\/+$/, ''); } catch { return ''; }
+}
+export async function refreshSharedOllamaUrl(): Promise<string> {
+  try {
+    const { supabase } = await import('../config/supabaseClient');
+    if (!supabase) return getSharedOllamaUrl();
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'ollama_server_url').maybeSingle();
+    const url = String(data?.value || '').trim().replace(/\/+$/, '');
+    try { if (url) localStorage.setItem(SHARED_KEY, url); else localStorage.removeItem(SHARED_KEY); } catch { /* blocked */ }
+    return url;
+  } catch {
+    return getSharedOllamaUrl();
+  }
+}
+/** The address actually in use: the person's own, else the site-wide one. */
+export function getActiveOllamaUrl(): string {
+  return getOllamaServerUrl() || getSharedOllamaUrl();
+}
+
 /** Where to send Ollama requests: the remote server if one is set, else the local proxy. */
 function ollamaEndpoints(base: string): string[] {
-  const remote = getOllamaServerUrl();
+  const remote = getActiveOllamaUrl();
   if (remote) return [remote];
   return Array.from(new Set([base.replace(/\/$/, ''), 'http://localhost:11434', 'http://127.0.0.1:11434']));
 }
 
 export function isOllamaReachable(): boolean {
   if (typeof window === 'undefined') return false;
-  if (getOllamaServerUrl()) return true;
+  if (getActiveOllamaUrl()) return true;
   // The dev server always proxies /api/ollama to Ollama on the machine it runs on, however
   // the page was reached (localhost, Wi-Fi address or a tunnel).
   if (import.meta.env?.DEV) return true;
@@ -131,8 +157,8 @@ export async function checkOllamaConnection(baseUrl: string = DEFAULT_OLLAMA_URL
     connected: false,
     models: [],
     activeModel: '',
-    error: getOllamaServerUrl()
-      ? `Could not reach Ollama at ${getOllamaServerUrl()}. Check that the laptop is on, Ollama and the tunnel are running, the address is the current one, and OLLAMA_ORIGINS is set.`
+    error: getActiveOllamaUrl()
+      ? `Could not reach Ollama at ${getActiveOllamaUrl()}. Check that the laptop is on, Ollama and the tunnel are running, the address is the current one, and OLLAMA_ORIGINS is set.`
       : 'Could not connect to Ollama. Make sure Ollama is running on this computer.',
   };
 }
@@ -320,7 +346,93 @@ export function getDifficultyPromptDirective(difficulty: string): DifficultyDire
 /**
  * Sends a structured generation request to local Ollama API for Exams/Quizzes using fast streaming.
  */
+/**
+ * Reads Ollama's streamed answer (one JSON object per line) into plain text. A network chunk
+ * can end in the middle of a line, especially over a tunnel or mobile data, so the unfinished
+ * tail is kept until the next chunk arrives; parsing chunks on their own silently lost text.
+ */
+async function readOllamaStream(body: ReadableStream<Uint8Array>): Promise<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let text = '';
+  const take = (line: string) => {
+    if (!line.trim()) return;
+    try {
+      const json = JSON.parse(line);
+      if (json.message?.content) text += json.message.content;
+      else if (json.response) text += json.response;
+    } catch { /* not a JSON line */ }
+  };
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    lines.forEach(take);
+  }
+  buffer += decoder.decode();
+  take(buffer);
+  return text;
+}
+
+/**
+ * Loads the model into memory before the real request. On a slow laptop the first load can
+ * take long enough that a tunnel gives up on the generation request itself.
+ */
+async function warmUpOllama(endpoint: string, model: string) {
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 120000);
+    await fetch(`${endpoint}/api/generate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+      body: JSON.stringify({ model, prompt: '', keep_alive: '15m' }),
+    });
+    clearTimeout(t);
+  } catch { /* the real request reports any problem */ }
+}
+
+const OLLAMA_BATCH_SIZE = 4;
+
+/**
+ * Generates an exam with Ollama in small batches. One big request often took longer than a
+ * phone browser or the Cloudflare tunnel will wait (about 100 s without an answer), which
+ * surfaced as "empty or unreadable answer". Small batches each finish quickly, and a failed
+ * batch is retried once.
+ */
 export async function generateExamWithOllama(params: ExamGenerationParams): Promise<any[]> {
+  const isTos = Boolean(params.tosData && (params.tosData.totalItems > 0 || params.tosData.rawText));
+  const total = params.mcCount + params.tfCount + params.saCount + params.essayCount + params.extraCount;
+  if (!isOllamaReachable()) throw new Error(OLLAMA_REMOTE_MESSAGE);
+  const [endpoint] = ollamaEndpoints((params.baseUrl || DEFAULT_OLLAMA_URL).replace(/\/$/, ''));
+  await warmUpOllama(endpoint, params.model || 'llama3.2:latest');
+  if (isTos || total <= OLLAMA_BATCH_SIZE) return generateExamBatchWithRetry(params);
+
+  // Split the requested counts into batches of at most OLLAMA_BATCH_SIZE, keeping type order.
+  const queue: (keyof ExamGenerationParams)[] = [];
+  (['mcCount', 'tfCount', 'saCount', 'essayCount', 'extraCount'] as const).forEach((k) => {
+    for (let i = 0; i < (params[k] as number); i++) queue.push(k);
+  });
+  const all: any[] = [];
+  for (let i = 0; i < queue.length; i += OLLAMA_BATCH_SIZE) {
+    const counts: any = { mcCount: 0, tfCount: 0, saCount: 0, essayCount: 0, extraCount: 0 };
+    queue.slice(i, i + OLLAMA_BATCH_SIZE).forEach((k) => { counts[k] += 1; });
+    all.push(...(await generateExamBatchWithRetry({ ...params, ...counts })));
+  }
+  const stamp = Date.now();
+  return all.map((q, i) => (q ? { ...q, id: `gq-ollama-${stamp}-${i + 1}` } : q));
+}
+
+async function generateExamBatchWithRetry(params: ExamGenerationParams): Promise<any[]> {
+  try {
+    return await generateExamBatch(params);
+  } catch (first) {
+    try { return await generateExamBatch(params); } catch { throw first; }
+  }
+}
+
+async function generateExamBatch(params: ExamGenerationParams): Promise<any[]> {
   const userUrl = (params.baseUrl || DEFAULT_OLLAMA_URL).replace(/\/$/, '');
   if (!isOllamaReachable()) throw new Error(OLLAMA_REMOTE_MESSAGE);
   const endpointsToTry = ollamaEndpoints(userUrl);
@@ -530,27 +642,7 @@ Respond ONLY with valid JSON matching this schema:
       clearTimeout(timeoutId);
 
       if (response.ok && response.body) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let accumulatedText = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              const jsonLine = JSON.parse(line);
-              if (jsonLine.message?.content) {
-                accumulatedText += jsonLine.message.content;
-              }
-            } catch (e) { }
-          }
-        }
+        const accumulatedText = await readOllamaStream(response.body);
 
         const parsed = parseTruncatedJson(accumulatedText);
         rawQuestions = extractQuestionsFromParsedJson(parsed);
@@ -558,6 +650,11 @@ Respond ONLY with valid JSON matching this schema:
         if (rawQuestions.length > 0) {
           break;
         }
+        connectionError = 'the model answered, but not with readable questions';
+      } else {
+        connectionError = response.status === 524 || response.status === 502
+          ? `the tunnel gave up waiting (HTTP ${response.status}); the laptop is too slow for this request`
+          : `HTTP ${response.status}`;
       }
     } catch (err: any) {
       connectionError = err.name === 'AbortError'
@@ -960,26 +1057,7 @@ Respond ONLY with valid JSON:
       clearTimeout(timeoutId);
 
       if (response.ok && response.body) {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let accumulatedText = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunkStr = decoder.decode(value, { stream: true });
-          const lines = chunkStr.split('\n').filter((l) => l.trim());
-          for (const line of lines) {
-            try {
-              const json = JSON.parse(line);
-              if (json.message?.content) {
-                accumulatedText += json.message.content;
-              } else if (json.response) {
-                accumulatedText += json.response;
-              }
-            } catch (e) { }
-          }
-        }
+        const accumulatedText = await readOllamaStream(response.body);
 
         const parsed = parseTruncatedJson(accumulatedText);
         if (parsed) {
