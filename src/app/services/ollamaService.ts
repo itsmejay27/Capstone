@@ -24,7 +24,10 @@ export const OLLAMA_REMOTE_MESSAGE =
 export function isOllamaReachable(): boolean {
   if (typeof window === 'undefined') return false;
   const host = window.location.hostname;
-  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local');
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host.endsWith('.local')) return true;
+  // A phone or another computer on the same Wi-Fi opening the dev server by the PC's address
+  // (e.g. http://192.168.1.5:5173). The dev server on that PC proxies /api/ollama to Ollama.
+  return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
 }
 
 export interface OllamaModelInfo {

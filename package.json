@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "test": "jest"
+    "test": "jest",
+    "dev:phone": "vite --host"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
