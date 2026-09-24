@@ -58,9 +58,13 @@ export async function refreshSharedOllamaUrl(): Promise<string> {
     return getSharedOllamaUrl();
   }
 }
-/** The address actually in use: the person's own, else the site-wide one. */
+/**
+ * The address actually in use. The laptop's published address wins: it is always the live
+ * one while the tunnel script runs, whereas a hand-typed address goes stale as soon as that
+ * tunnel restarts.
+ */
 export function getActiveOllamaUrl(): string {
-  return getOllamaServerUrl() || getSharedOllamaUrl();
+  return getSharedOllamaUrl() || getOllamaServerUrl();
 }
 
 /** Where to send Ollama requests: the remote server if one is set, else the local proxy. */

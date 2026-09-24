@@ -432,7 +432,7 @@ export default function OllamaConfigControl({
               Ollama server
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              {activeUrl && !serverSaved
+              {activeUrl && activeUrl !== serverSaved
                 ? `Connected automatically to the shared laptop (${activeUrl}).`
                 : activeUrl
                   ? `Using your own address (${activeUrl}).`
@@ -448,7 +448,7 @@ export default function OllamaConfigControl({
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
                 error={Boolean(serverError)}
-                helperText={serverError || (serverSaved ? `Using ${serverSaved}` : 'Leave empty to use the shared laptop automatically')}
+                helperText={serverError || (serverSaved ? `Using ${serverSaved}` : 'Only used when no laptop is sharing Ollama')}
                 sx={{ flex: '1 1 260px' }}
                 inputProps={{ 'aria-label': 'Ollama server address', autoCapitalize: 'none', autoCorrect: 'off' }}
               />
