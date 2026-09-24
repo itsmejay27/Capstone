@@ -26,7 +26,8 @@ import {
   Computer,
   AutoAwesome,
 } from '@mui/icons-material';
-import { checkOllamaConnection, OllamaConnectionState } from '../services/ollamaService';
+import { checkOllamaConnection, OllamaConnectionState, getOllamaServerUrl, setOllamaServerUrl } from '../services/ollamaService';
+import { useAuth } from '../context/AuthContext';
 import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel } from '../services/geminiService';
 
 export type AIEngineType = 'gemini' | 'nvidia' | 'ollama';
@@ -58,6 +59,21 @@ export default function OllamaConfigControl({
   onConnectionStatusChange,
 }: OllamaConfigControlProps) {
   const [loading, setLoading] = useState(false);
+  const { currentUser, saveOllamaServerUrl } = useAuth();
+
+  // The remote Ollama address follows the account, so pasting it once on the laptop also
+  // works on the phone. The local copy is what the Ollama service reads.
+  const [serverUrl, setServerUrl] = useState(() => getOllamaServerUrl());
+  const [serverSaved, setServerSaved] = useState(() => getOllamaServerUrl());
+  useEffect(() => {
+    const fromAccount = (currentUser as any)?.ollamaServerUrl || '';
+    if (fromAccount !== getOllamaServerUrl()) {
+      setOllamaServerUrl(fromAccount);
+      setServerUrl(fromAccount);
+      setServerSaved(fromAccount);
+    }
+  }, [(currentUser as any)?.ollamaServerUrl]);
+  const [serverError, setServerError] = useState('');
 
   // The NVIDIA catalogue changes over time, so it is read when that engine is selected
   // rather than shipped as a fixed list that eventually 410s.
@@ -91,6 +107,20 @@ export default function OllamaConfigControl({
     activeModel: '',
   });
 
+  const applyServerUrl = async (raw: string) => {
+    const clean = raw.trim().replace(/\/+$/, '');
+    if (clean && !/^https:\/\/[^\s/]+/i.test(clean)) {
+      setServerError('Use the https address from the tunnel, e.g. https://something.trycloudflare.com');
+      return;
+    }
+    setServerError('');
+    setOllamaServerUrl(clean);
+    setServerUrl(clean);
+    setServerSaved(clean);
+    await saveOllamaServerUrl(clean);
+    handleCheckConnection();
+  };
+
   const handleCheckConnection = useCallback(async () => {
     setLoading(true);
     const res = await checkOllamaConnection(ollamaUrl);
@@ -106,7 +136,7 @@ export default function OllamaConfigControl({
     if (onConnectionStatusChange) {
       onConnectionStatusChange(res.connected);
     }
-  }, [ollamaUrl, selectedModel, onModelChange, onConnectionStatusChange]);
+  }, [ollamaUrl, selectedModel, onModelChange, onConnectionStatusChange, serverSaved]);
 
   useEffect(() => {
     handleCheckConnection();
@@ -389,6 +419,45 @@ export default function OllamaConfigControl({
               </Button>
             </Grid>
           </Grid>
+        )}
+
+        {/* Remote Ollama: use a laptop's Ollama from the live site or a phone on mobile data */}
+        {engine === 'ollama' && (
+          <Box sx={{ mt: 1.5, p: 1.5, borderRadius: 2, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
+            <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.75 }}>
+              Ollama server address (optional)
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <TextField
+                size="small"
+                placeholder="https://your-tunnel.trycloudflare.com"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                error={Boolean(serverError)}
+                helperText={serverError || (serverSaved ? `Using ${serverSaved}` : 'Empty = Ollama on this computer')}
+                sx={{ flex: '1 1 260px' }}
+                inputProps={{ 'aria-label': 'Ollama server address', autoCapitalize: 'none', autoCorrect: 'off' }}
+              />
+              <Button variant="contained" size="small" onClick={() => applyServerUrl(serverUrl)} disabled={loading} sx={{ textTransform: 'none', height: 40 }}>
+                Save & test
+              </Button>
+              {serverSaved && (
+                <Button size="small" onClick={() => applyServerUrl('')} sx={{ textTransform: 'none', height: 40 }}>
+                  Clear
+                </Button>
+              )}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+              To use your laptop's Ollama from anywhere, run on the laptop:{' '}
+              <code>cloudflared tunnel --url http://localhost:11434 --http-host-header localhost:11434</code>{' '}
+              and paste the https address here. It is saved to your account, so your phone uses it too.
+            </Typography>
+            {!loading && !ollamaStatus.connected && ollamaStatus.error && (
+              <Typography variant="caption" sx={{ display: 'block', mt: 0.75, color: 'var(--c-red-600)', fontWeight: 600 }}>
+                {ollamaStatus.error}
+              </Typography>
+            )}
+          </Box>
         )}
 
         {/* Speed Tip Banner for Local Ollama */}
