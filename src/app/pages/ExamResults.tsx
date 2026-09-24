@@ -47,7 +47,7 @@ export default function ExamResults() {
 
   const isInstructor = currentUser?.role === 'instructor';
   // Use the specific questions drawer preserved in the attempt!
-  const questionsToReview = attempt.questions?.length ? attempt.questions : exam.questions;
+  const questionsToReview: any[] = (attempt.questions?.length ? attempt.questions : exam.questions) || [];
   const pending = isPending(attempt);
   const result = gradeFor(attempt.score || 0, exam.totalPoints);
   const answeredCount = questionsToReview.filter((q: any) => {
