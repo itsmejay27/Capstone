@@ -65,49 +65,10 @@ import {
 } from '@mui/icons-material';
 import { CLASS_THEMES, classThemeFor, BANNER_GRID } from '../theme/classThemes';
 import AttemptInsight from '../components/AttemptInsight';
+import GradeAttemptDialog from '../components/GradeAttemptDialog';
+import GradeSheet from '../components/GradeSheet';
+import { gradeFor, isPending } from '../services/grading';
 import { useState } from 'react';
-
-// Academic grade converter standard for OMSC (Occidental Mindoro State College)
-// Base-65 Transmutation System (65% raw passing -> 75% transmuted passing)
-function convertToTransmutedOMSCGrade(score: number, total: number) {
-  if (total <= 0) return { rawPct: 0, transmutedPct: 0, grade: '5.00', remark: 'Failed', color: 'var(--c-red-600)', bg: 'var(--c-red-100)' };
-  
-  const rawPct = (score / total) * 100;
-  
-  let transmutedPct = 0;
-  if (rawPct >= 65) {
-    transmutedPct = 75 + ((rawPct - 65) * 25) / 35;
-  } else {
-    transmutedPct = 50 + (rawPct * 25) / 65;
-  }
-  
-  let grade = '5.00';
-  let remark = 'Failed';
-  let color = 'var(--c-red-600)';
-  let bg = 'var(--c-red-100)';
-  
-  if (transmutedPct >= 98) {
-    grade = '1.00'; remark = 'Excellent'; color = 'var(--c-green-700)'; bg = 'var(--c-green-100)';
-  } else if (transmutedPct >= 95) {
-    grade = '1.25'; remark = 'Very Good'; color = 'var(--c-green-700)'; bg = 'var(--c-green-100)';
-  } else if (transmutedPct >= 92) {
-    grade = '1.50'; remark = 'Very Good'; color = 'var(--c-green-700)'; bg = 'var(--c-green-100)';
-  } else if (transmutedPct >= 89) {
-    grade = '1.75'; remark = 'Good'; color = 'var(--c-green-700)'; bg = 'var(--c-green-100)';
-  } else if (transmutedPct >= 86) {
-    grade = '2.00'; remark = 'Good'; color = 'var(--c-green-700)'; bg = 'var(--c-green-100)';
-  } else if (transmutedPct >= 83) {
-    grade = '2.25'; remark = 'Satisfactory'; color = 'var(--c-sky-700)'; bg = 'var(--c-sky-100)';
-  } else if (transmutedPct >= 80) {
-    grade = '2.50'; remark = 'Satisfactory'; color = 'var(--c-sky-700)'; bg = 'var(--c-sky-100)';
-  } else if (transmutedPct >= 77) {
-    grade = '2.75'; remark = 'Fair'; color = 'var(--c-amber-700)'; bg = 'var(--c-amber-100)';
-  } else if (transmutedPct >= 75) {
-    grade = '3.00'; remark = 'Passing'; color = 'var(--c-amber-700)'; bg = 'var(--c-amber-100)';
-  }
-  
-  return { rawPct, transmutedPct, grade, remark, color, bg };
-}
 
 function getMaterialIcon(filename: string) {
   const ext = filename.split('.').pop()?.toLowerCase();
@@ -142,7 +103,11 @@ export default function ClassroomDetail() {
     saveComment,
     deleteComment,
     updateClassroom,
+    submitExamAttempt,
+    getCoteachLink,
+    removeCoInstructor,
   } = useAuth();
+  const [grading, setGrading] = useState<{ attempt: any; exam: any; studentName: string } | null>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -631,11 +596,15 @@ export default function ClassroomDetail() {
                         {!isInstructor ? (
                           status === 'completed' ? (
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <Chip
-                                label={`Score: ${attempt?.score ?? 0} / ${exam.totalPoints}`}
-                                size="small"
-                                sx={{ bgcolor: 'var(--c-green-100)', color: 'var(--c-green-700)', fontWeight: 800 }}
-                              />
+                              {isPending(attempt) ? (
+                                <Chip label="Submitted · awaiting instructor check" size="small" sx={{ bgcolor: 'var(--c-amber-100)', color: 'var(--c-amber-800)', fontWeight: 800 }} />
+                              ) : (
+                                <Chip
+                                  label={`Score: ${attempt?.score ?? 0} / ${exam.totalPoints} · Grade ${gradeFor(attempt?.score ?? 0, exam.totalPoints).grade}`}
+                                  size="small"
+                                  sx={{ bgcolor: 'var(--c-green-100)', color: 'var(--c-green-700)', fontWeight: 800 }}
+                                />
+                              )}
                               <Button
                                 size="small"
                                 variant="outlined"
@@ -814,6 +783,60 @@ export default function ClassroomDetail() {
               )}
             </Paper>
 
+            {/* Co-instructors. Only the class owner can invite or remove them. */}
+            {(classroom.instructorId === currentUser?.id || (classroom.coInstructors || []).length > 0) && (
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 1, flexWrap: 'wrap' }}>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'var(--c-slate-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Co-instructors ({(classroom.coInstructors || []).length})
+                  </Typography>
+                  {classroom.instructorId === currentUser?.id && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<LinkIcon />}
+                      onClick={async () => {
+                        const link = getCoteachLink(classroom.id);
+                        if (!link) return;
+                        try {
+                          await navigator.clipboard.writeText(link);
+                          setUploadToast({ severity: 'success', message: 'Instructor invite link copied. Only share it with instructors you trust — anyone with an instructor account who opens it can co-teach this class.' });
+                        } catch {
+                          window.prompt('Copy this instructor invite link:', link);
+                        }
+                      }}
+                      sx={{ fontWeight: 700, textTransform: 'none' }}
+                    >
+                      Copy instructor invite link
+                    </Button>
+                  )}
+                </Box>
+                {(classroom.coInstructors || []).length === 0 ? (
+                  <Typography variant="body2" color="var(--c-slate-500)">
+                    No co-instructors yet. Send the instructor invite link to a colleague; they join after signing in with an instructor account.
+                  </Typography>
+                ) : (
+                  <List disablePadding>
+                    {(classroom.coInstructors || []).map((id: string) => {
+                      const u = users.find((x) => x.id === id);
+                      return (
+                        <ListItem key={id} sx={{ px: 1 }}
+                          secondaryAction={classroom.instructorId === currentUser?.id ? (
+                            <Tooltip title="Remove co-instructor">
+                              <IconButton edge="end" size="small" onClick={() => removeCoInstructor(classroom.id, id)}><Delete fontSize="small" /></IconButton>
+                            </Tooltip>
+                          ) : undefined}
+                        >
+                          <ListItemAvatar><Avatar src={u?.avatar} sx={{ width: 36, height: 36 }}>{u?.name?.charAt(0) || '?'}</Avatar></ListItemAvatar>
+                          <ListItemText primary={u?.name || 'Instructor'} secondary={u?.email} />
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                )}
+              </Paper>
+            )}
+
             {/* Students List */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
@@ -859,7 +882,7 @@ export default function ClassroomDetail() {
               <Box>
                 <Typography variant="h6" fontWeight={900} sx={{ color: 'var(--c-slate-900)' }}>Academic Gradebook</Typography>
                 <Typography variant="caption" sx={{ color: 'var(--c-slate-500)' }}>
-                  Base-65 Transmutation Standard (65% Passing = 3.00)
+                  Grades on a 65–100 scale · 75 is passing · short-answer and essay items wait for your check
                 </Typography>
               </Box>
             </Box>
@@ -893,7 +916,7 @@ export default function ClassroomDetail() {
                           const attempt = examAttempts.find(
                             (a) => a.examId === exam.id && a.studentId === student.id && a.submittedAt
                           );
-                          if (!attempt || attempt.score === undefined) {
+                          if (!attempt) {
                             return (
                               <TableCell key={exam.id} align="center" sx={{ color: 'var(--c-slate-400)', fontSize: '0.85rem' }}>
                                 Not submitted
@@ -901,15 +924,28 @@ export default function ClassroomDetail() {
                             );
                           }
 
-                          const result = convertToTransmutedOMSCGrade(attempt.score, exam.totalPoints);
+                          const pending = isPending(attempt);
+                          const result = gradeFor(attempt.score || 0, exam.totalPoints);
                           return (
                             <TableCell key={exam.id} align="center">
-                              <Chip
-                                label={`${attempt.score}/${exam.totalPoints} • Grade ${result.grade}`}
-                                size="small"
-                                sx={{ bgcolor: result.bg, color: result.color, fontWeight: 800, fontSize: '0.72rem' }}
-                              />
+                              {pending ? (
+                                <Chip label="Needs checking" size="small" sx={{ bgcolor: 'var(--c-amber-100)', color: 'var(--c-amber-800)', fontWeight: 800, fontSize: '0.72rem' }} />
+                              ) : (
+                                <Chip
+                                  label={`${attempt.score}/${exam.totalPoints} • ${result.grade}`}
+                                  size="small"
+                                  sx={{ bgcolor: result.bg, color: result.color, fontWeight: 800, fontSize: '0.72rem' }}
+                                />
+                              )}
                               <AttemptInsight attempt={attempt} studentName={student.name} />
+                              <Button
+                                size="small"
+                                variant={pending ? 'contained' : 'text'}
+                                onClick={() => setGrading({ attempt, exam, studentName: student.name })}
+                                sx={{ mt: 0.5, fontWeight: 700, textTransform: 'none', fontSize: '0.72rem', py: 0.25 }}
+                              >
+                                {pending ? 'Check answers' : 'Review'}
+                              </Button>
                             </TableCell>
                           );
                         })}
@@ -929,6 +965,15 @@ export default function ClassroomDetail() {
             </Typography>
           </Box>
           <ItemAnalysisPanel exams={rawClassExams} attempts={examAttempts} />
+          <GradeSheet classroom={classroom} students={students} exams={rawClassExams} attempts={examAttempts} />
+          <GradeAttemptDialog
+            open={Boolean(grading)}
+            onClose={() => setGrading(null)}
+            attempt={grading?.attempt}
+            exam={grading?.exam}
+            studentName={grading?.studentName}
+            onSave={submitExamAttempt}
+          />
           </>
         )}
 

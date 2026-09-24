@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useExamGuard } from '../hooks/useExamGuard';
 import { useToast } from '../components/Toast';
 import { useParams, useNavigate } from 'react-router';
+import { scoreAttempt } from '../services/grading';
 import { useAuth } from '../context/AuthContext';
 import {
   Container,
@@ -272,40 +273,17 @@ export default function TakeExam() {
     setSubmitted(true);
     setOpenSubmitDialog(false);
 
-    let score = 0;
-    activeQuestions.forEach((q: any) => {
-      const studentAnswer = answers[q.id];
-      const isAnswered = studentAnswer !== undefined && studentAnswer !== null && String(studentAnswer).trim() !== '';
-
-      if (!isAnswered) {
-        return; // Unanswered questions get 0 points
-      }
-
-      if (q.type === 'multiple-choice') {
-        if (studentAnswer === q.correctAnswer) {
-          score += q.points;
-        }
-      } else if (q.type === 'true-false') {
-        if (String(studentAnswer).toLowerCase() === String(q.correctAnswer).toLowerCase()) {
-          score += q.points;
-        }
-      } else if (q.type === 'short-answer') {
-        if (
-          String(studentAnswer).trim().toLowerCase() ===
-          String(q.correctAnswer).trim().toLowerCase()
-        ) {
-          score += q.points;
-        }
-      } else {
-        score += Math.round(q.points * 0.8);
-      }
-    });
+    // Short-answer and essay items wait for the instructor; only the rest is scored now.
+    const scored = scoreAttempt(activeQuestions, answers);
+    const score = scored.total;
 
     const finalizedAttempt = {
       ...attempt,
       answers,
       ...guard.snapshot(activeQuestions.length),
       score,
+      gradingStatus: scored.pendingIds.length > 0 ? 'pending' : 'graded',
+      manualScores: {},
       submittedAt: new Date().toISOString(),
       // Recorded so a submission accepted after the due date is visible when grading,
       // rather than being silently indistinguishable from an on-time one.
@@ -347,10 +325,17 @@ export default function TakeExam() {
         py: 4, position: 'relative',
         // Blurred whenever the window loses focus — screen-capture tools and other apps
         // take focus first, so what they capture is unreadable.
-        filter: guard.obscured ? 'blur(14px)' : 'none',
-        transition: 'filter .12s ease',
+        // No transition: the content must vanish on the same frame the key goes down.
+        '& > *:not(.exam-cover)': { visibility: guard.obscured ? 'hidden' : 'visible' },
       }}
     >
+      {guard.obscured && (
+        <Box className="exam-cover" sx={{ position: 'fixed', inset: 0, zIndex: 1400, bgcolor: 'var(--c-canvas, #0b1020)', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', p: 3 }}>
+          <Typography sx={{ fontWeight: 800, color: 'var(--c-ink, #fff)' }}>
+            The exam is hidden while this window is not in focus.<br />Click here to continue.
+          </Typography>
+        </Box>
+      )}
       {/* Faint name watermark: a photo of the screen still identifies whose exam it is. */}
       <Box
         aria-hidden

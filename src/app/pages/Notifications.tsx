@@ -1,3 +1,4 @@
+import { teachesClass } from '../services/classAccess';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
@@ -203,7 +204,7 @@ export default function Notifications() {
     const myClassIds = new Set(
       classrooms
         .filter((c: any) =>
-          isInstructor ? c.instructorId === currentUser?.id : c.students?.includes(currentUser?.id)
+          isInstructor ? teachesClass(c, currentUser?.id) : c.students?.includes(currentUser?.id)
         )
         .map((c: any) => c.id)
     );
@@ -254,7 +255,7 @@ export default function Notifications() {
               label="To review" value={counts.review} tone="warning" icon={RateReview}
               active={filter === 'review'} onClick={() => setFilter(filter === 'review' ? 'all' : 'review')}
             />
-            <SummaryTile label="Classes" value={classrooms.filter((c: any) => c.instructorId === currentUser?.id).length} tone="info" icon={Inbox} />
+            <SummaryTile label="Classes" value={classrooms.filter((c: any) => teachesClass(c, currentUser?.id)).length} tone="info" icon={Inbox} />
             <SummaryTile
               label="Submissions" value={submissions.filter((s: any) => s.submittedAt).length + examAttempts.filter((a: any) => a.submittedAt).length}
               tone="success" icon={TaskAlt}

@@ -1,3 +1,4 @@
+import { teachesClass } from '../services/classAccess';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
@@ -101,7 +102,7 @@ export default function Dashboard() {
 
   const userClassrooms = classrooms.filter((classroom) =>
     isInstructor
-      ? classroom.instructorId === currentUser?.id
+      ? teachesClass(classroom, currentUser?.id)
       : classroom.students.includes(currentUser?.id || '')
   );
 

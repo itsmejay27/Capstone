@@ -40,3 +40,8 @@ export const setAccountPassword = (email: string, code: string, password: string
 /** Checks a password on the server (sign-in and re-authentication). */
 export const checkAccountPassword = (email: string, password: string) =>
   call('account-auth', { action: 'check', email, password });
+
+/** Records a Google sign-in in Supabase Authentication > Users. Best effort; never blocks sign-in. */
+export function syncGoogleAuthUser(credential: string) {
+  void call('auth-sync', { credential }).catch(() => {});
+}

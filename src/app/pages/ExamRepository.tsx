@@ -1,3 +1,4 @@
+import { teachesClass } from '../services/classAccess';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
@@ -368,7 +369,7 @@ export default function ExamRepository() {
   const handleOpenAssign = (examId: string) => {
     setSelectedExamId(examId);
     // Auto-select first class if available
-    const myClasses = classrooms.filter((c) => c.instructorId === currentUser?.id);
+    const myClasses = classrooms.filter((c) => teachesClass(c, currentUser?.id));
     if (myClasses.length > 0) {
       setSelectedClassroomId(myClasses[0].id);
     }
@@ -646,7 +647,7 @@ export default function ExamRepository() {
     }, 1500);
   };
 
-  const myClassrooms = classrooms.filter((c) => c.instructorId === currentUser?.id);
+  const myClassrooms = classrooms.filter((c) => teachesClass(c, currentUser?.id));
 
   return (
     <Container maxWidth="xl" sx={{ py: 4, px: { xs: 2, sm: 3, md: 5, lg: 6 } }}>

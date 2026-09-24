@@ -34,10 +34,16 @@ export default function VerifyEmailGate({
     }
   };
 
+  // Wait a moment before sending: right after sign-in the account's saved status may still be
+  // loading, and this step often disappears on its own once it does. Sending immediately is
+  // what emailed codes nobody was asked for.
   useEffect(() => {
-    if (sentOnce.current) return;
-    sentOnce.current = true;
-    void send();
+    const t = window.setTimeout(() => {
+      if (sentOnce.current) return;
+      sentOnce.current = true;
+      void send();
+    }, 1500);
+    return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

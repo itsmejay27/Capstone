@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { teachesClass } from '../../services/classAccess';
 import { Box, TextField, MenuItem, Button, Typography, Chip } from '@mui/material';
 import { Upload, School } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
@@ -18,7 +19,7 @@ export function useSourcePicker() {
   const [topic, setTopic] = useState('');
 
   const myClasses = useMemo(
-    () => classrooms.filter((c: any) => (c.students || []).includes(currentUser?.id) || c.instructorId === currentUser?.id),
+    () => classrooms.filter((c: any) => (c.students || []).includes(currentUser?.id) || teachesClass(c, currentUser?.id)),
     [classrooms, currentUser?.id]
   );
   const materials = classroomId ? (classroomMaterials[classroomId] || []) : [];

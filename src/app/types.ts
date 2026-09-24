@@ -80,6 +80,14 @@ export interface ExamAttempt {
    * meaningful against this array. Item analysis is impossible without it.
    */
   questions?: Question[];
+  /** Points the instructor awarded per short-answer/essay question id. */
+  manualScores?: Record<string, number>;
+  /** 'pending' until every short-answer/essay item has been checked by the instructor. */
+  gradingStatus?: 'pending' | 'graded';
+  gradedAt?: string;
+  feedback?: string;
+  timing?: any;
+  integrity?: any;
 }
 
 export interface QuestionBankItem extends Question {

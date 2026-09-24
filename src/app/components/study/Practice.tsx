@@ -2,22 +2,26 @@ import { useState } from 'react';
 import { Box, Paper, Typography, Button, Radio, RadioGroup, FormControlLabel, Alert, CircularProgress, Chip, LinearProgress, IconButton } from '@mui/material';
 import { Psychology, ArrowBack, AutoAwesome, Delete, CheckCircle, Cancel } from '@mui/icons-material';
 import SourcePicker, { useSourcePicker } from './SourcePicker';
+import StudyOptions, { useStudyOptions, countField, DIFFICULTY, LANGUAGE, difficultyRule } from './StudyOptions';
 import { generateStudyJson } from '../../services/geminiService';
 import { newId, logStudySession, type useStudyItems } from '../../services/studyStore';
 
 type Store = ReturnType<typeof useStudyItems>;
 interface Q { question: string; options: string[]; correctAnswer: number; explanation?: string; topic: string }
 interface Round { questions: Q[]; answers?: Record<number, number>; score?: number; focus?: string[] }
-export interface PracticeSet { source: { label: string; text: string }; rounds: Round[]; mastery: Record<string, { correct: number; total: number }> }
+type Settings = { count?: string; difficulty?: string; language?: string; label?: string };
+export interface PracticeSet { source: { label: string; text: string }; settings?: Settings; rounds: Round[]; mastery: Record<string, { correct: number; total: number }> }
 
 const SYSTEM = 'You write fair, accurate multiple-choice practice questions with exactly 4 options, one correct answer, and a one-sentence explanation. Every question has a short "topic" label.';
 
-async function makeRound(src: { label: string; text: string }, focus: string[], mistakes: string[]): Promise<Q[]> {
+async function makeRound(src: { label: string; text: string }, focus: string[], mistakes: string[], settings: Settings = {}): Promise<Q[]> {
   const focusLine = focus.length
     ? `\nFocus ONLY on these weak topics: ${focus.join(', ')}. The student got these wrong before — write NEW questions that test the same ideas from different angles:\n${mistakes.slice(0, 10).map((m) => `- ${m}`).join('\n')}`
     : '';
   const out = await generateStudyJson(SYSTEM,
-    `Write 8 practice questions for "${src.label}".${focusLine}${src.text ? `\nUse ONLY this material:\n---\n${src.text}\n---` : ''}
+    `Write exactly ${settings.count || 8} practice questions for "${src.label}".
+${difficultyRule(settings.difficulty)}
+Write everything in ${settings.language || 'English'}.${focusLine}${src.text ? `\nUse ONLY this material:\n---\n${src.text}\n---` : ''}
 Respond as JSON: {"questions":[{"question":"...","options":["A","B","C","D"],"correctAnswer":0,"explanation":"...","topic":"..."}]}`);
   const qs = (out.questions || []).filter((q: any) => q.question && Array.isArray(q.options) && q.options.length >= 2)
     .map((q: any) => ({ question: String(q.question), options: q.options.map(String).slice(0, 4), correctAnswer: Math.min(Math.max(0, Number(q.correctAnswer) || 0), 3), explanation: q.explanation ? String(q.explanation) : '', topic: String(q.topic || 'General') }));
@@ -30,6 +34,7 @@ export const weakTopics = (m: PracticeSet['mastery']) =>
 
 export default function Practice({ store }: { store: Store }) {
   const picker = useSourcePicker();
+  const opts = useStudyOptions([countField('Questions per round', [5, 8, 10, 15, 20]), DIFFICULTY, LANGUAGE], { count: '8', difficulty: 'mixed', language: 'English' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -40,8 +45,9 @@ export default function Practice({ store }: { store: Store }) {
     setError(''); setBusy(true);
     try {
       const src = await picker.resolve();
-      const questions = await makeRound(src, [], []);
-      const saved = store.save({ id: newId('prac'), kind: 'practice', title: src.label, data: { source: src, rounds: [{ questions }], mastery: {} } });
+      const settings = { ...opts.values, label: opts.label() };
+      const questions = await makeRound(src, [], [], settings);
+      const saved = store.save({ id: newId('prac'), kind: 'practice', title: src.label, data: { source: src, settings, rounds: [{ questions }], mastery: {} } });
       if (saved) setOpenId(saved.id);
     } catch (e: any) { setError(e.message || String(e)); }
     setBusy(false);
@@ -54,6 +60,7 @@ export default function Practice({ store }: { store: Store }) {
       <Paper sx={{ p: 2.5, mb: 3, borderRadius: '16px' }}>
         <Typography sx={{ fontWeight: 800, mb: 1.5 }}>New practice set</Typography>
         <SourcePicker picker={picker} />
+        <StudyOptions opts={opts} />
         {error && <Alert severity="error" sx={{ mt: 1.5 }}>{error}</Alert>}
         <Button variant="contained" startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <AutoAwesome />} disabled={!picker.ready || busy} onClick={create} sx={{ mt: 1.5 }}>
           {busy ? 'Writing questions…' : 'Start practice'}
@@ -114,7 +121,7 @@ function PracticeRun({ set, store, onBack }: { set: any; store: Store; onBack: (
     try {
       const focus = focusWeak ? weakTopics(data.mastery) : [];
       const mistakes = data.rounds.flatMap((r) => r.questions.filter((q, i) => r.answers && r.answers[i] !== q.correctAnswer && focus.includes(q.topic)).map((q) => q.question));
-      const questions = await makeRound(data.source, focus, mistakes);
+      const questions = await makeRound(data.source, focus, mistakes, data.settings);
       store.save({ ...set, data: { ...data, rounds: [...data.rounds, { questions, focus }] } });
       setAnswers({});
     } catch (e: any) { setError(e.message || String(e)); }

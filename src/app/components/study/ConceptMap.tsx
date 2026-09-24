@@ -2,6 +2,14 @@ import { useMemo, useState } from 'react';
 import { Box, Paper, Typography, Button, Alert, CircularProgress, IconButton } from '@mui/material';
 import { AccountTree, ArrowBack, AutoAwesome, Delete } from '@mui/icons-material';
 import SourcePicker, { useSourcePicker } from './SourcePicker';
+import StudyOptions, { useStudyOptions, LANGUAGE } from './StudyOptions';
+
+const SIZE = { key: 'size', label: 'Map size', choices: [
+  { value: '4', label: 'Small (4 branches)' }, { value: '5', label: 'Medium (5 branches)' }, { value: '7', label: 'Large (7 branches)' },
+] };
+const DEPTH = { key: 'depth', label: 'Details per branch', choices: [
+  { value: '2', label: '2 sub-ideas' }, { value: '3', label: '3 sub-ideas' }, { value: '4', label: '4 sub-ideas' },
+] };
 import { generateStudyJson } from '../../services/geminiService';
 import { newId, type useStudyItems } from '../../services/studyStore';
 
@@ -10,6 +18,7 @@ interface MapData { center: string; branches: { label: string; note?: string; ch
 
 export default function ConceptMap({ store }: { store: Store }) {
   const picker = useSourcePicker();
+  const opts = useStudyOptions([SIZE, DEPTH, LANGUAGE], { size: '5', depth: '3', language: 'English' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -21,8 +30,8 @@ export default function ConceptMap({ store }: { store: Store }) {
     try {
       const src = await picker.resolve();
       const out = await generateStudyJson(
-        'You build concept maps for studying: a central idea, 4-7 main branches, and 2-4 specific sub-ideas per branch, each with a one-line note explaining the connection.',
-        `Concept map for "${src.label}".${src.text ? `\nUse ONLY this material:\n---\n${src.text}\n---` : ''}
+        'You build concept maps for studying: a central idea, main branches, and specific sub-ideas per branch, each with a one-line note explaining the connection.',
+        `Concept map for "${src.label}" with exactly ${opts.values.size} main branches and ${opts.values.depth} sub-ideas per branch, written in ${opts.values.language}.${src.text ? `\nUse ONLY this material:\n---\n${src.text}\n---` : ''}
 Respond as JSON: {"center":"...","branches":[{"label":"...","note":"...","children":[{"label":"...","note":"..."}]}]}  (short labels, max 5 words)`
       );
       const data: MapData = {
@@ -49,6 +58,7 @@ Respond as JSON: {"center":"...","branches":[{"label":"...","note":"...","childr
       <Paper sx={{ p: 2.5, mb: 3, borderRadius: '16px' }}>
         <Typography sx={{ fontWeight: 800, mb: 1.5 }}>New concept map</Typography>
         <SourcePicker picker={picker} />
+        <StudyOptions opts={opts} />
         {error && <Alert severity="error" sx={{ mt: 1.5 }}>{error}</Alert>}
         <Button variant="contained" startIcon={busy ? <CircularProgress size={16} color="inherit" /> : <AutoAwesome />} disabled={!picker.ready || busy} onClick={create} sx={{ mt: 1.5 }}>
           {busy ? 'Mapping…' : 'Build concept map'}

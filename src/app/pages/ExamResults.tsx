@@ -21,7 +21,10 @@ import {
   Timer,
   Assignment,
   HelpOutline,
+  HourglassTop,
 } from '@mui/icons-material';
+import { gradeFor, isPending, autoPoints } from '../services/grading';
+import { formatDuration } from '../hooks/useExamGuard';
 
 export default function ExamResults() {
   const { examId } = useParams();
@@ -43,19 +46,18 @@ export default function ExamResults() {
   }
 
   const isInstructor = currentUser?.role === 'instructor';
-  const rawPercentage = ((attempt.score || 0) / exam.totalPoints) * 100;
-  
-  let transmutedPercentage = 0;
-  if (rawPercentage >= 65) {
-    transmutedPercentage = 75 + ((rawPercentage - 65) * 25) / 35;
-  } else {
-    transmutedPercentage = 50 + (rawPercentage * 25) / 65;
-  }
-  
-  const passed = transmutedPercentage >= 75;
-
   // Use the specific questions drawer preserved in the attempt!
-  const questionsToReview = attempt.questions || exam.questions;
+  const questionsToReview = attempt.questions?.length ? attempt.questions : exam.questions;
+  const pending = isPending(attempt);
+  const result = gradeFor(attempt.score || 0, exam.totalPoints);
+  const answeredCount = questionsToReview.filter((q: any) => {
+    const v = attempt.answers?.[q.id];
+    return v !== undefined && v !== null && String(v).trim() !== '';
+  }).length;
+  const typeCounts = questionsToReview.reduce((m: Record<string, number>, q: any) => ({ ...m, [q.type]: (m[q.type] || 0) + 1 }), {});
+  const typeLabel: Record<string, string> = { 'multiple-choice': 'Multiple choice', 'true-false': 'True/False', 'short-answer': 'Short answer', essay: 'Essay' };
+  const receiptId = String(attempt.id).replace(/[^a-z0-9]/gi, '').slice(-8).toUpperCase();
+  const timing = (attempt as any).timing;
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -67,37 +69,60 @@ export default function ExamResults() {
         Back to Classroom
       </Button>
 
-      <Paper sx={{ p: 4, mb: 3, textAlign: 'center', borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-        <Grade sx={{ fontSize: 80, color: passed ? 'success.main' : 'error.main', mb: 2 }} />
-        <Typography variant="h3" fontWeight="bold" gutterBottom>
-          {attempt.score} / {exam.totalPoints}
-        </Typography>
-        
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, my: 2, flexWrap: 'wrap' }}>
+      {/* Confirmation that the exam was received */}
+      <Paper sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid var(--c-green-100)', bgcolor: 'var(--c-surface)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <CheckCircle sx={{ color: 'success.main', fontSize: 34 }} />
           <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.85rem' }}>
-              RAW SCORE PERCENTAGE
-            </Typography>
-            <Typography variant="h5" fontWeight="bold" color="text.primary">
-              {rawPercentage.toFixed(1)}%
-            </Typography>
-          </Box>
-          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-          <Box>
-            <Typography variant="caption" color="primary.main" sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold' }}>
-              TRANSMUTED GRADE PERCENTAGE
-            </Typography>
-            <Typography variant="h5" fontWeight="bold" color="#4caf50">
-              {transmutedPercentage.toFixed(1)}%
+            <Typography variant="h6" fontWeight="bold">Exam submitted</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Your answers were received{attempt.submittedAt ? ` on ${new Date(attempt.submittedAt).toLocaleString()}` : ''}. Keep this confirmation number: <strong>#{receiptId}</strong>
             </Typography>
           </Box>
         </Box>
+      </Paper>
 
-        <Chip
-          label={passed ? 'PASSED (Base-65 Transmuted)' : 'NEEDS IMPROVEMENT'}
-          color={passed ? 'success' : 'error'}
-          sx={{ mt: 2, px: 3, py: 2, fontSize: '1rem', fontWeight: 'bold' }}
-        />
+      <Paper sx={{ p: 4, mb: 3, textAlign: 'center', borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        {pending ? (
+          <>
+            <HourglassTop sx={{ fontSize: 72, color: 'warning.main', mb: 1 }} />
+            <Typography variant="h5" fontWeight="bold" gutterBottom>Waiting for your instructor</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 460, mx: 'auto' }}>
+              This exam has short-answer or essay questions that your instructor checks by hand.
+              Your grade appears here once they finish.
+            </Typography>
+          </>
+        ) : (
+          <>
+            <Grade sx={{ fontSize: 80, color: result.passed ? 'success.main' : 'error.main', mb: 2 }} />
+            <Typography variant="h3" fontWeight="bold" gutterBottom>
+              {attempt.score} / {exam.totalPoints}
+            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, my: 2, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.85rem' }}>SCORE</Typography>
+                <Typography variant="h5" fontWeight="bold">{result.pct.toFixed(1)}%</Typography>
+              </Box>
+              <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
+              <Box>
+                <Typography variant="caption" color="primary.main" sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold' }}>GRADE (65–100)</Typography>
+                <Typography variant="h5" fontWeight="bold" sx={{ color: result.passed ? 'success.main' : 'error.main' }}>{result.grade}</Typography>
+              </Box>
+            </Box>
+            <Chip
+              label={result.passed ? `PASSED · ${result.remark}` : 'NEEDS IMPROVEMENT'}
+              color={result.passed ? 'success' : 'error'}
+              sx={{ mt: 1, px: 3, py: 2, fontSize: '1rem', fontWeight: 'bold' }}
+            />
+            <LinearProgress variant="determinate" value={Math.min(100, result.pct)} sx={{ mt: 3, height: 8, borderRadius: 4 }} />
+          </>
+        )}
+        {(attempt as any).feedback && (
+          <Box sx={{ mt: 3, textAlign: 'left', p: 2, borderRadius: 2, bgcolor: 'var(--c-surface-sunken)' }}>
+            <Typography variant="caption" fontWeight="bold">Instructor feedback</Typography>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{(attempt as any).feedback}</Typography>
+          </Box>
+        )}
       </Paper>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -105,18 +130,17 @@ export default function ExamResults() {
           <Card variant="outlined" sx={{ width: '100%', height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Assignment sx={{ mr: 1, color: '#1976d2' }} />
+                <Assignment sx={{ mr: 1, color: 'primary.main' }} />
                 <Typography variant="h6" fontWeight="bold">Exam Details</Typography>
               </Box>
-              <Typography variant="body2" color="text.secondary">
-                <strong>Title:</strong> {exam.title}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                <strong>Classroom:</strong> {classroom?.name || 'Classroom'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                <strong>Questions Taken:</strong> {questionsToReview.length} items
-              </Typography>
+              <Typography variant="body2" color="text.secondary"><strong>Title:</strong> {exam.title}</Typography>
+              <Typography variant="body2" color="text.secondary"><strong>Classroom:</strong> {classroom?.name || 'Classroom'}{classroom?.subject ? ` · ${classroom.subject}` : ''}</Typography>
+              <Typography variant="body2" color="text.secondary"><strong>Items:</strong> {questionsToReview.length} · <strong>Total points:</strong> {exam.totalPoints}</Typography>
+              {exam.duration ? <Typography variant="body2" color="text.secondary"><strong>Time limit:</strong> {exam.duration} minutes</Typography> : null}
+              {exam.dueDate && <Typography variant="body2" color="text.secondary"><strong>Due:</strong> {new Date(exam.dueDate).toLocaleString()}</Typography>}
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 1 }}>
+                {Object.entries(typeCounts).map(([t, n]) => <Chip key={t} size="small" label={`${typeLabel[t] || t}: ${n}`} />)}
+              </Box>
             </CardContent>
           </Card>
         </Grid>
@@ -125,71 +149,18 @@ export default function ExamResults() {
           <Card variant="outlined" sx={{ width: '100%', height: '100%', borderRadius: 2 }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Timer sx={{ mr: 1, color: '#1976d2' }} />
+                <Timer sx={{ mr: 1, color: 'primary.main' }} />
                 <Typography variant="h6" fontWeight="bold">Submission Info</Typography>
               </Box>
-              <Typography variant="body2" color="text.secondary">
-                <strong>Started At:</strong>{' '}
-                {attempt.startedAt ? new Date(attempt.startedAt).toLocaleString() : 'N/A'}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                <strong>Submitted At:</strong>{' '}
-                {attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString() : 'N/A'}
-              </Typography>
+              <Typography variant="body2" color="text.secondary"><strong>Started:</strong> {attempt.startedAt ? new Date(attempt.startedAt).toLocaleString() : 'N/A'}</Typography>
+              <Typography variant="body2" color="text.secondary"><strong>Submitted:</strong> {attempt.submittedAt ? new Date(attempt.submittedAt).toLocaleString() : 'N/A'}</Typography>
+              {timing?.totalSeconds ? <Typography variant="body2" color="text.secondary"><strong>Time spent:</strong> {formatDuration(timing.totalSeconds)} (about {formatDuration(timing.averageSecondsPerQuestion)} per item)</Typography> : null}
+              <Typography variant="body2" color="text.secondary"><strong>Answered:</strong> {answeredCount} of {questionsToReview.length}</Typography>
+              <Typography variant="body2" color="text.secondary"><strong>Status:</strong> {pending ? 'Waiting for instructor check' : 'Graded'}{(attempt as any).isLate ? ' · submitted late' : ''}</Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
-
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
-        <Typography variant="h6" gutterBottom fontWeight="bold">
-          Performance Summary
-        </Typography>
-        
-        {/* Raw Score progress */}
-        <Box sx={{ mt: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body2">Raw score percentage</Typography>
-            <Typography variant="body2" fontWeight="bold">
-              {rawPercentage.toFixed(1)}%
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={Math.min(100, rawPercentage)}
-            sx={{
-              height: 8,
-              borderRadius: 4,
-              bgcolor: '#e0e0e0',
-              '& .MuiLinearProgress-bar': {
-                bgcolor: rawPercentage >= 65 ? 'success.light' : 'error.light',
-              },
-            }}
-          />
-        </Box>
-
-        {/* Transmuted Grade progress */}
-        <Box sx={{ mt: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body2" fontWeight="bold">Transmuted grade percentage (Base-65 Passing)</Typography>
-            <Typography variant="body2" fontWeight="bold" color="#4caf50">
-              {transmutedPercentage.toFixed(1)}%
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={Math.min(100, transmutedPercentage)}
-            sx={{
-              height: 10,
-              borderRadius: 5,
-              bgcolor: '#e0e0e0',
-              '& .MuiLinearProgress-bar': {
-                bgcolor: passed ? 'success.main' : 'error.main',
-              },
-            }}
-          />
-        </Box>
-      </Paper>
 
       {isInstructor && (
         <Paper sx={{ p: 3, borderRadius: 3 }}>
@@ -206,20 +177,10 @@ export default function ExamResults() {
             const isAnswered = studentAnswer !== undefined && studentAnswer !== null && String(studentAnswer).trim() !== '';
             
             // Determine correctness
-            let isCorrect = false;
-            if (isAnswered) {
-              if (question.type === 'multiple-choice') {
-                isCorrect = studentAnswer === question.correctAnswer;
-              } else if (question.type === 'true-false') {
-                isCorrect = String(studentAnswer).toLowerCase() === String(question.correctAnswer).toLowerCase();
-              } else if (question.type === 'short-answer') {
-                isCorrect = String(studentAnswer).trim().toLowerCase() === String(question.correctAnswer).trim().toLowerCase();
-              } else {
-                isCorrect = true; // Essays default positive if answered
-              }
-            }
-
-            const pointsEarned = isCorrect ? question.points : 0;
+            const auto = autoPoints(question, studentAnswer);
+            const manual = (attempt as any).manualScores?.[question.id];
+            const pointsEarned = auto !== null ? auto : (typeof manual === 'number' ? manual : 0);
+            const isCorrect = isAnswered && pointsEarned >= (question.points || 0) && pointsEarned > 0;
 
             return (
               <Box key={question.id} sx={{ mb: 4 }}>

@@ -380,9 +380,8 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                     ))}
                   </Stack>
                   <Typography variant="caption" sx={{ color: 'var(--c-slate-400)', display: 'block', mt: 1.25 }}>
-                    Essay items are awarded a flat credit on submission rather than being graded
-                    against a key, so including them would report the answer rate as if it were
-                    correctness.
+                    Short-answer and essay items are checked by the instructor rather than against a
+                    fixed key, so they are left out of the difficulty statistics.
                   </Typography>
                 </Box>
               </>

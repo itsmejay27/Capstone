@@ -1,3 +1,4 @@
+import { teachesClass } from './classAccess';
 /**
  * Comment activity for the notifications inbox and the sidebar badge.
  *
@@ -30,7 +31,7 @@ export function commentActivityFor(
   const isInstructor = user.role === 'instructor';
   const mine = new Map<string, any>(
     (classrooms || [])
-      .filter((c: any) => (isInstructor ? c.instructorId === user.id : (c.students || []).includes(user.id)))
+      .filter((c: any) => (isInstructor ? teachesClass(c, user.id) : (c.students || []).includes(user.id)))
       .map((c: any) => [c.id, c])
   );
 

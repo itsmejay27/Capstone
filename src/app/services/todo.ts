@@ -1,3 +1,4 @@
+import { teachesClass } from './classAccess';
 /**
  * To-do / Upcoming derivation — Google Classroom's "Assigned / Missing / Done" for students
  * and "To review" for instructors.
@@ -127,7 +128,7 @@ export function buildInstructorTodo(
   attempts: any[],
   submissions: any[]
 ): TodoItem[] {
-  const myClasses = classrooms.filter((c) => c.instructorId === instructorId && !c.isArchived);
+  const myClasses = classrooms.filter((c) => teachesClass(c, instructorId) && !c.isArchived);
   const classById = new Map(myClasses.map((c) => [c.id, c]));
   const items: TodoItem[] = [];
 
