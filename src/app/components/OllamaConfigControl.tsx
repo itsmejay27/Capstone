@@ -27,7 +27,6 @@ import {
   AutoAwesome,
 } from '@mui/icons-material';
 import { checkOllamaConnection, OllamaConnectionState, getOllamaServerUrl, setOllamaServerUrl, refreshSharedOllamaUrl, getActiveOllamaUrl } from '../services/ollamaService';
-import { useAuth } from '../context/AuthContext';
 import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel } from '../services/geminiService';
 
 export type AIEngineType = 'gemini' | 'nvidia' | 'ollama';
@@ -59,21 +58,9 @@ export default function OllamaConfigControl({
   onConnectionStatusChange,
 }: OllamaConfigControlProps) {
   const [loading, setLoading] = useState(false);
-  const { currentUser, saveOllamaServerUrl } = useAuth();
-
-  // The remote Ollama address follows the account, so pasting it once on the laptop also
-  // works on the phone. The local copy is what the Ollama service reads.
-  const [serverUrl, setServerUrl] = useState(() => getOllamaServerUrl());
-  const [serverSaved, setServerSaved] = useState(() => getOllamaServerUrl());
-  useEffect(() => {
-    const fromAccount = (currentUser as any)?.ollamaServerUrl || '';
-    if (fromAccount !== getOllamaServerUrl()) {
-      setOllamaServerUrl(fromAccount);
-      setServerUrl(fromAccount);
-      setServerSaved(fromAccount);
-    }
-  }, [(currentUser as any)?.ollamaServerUrl]);
-  const [serverError, setServerError] = useState('');
+  // A hand-typed address is no longer offered: the laptop publishes its own. Drop any old one
+  // saved on this device so it cannot shadow the live address.
+  useEffect(() => { if (getOllamaServerUrl()) setOllamaServerUrl(''); }, []);
 
   // The NVIDIA catalogue changes over time, so it is read when that engine is selected
   // rather than shipped as a fixed list that eventually 410s.
@@ -107,20 +94,6 @@ export default function OllamaConfigControl({
     activeModel: '',
   });
 
-  const applyServerUrl = async (raw: string) => {
-    const clean = raw.trim().replace(/\/+$/, '');
-    if (clean && !/^https:\/\/[^\s/]+/i.test(clean)) {
-      setServerError('Use the https address from the tunnel, e.g. https://something.trycloudflare.com');
-      return;
-    }
-    setServerError('');
-    setOllamaServerUrl(clean);
-    setServerUrl(clean);
-    setServerSaved(clean);
-    await saveOllamaServerUrl(clean);
-    handleCheckConnection();
-  };
-
   const [activeUrl, setActiveUrl] = useState(() => getActiveOllamaUrl());
   const handleCheckConnection = useCallback(async () => {
     setLoading(true);
@@ -140,7 +113,7 @@ export default function OllamaConfigControl({
     if (onConnectionStatusChange) {
       onConnectionStatusChange(res.connected);
     }
-  }, [ollamaUrl, selectedModel, onModelChange, onConnectionStatusChange, serverSaved]);
+  }, [ollamaUrl, selectedModel, onModelChange, onConnectionStatusChange]);
 
   useEffect(() => {
     handleCheckConnection();
@@ -425,52 +398,15 @@ export default function OllamaConfigControl({
           </Grid>
         )}
 
-        {/* Remote Ollama: use a laptop's Ollama from the live site or a phone on mobile data */}
+        {/* The laptop publishes its address automatically; only its status is shown. */}
         {engine === 'ollama' && (
-          <Box sx={{ mt: 1.5, p: 1.5, borderRadius: 2, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
-            <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.25 }}>
-              Ollama server
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              {activeUrl && activeUrl !== serverSaved
-                ? `Connected automatically to the shared laptop (${activeUrl}).`
-                : activeUrl
-                  ? `Using your own address (${activeUrl}).`
-                  : 'No laptop is sharing Ollama right now. Start scripts\\start-ollama-tunnel.bat on the laptop, or use Gemini.'}
-            </Typography>
-            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}>
-              Use a different address (optional)
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <TextField
-                size="small"
-                placeholder="https://your-tunnel.trycloudflare.com"
-                value={serverUrl}
-                onChange={(e) => setServerUrl(e.target.value)}
-                error={Boolean(serverError)}
-                helperText={serverError || (serverSaved ? `Using ${serverSaved}` : 'Only used when no laptop is sharing Ollama')}
-                sx={{ flex: '1 1 260px' }}
-                inputProps={{ 'aria-label': 'Ollama server address', autoCapitalize: 'none', autoCorrect: 'off' }}
-              />
-              <Button variant="contained" size="small" onClick={() => applyServerUrl(serverUrl)} disabled={loading} sx={{ textTransform: 'none', height: 40 }}>
-                Save & test
-              </Button>
-              {serverSaved && (
-                <Button size="small" onClick={() => applyServerUrl('')} sx={{ textTransform: 'none', height: 40 }}>
-                  Clear
-                </Button>
-              )}
-            </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-              The laptop shares Ollama by running <code>scripts\start-ollama-tunnel.bat</code>; this page then
-              connects to it on every device automatically.
-            </Typography>
-            {!loading && !ollamaStatus.connected && ollamaStatus.error && (
-              <Typography variant="caption" sx={{ display: 'block', mt: 0.75, color: 'var(--c-red-600)', fontWeight: 600 }}>
-                {ollamaStatus.error}
-              </Typography>
-            )}
-          </Box>
+          <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: activeUrl ? 'text.secondary' : 'var(--c-amber-700)', fontWeight: 600 }}>
+            {activeUrl
+              ? (ollamaStatus.connected
+                  ? 'Using the shared laptop automatically.'
+                  : 'The shared laptop is not answering right now. Check that it is on and still sharing, or use Gemini.')
+              : 'No laptop is sharing Ollama right now. Start scripts\\start-ollama-tunnel.bat on the laptop, or use Gemini.'}
+          </Typography>
         )}
 
         {/* Speed Tip Banner for Local Ollama */}
