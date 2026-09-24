@@ -3,9 +3,8 @@ import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import ExamImportDialog from '../components/ExamImportDialog';
-import OllamaConfigControl, { AIEngineType } from '../components/OllamaConfigControl';
+import AIEngineControl, { AIEngineType } from '../components/AIEngineControl';
 import { DEFAULT_NVIDIA_MODEL } from '../services/geminiService';
-import { generateExamWithOllama, regenerateQuestionWithOllama, regenerateItemsForSpecsOllama } from '../services/ollamaService';
 import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey, regenerateItemsForSpecs } from '../services/geminiService';
 import { parseTOSFile, extractFilesContentEnhanced, TOSData, BLOOM_LEVELS } from '../services/tosParser';
 import { enforceTOSCompliance, type TOSComplianceReport } from '../services/tosValidator';
@@ -272,8 +271,6 @@ export default function ExamGenerator() {
   const [aiEngine, setAiEngine] = useState<AIEngineType>('gemini');
   const [nvidiaModel, setNvidiaModel] = useState(DEFAULT_NVIDIA_MODEL);
   const [geminiModel, setGeminiModel] = useState('gemini-3.6-flash');
-  const [ollamaModel, setOllamaModel] = useState('llama3.2:latest');
-  const [ollamaUrl, setOllamaUrl] = useState('/api/ollama');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationStatusText, setGenerationStatusText] = useState('');
 
@@ -504,39 +501,6 @@ export default function ExamGenerator() {
         } finally {
           setGenerating(false);
         }
-      } else {
-        try {
-          setGenerationStatusText(`Prompting local Ollama model (${ollamaModel}) for "${primarySubject}"...`);
-
-          const ollamaParams = {
-            model: ollamaModel,
-            mcCount,
-            tfCount,
-            saCount,
-            essayCount,
-            extraCount: isTosActive ? 0 : extraCount,
-            difficulty,
-            topics: effectiveTopics,
-            generationPrompt: effectivePrompt,
-            uploadedText: extractedText,
-            baseUrl: ollamaUrl,
-            tosData: effectiveTos,
-          };
-
-          const questions = await generateExamWithOllama(ollamaParams);
-
-          const finalQuestions = await runTosEnforcement(questions, effectiveTos, (specs) =>
-            regenerateItemsForSpecsOllama(specs, ollamaParams)
-          );
-          setGeneratedQuestions(withBankedQuestions(finalQuestions));
-        } catch (err: any) {
-          console.error('Ollama Generation error:', err);
-          // No template questions here: they looked like real Ollama output. Report the problem
-          // so the instructor can fix the connection or switch engines.
-          setGenerationError(`Ollama could not generate this exam: ${err.message || err}`);
-        } finally {
-          setGenerating(false);
-        }
       }
     } catch (outerErr: any) {
       console.error('Generation pipeline error:', outerErr);
@@ -715,7 +679,7 @@ export default function ExamGenerator() {
     const q = generatedQuestions[index];
     setRegeneratingMap((prev) => ({ ...prev, [q.id]: true }));
 
-    if (aiEngine === 'gemini' || aiEngine === 'nvidia') {
+    {
       try {
         const updatedQ = await regenerateQuestionWithGemini(q, mode, undefined, geminiModel);
         setGeneratedQuestions((prevQuestions) => {
@@ -725,20 +689,6 @@ export default function ExamGenerator() {
         });
       } catch (err) {
         console.warn('Gemini regenerate failed, running mock regenerate:', err);
-        runMockRegenerate(index, mode);
-      } finally {
-        setRegeneratingMap((prev) => ({ ...prev, [q.id]: false }));
-      }
-    } else {
-      try {
-        const updatedQ = await regenerateQuestionWithOllama(ollamaModel, q, mode, ollamaUrl);
-        setGeneratedQuestions((prevQuestions) => {
-          const updated = [...prevQuestions];
-          updated[index] = updatedQ;
-          return updated;
-        });
-      } catch (err) {
-        console.warn('Ollama regenerate item failed, running mock regeneration:', err);
         runMockRegenerate(index, mode);
       } finally {
         setRegeneratingMap((prev) => ({ ...prev, [q.id]: false }));
@@ -1120,15 +1070,11 @@ export default function ExamGenerator() {
 
                     {/* Clean AI Engine & Model Selector */}
                     <Box sx={{ mt: 1 }}>
-                      <OllamaConfigControl
+                      <AIEngineControl
                         engine={aiEngine}
                         nvidiaModel={nvidiaModel}
                         onNvidiaModelChange={setNvidiaModel}
                         onEngineChange={setAiEngine}
-                        selectedModel={ollamaModel}
-                        onModelChange={setOllamaModel}
-                        ollamaUrl={ollamaUrl}
-                        onUrlChange={setOllamaUrl}
                         geminiModel={geminiModel}
                         onGeminiModelChange={setGeminiModel}
                       />
@@ -1788,7 +1734,7 @@ export default function ExamGenerator() {
                   }}
                 />
                 <Typography variant="h5" gutterBottom fontWeight="black" sx={{ color: 'var(--c-slate-900)', letterSpacing: '-0.02em' }}>
-                  {aiEngine === 'gemini' ? `Google Gemini (${geminiModel}) Generating Exam...` : aiEngine === 'nvidia' ? `Llama (${nvidiaModel}) Generating Exam...` : `Ollama (${ollamaModel}) AI Generating Exam...`}
+                  {aiEngine === 'gemini' ? `Google Gemini (${geminiModel}) Generating Exam...` : `NVIDIA (${nvidiaModel}) Generating Exam...`}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 4, maxWidth: 550, mx: 'auto', px: 2 }}>
                   {generationStatusText || `Analyzing source files and building ${totalGeneratedCount} high-fidelity items (${activeQuestionCount} active drawer items, ${extraCount} extra anti-cheat items).`}
@@ -1830,7 +1776,7 @@ export default function ExamGenerator() {
                         <Typography variant="body2" sx={{ color: generationError ? 'var(--c-amber-700)' : 'var(--c-green-800)', mt: 0.5, fontWeight: 500 }}>
                           {aiEngine === 'gemini'
                             ? `Engine: Google Gemini AI (${geminiModel})`
-                            : `Engine: Local Ollama AI (${ollamaModel})`} &bull; Created <strong>{generatedQuestions.length} total items</strong>
+                            : `Engine: NVIDIA Cloud (${nvidiaModel})`} &bull; Created <strong>{generatedQuestions.length} total items</strong>
                         </Typography>
                       </Box>
                     </Box>
@@ -1859,7 +1805,7 @@ export default function ExamGenerator() {
                   </Box>
                   {generationError && (
                     <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: 'var(--c-amber-700)', fontWeight: 600, bgcolor: 'var(--c-amber-100)', p: 1, borderRadius: 2 }}>
-                      {generationError} Note: To use real local AI models, launch Ollama in terminal (<code>ollama serve</code>) and select a pulled model.
+                      {generationError}
                     </Typography>
                   )}
                 </Card>

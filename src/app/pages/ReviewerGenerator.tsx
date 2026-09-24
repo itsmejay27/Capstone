@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import OllamaConfigControl, { AIEngineType } from '../components/OllamaConfigControl';
-import { generateReviewerWithOllama, extractFilesContent } from '../services/ollamaService';
+import AIEngineControl, { AIEngineType } from '../components/AIEngineControl';
+import { extractFilesContent } from '../services/generationUtils';
 import { generateReviewerWithGemini, buildTopicDrivenModules } from '../services/geminiService';
 import {
   Container, Paper, Typography, Box, TextField, Button, Grid,
@@ -159,8 +159,6 @@ export default function ReviewerGenerator() {
   // AI Engine states
   const [aiEngine, setAiEngine] = useState<AIEngineType>('gemini');
   const [geminiModel, setGeminiModel] = useState('gemini-3.5-flash-lite');
-  const [ollamaModel, setOllamaModel] = useState('llama3.2:latest');
-  const [ollamaUrl, setOllamaUrl] = useState('/api/ollama');
 
   const userClassrooms = classrooms.filter((c) =>
     currentUser?.role === 'student'
@@ -215,39 +213,20 @@ export default function ReviewerGenerator() {
     const config = DIFFICULTY_CONFIG[difficulty];
     let modules: any[] = [];
 
-    if (aiEngine === 'gemini') {
-      try {
-        const extractedText = await gatherSourceText();
-        modules = await generateReviewerWithGemini({
-          model: geminiModel,
-          subject: effectiveSubject,
-          difficulty,
-          customInstructions: effectiveInstructions,
-          uploadedText: extractedText,
-        });
-      } catch (err: any) {
-        console.error('Gemini reviewer generation failed:', err);
-        toast(`Gemini AI error: ${err.message || err}`, 'error');
-        setGenerating(false);
-        return;
-      }
-    } else {
-      try {
-        const extractedText = await gatherSourceText();
-        modules = await generateReviewerWithOllama({
-          model: ollamaModel,
-          subject: effectiveSubject,
-          difficulty,
-          customInstructions: effectiveInstructions,
-          uploadedText: extractedText,
-          baseUrl: ollamaUrl,
-        });
-      } catch (err: any) {
-        console.error('Ollama reviewer generation failed:', err);
-        toast(`Ollama error: ${err.message || err}`, 'error');
-        setGenerating(false);
-        return;
-      }
+    try {
+      const extractedText = await gatherSourceText();
+      modules = await generateReviewerWithGemini({
+        model: geminiModel,
+        subject: effectiveSubject,
+        difficulty,
+        customInstructions: effectiveInstructions,
+        uploadedText: extractedText,
+      });
+    } catch (err: any) {
+      console.error('Gemini reviewer generation failed:', err);
+      toast(`Gemini AI error: ${err.message || err}`, 'error');
+      setGenerating(false);
+      return;
     }
 
     const newReviewer = {
@@ -289,7 +268,7 @@ export default function ReviewerGenerator() {
             },
           }} />
           <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ color: '#022c22' }}>
-            {aiEngine === 'gemini' ? `Google Gemini (${geminiModel})` : `Ollama AI (${ollamaModel})`} Generating Reviewer...
+            {`Google Gemini (${geminiModel})`} Generating Reviewer...
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 4, lineHeight: 1.7 }}>
             Creating {DIFFICULTY_CONFIG[difficulty].moduleCount} modules with lesson content and{' '}
@@ -529,13 +508,10 @@ export default function ReviewerGenerator() {
 
             {/* AI Engine Settings */}
             <Box sx={{ mt: 1 }}>
-              <OllamaConfigControl
+              <AIEngineControl
                 engine={aiEngine}
                 onEngineChange={setAiEngine}
-                selectedModel={ollamaModel}
-                onModelChange={setOllamaModel}
-                ollamaUrl={ollamaUrl}
-                onUrlChange={setOllamaUrl}
+                engines={['gemini']}
                 geminiModel={geminiModel}
                 onGeminiModelChange={setGeminiModel}
               />

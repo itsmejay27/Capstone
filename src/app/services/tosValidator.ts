@@ -10,7 +10,6 @@ import { TOSData, TOSItemSpec, normaliseCogLevel } from './tosParser';
  *     duplicate stems relabelled with different topics and cognitive levels.
  *   - geminiService lets the MODEL's self-declared cognitiveLevel and points override the
  *     blueprint, so the mandated distribution silently drifts.
- *   - ollamaService returns whatever length the model produced, with no padding or re-request.
  * A pure count check would pass several of those. This module therefore validates per-item
  * placement, topic, cognitive level and content quality, not just totals.
  *
