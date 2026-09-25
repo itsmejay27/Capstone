@@ -22,14 +22,30 @@ const ALLOWED_MODELS = new Set([
 
 export const config = { maxDuration: 60 };
 
+
+/**
+ * All configured keys for a provider, in order: NAME may hold several keys separated by
+ * commas, and NAME_2 … NAME_10 add more. When one key is rate-limited or rejected, the
+ * next one is tried, so several free-tier keys can share the load.
+ */
+function keysFor(name: string): string[] {
+  const list: string[] = [];
+  const push = (v?: string) => (v || '').split(/[,\s]+/).map((k) => k.trim()).filter(Boolean).forEach((k) => { if (!list.includes(k)) list.push(k); });
+  push(process.env[name]);
+  for (let i = 1; i <= 10; i++) push(process.env[`${name}_${i}`]);
+  return list;
+}
+/** Worth trying another key: quota/rate limit, or this key rejected. */
+const tryNextKey = (status: number) => status === 429 || status === 401 || status === 403;
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const apiKeys = keysFor('GEMINI_API_KEY');
+  if (apiKeys.length === 0) {
     // Surfaced so a misconfigured deployment is diagnosable from the client, without
     // revealing anything about the environment itself.
     res.status(503).json({
@@ -62,19 +78,23 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  const upstream = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
   try {
-    const response = await fetch(upstream, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
+    let status = 502;
+    let text = '';
+    for (const apiKey of apiKeys) {
+      const upstream = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await fetch(upstream, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      status = response.status;
+      text = await response.text();
+      if (!tryNextKey(status)) break;
+    }
     // Pass Google's response through untouched, including on an error status, so the
     // client's existing parsing and model-fallback logic keep working unchanged.
-    const text = await response.text();
-    res.status(response.status).setHeader('Content-Type', 'application/json');
+    res.status(status).setHeader('Content-Type', 'application/json');
     res.send(text);
   } catch (error) {
     res.status(502).json({ error: `Upstream request failed: ${(error as Error).message}` });

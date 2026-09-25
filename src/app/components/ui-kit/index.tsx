@@ -261,52 +261,35 @@ export function FolderCard({
 }) {
   const tint = tintFor(id);
   return (
-    <Box sx={{ position: 'relative', pt: 1.25 }}>
-      {/* The folder tab */}
-      <Box
-        sx={{
-          position: 'absolute', top: 0, left: 14, width: 78, height: 14,
-          borderTopLeftRadius: '10px', borderTopRightRadius: '10px',
-          background: tint.from,
-        }}
-      />
-      <Paper
-        onClick={onClick}
-        sx={{
-          position: 'relative',
-          p: 2, borderRadius: '14px',
-          background: `linear-gradient(160deg, ${tint.from} 0%, ${tint.to} 100%)`,
-          border: `1px solid ${palette.border}`,
-          cursor: onClick ? 'pointer' : 'default',
-          transition: 'transform .15s ease, box-shadow .15s ease',
-          minHeight: 132,
-          display: 'flex', flexDirection: 'column',
-          '&:hover': onClick ? { transform: 'translateY(-2px)', boxShadow: shadow.md } : undefined,
-        }}
-      >
-        {action && <Box sx={{ position: 'absolute', top: 8, right: 8 }}>{action}</Box>}
-        <Box sx={{ flex: 1 }} />
+    <Paper
+      onClick={onClick}
+      elevation={0}
+      sx={{
+        position: 'relative', p: 1.75, pr: action ? 5 : 1.75, borderRadius: '12px',
+        border: `1px solid ${palette.border}`, bgcolor: palette.surface,
+        cursor: onClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 1.5,
+        transition: 'box-shadow .15s ease, border-color .15s ease',
+        '&:hover': onClick ? { boxShadow: shadow.md, borderColor: tint.ink } : undefined,
+      }}
+    >
+      {/* Folder glyph in the folder's colour, like a file manager. */}
+      <Box sx={{ width: 42, height: 42, borderRadius: '10px', bgcolor: tint.from, color: tint.ink, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden><path fill="currentColor" d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z" /></svg>
+      </Box>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
         <Typography
-          sx={{
-            fontFamily: font.mono, fontSize: '0.95rem', fontWeight: 600,
-            color: tint.ink, mb: 1.25, pb: 1.25,
-            borderBottom: `1px solid ${palette.ink}12`,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}
+          sx={{ fontSize: '0.92rem', fontWeight: 700, color: palette.ink, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word' }}
           title={title}
         >
           {title}
         </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.25 }}>
+          {meta && <Typography variant="caption" sx={{ color: palette.inkSecondary, fontWeight: 600, whiteSpace: 'nowrap' }}>{meta}</Typography>}
           <MemberStack members={members} />
-          {meta && (
-            <Typography variant="caption" sx={{ color: palette.inkSecondary, fontWeight: 600, whiteSpace: 'nowrap' }}>
-              {meta}
-            </Typography>
-          )}
         </Box>
-      </Paper>
-    </Box>
+      </Box>
+      {action && <Box sx={{ position: 'absolute', top: 6, right: 6 }} onClick={(e) => e.stopPropagation()}>{action}</Box>}
+    </Paper>
   );
 }
 
@@ -362,7 +345,7 @@ export function EntityCard({
         </Box>
         <Typography
           sx={{
-            fontFamily: font.mono, fontSize: '0.95rem', fontWeight: 600, color: palette.ink,
+            fontSize: '0.95rem', fontWeight: 700, color: palette.ink,
             mb: 1.5, pb: 1.5, borderBottom: `1px solid ${palette.border}`,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}

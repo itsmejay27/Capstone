@@ -29,6 +29,8 @@ export default function RootLayout() {
     exams,
     examAttempts,
     comments,
+    classwork,
+    submissions,
     accountSyncing,
     joinAsCoInstructor,
   } = useAuth();
@@ -124,21 +126,31 @@ export default function RootLayout() {
   }, [currentUser?.id]);
   const unreadComments = unreadCount(commentActivityFor(currentUser, classrooms || [], comments || []), seenAt);
 
+  // New since the notifications were last opened or cleared: for teachers, turn-ins that
+  // still need checking; for students, newly posted work they have not done.
   const workCount = (() => {
     if (!currentUser) return 0;
+    const newer = (d: any) => d && new Date(d).getTime() > seenAt;
     const myClassIds = new Set(userClassrooms.map((c: any) => c.id));
     const myExams = (exams || []).filter((e: any) => myClassIds.has(e.classroomId));
+    const myWork = Object.entries(classwork || {}).filter(([cid]) => myClassIds.has(cid)).flatMap(([, l]: any) => l || []);
     if (isInstructor) {
-      return (examAttempts || []).filter(
-        (a: any) => a.submittedAt && myExams.some((e: any) => e.id === a.examId)
+      const examReviews = (examAttempts || []).filter(
+        (a: any) => a.submittedAt && a.gradingStatus === 'pending' && newer(a.submittedAt) && myExams.some((e: any) => e.id === a.examId)
       ).length;
+      const workReviews = (submissions || []).filter(
+        (s: any) => s.submittedAt && s.status === 'turned_in' && newer(s.submittedAt) && myWork.some((w: any) => w.id === s.classworkId)
+      ).length;
+      return examReviews + workReviews;
     }
-    return myExams.filter((e: any) => {
+    const newExams = myExams.filter((e: any) => {
       if (e.postDate && new Date(e.postDate) > new Date()) return false;
-      return !(examAttempts || []).some(
-        (a: any) => a.examId === e.id && a.studentId === currentUser.id && a.submittedAt
-      );
+      if (!newer(e.postDate || e.createdAt)) return false;
+      return !(examAttempts || []).some((a: any) => a.examId === e.id && a.studentId === currentUser.id && a.submittedAt);
     }).length;
+    const newWork = myWork.filter((w: any) => w.isPublished !== false && newer(w.createdAt)
+      && !(submissions || []).some((s: any) => s.classworkId === w.id && s.studentId === currentUser.id && s.status !== 'assigned')).length;
+    return newExams + newWork;
   })();
   const notificationCount = workCount + unreadComments;
 

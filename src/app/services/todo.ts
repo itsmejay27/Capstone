@@ -112,7 +112,7 @@ export function buildStudentTodo(
       postDate: work.postDate,
       totalPoints: work.points,
       bucket: submitted ? 'done' : isOverdue(work.dueDate) ? 'missing' : 'assigned',
-      href: `/classroom/${cls.id}?tab=classwork&item=${work.id}`,
+      href: `/classroom/${cls.id}/work/${work.id}`,
     });
   }
 
@@ -135,7 +135,8 @@ export function buildInstructorTodo(
   for (const exam of exams || []) {
     const cls = classById.get(exam.classroomId);
     if (!cls) continue;
-    const pending = (attempts || []).filter((a) => a.examId === exam.id && a.submittedAt).length;
+    // Only attempts still waiting on the teacher (short-answer/essay not yet checked).
+    const pending = (attempts || []).filter((a) => a.examId === exam.id && a.submittedAt && a.gradingStatus === 'pending').length;
     items.push({
       id: exam.id,
       kind: 'exam',
@@ -145,7 +146,7 @@ export function buildInstructorTodo(
       dueDate: exam.dueDate,
       totalPoints: exam.totalPoints,
       pendingCount: pending,
-      bucket: 'review',
+      bucket: pending > 0 ? 'review' : 'done',
       href: `/classroom/${cls.id}?tab=gradebook`,
     });
   }
@@ -154,7 +155,8 @@ export function buildInstructorTodo(
     const cls = classById.get(work.classroomId);
     if (!cls) continue;
     const pending = (submissions || []).filter(
-      (s) => s.classworkId === work.id && s.submittedAt && (s.grade === undefined || s.grade === null)
+      (s) => s.classworkId === work.id && s.submittedAt && s.status !== 'returned' && s.status !== 'assigned'
+        && (s.grade === undefined || s.grade === null)
     ).length;
     items.push({
       id: work.id,
@@ -165,8 +167,8 @@ export function buildInstructorTodo(
       dueDate: work.dueDate,
       totalPoints: work.points,
       pendingCount: pending,
-      bucket: 'review',
-      href: `/classroom/${cls.id}?tab=classwork&item=${work.id}`,
+      bucket: pending > 0 ? 'review' : 'done',
+      href: `/classroom/${cls.id}/work/${work.id}`,
     });
   }
 

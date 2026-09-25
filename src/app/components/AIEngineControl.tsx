@@ -200,8 +200,10 @@ export default function AIEngineControl({
                 return matched.slice(0, 50);
               }}
               slotProps={{
-                listbox: { sx: { maxHeight: 320 } },
-                paper: { sx: { borderRadius: '12px' } },
+                listbox: { sx: { maxHeight: 280 } },
+                paper: { sx: { borderRadius: '12px', border: '1px solid var(--c-border)', boxShadow: '0 12px 32px rgba(0,0,0,.35)' } },
+                // Always open below the box so the list never covers the form above it.
+                popper: { placement: 'bottom-start', modifiers: [{ name: 'flip', enabled: false }] },
               }}
               renderOption={(optProps, option: any) => (
                 <Box component="li" {...optProps} key={option.id} sx={{ display: 'block !important', py: 1 }}>

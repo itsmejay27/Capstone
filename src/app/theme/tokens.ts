@@ -1,4 +1,4 @@
-import { cssVar, lightHex, darkHex } from './colorPairs';
+import { cssVar, hexFor, type Palette } from './colorPairs';
 
 /**
  * Design tokens.
@@ -54,8 +54,8 @@ export const palette = {
 } as const;
 
 /** The same names resolved to real hex, for the MUI theme factory. */
-export function muiPalette(mode: 'light' | 'dark') {
-  const h = mode === 'dark' ? darkHex : lightHex;
+export function muiPalette(mode: 'light' | 'dark', palette: Palette = 'aspire') {
+  const h = hexFor(mode, palette);
   return {
     canvas: h['canvas'], surface: h['surface'], surfaceMuted: h['surface-muted'],
     surfaceSunken: h['surface-sunken'], border: h['border'], borderStrong: h['border-strong'],

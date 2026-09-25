@@ -212,9 +212,15 @@ const THEME_TRANSITION = `.theme-transition, .theme-transition *, .theme-transit
 export function buildThemeStylesheet(): string {
   const light = COLOR_PAIRS.map((p) => `  ${varName(p.name)}: ${p.light};`).join('\n');
   const dark = COLOR_PAIRS.map((p) => `  ${varName(p.name)}: ${p.dark};`).join('\n');
+  const classicLight = Object.entries(CLASSIC_OVERRIDES).map(([k, v]) => `  ${varName(k)}: ${v[0]};`).join('\n');
+  const classicDark = Object.entries(CLASSIC_OVERRIDES).map(([k, v]) => `  ${varName(k)}: ${v[1]};`).join('\n');
+  // Order matters: each classic block follows the base block of the same mode, and the
+  // classic light block comes before the dark base so dark mode still wins.
   return (
     `:root {\n  color-scheme: light;\n${light}\n${EFFECTS_LIGHT}\n}\n\n` +
+    `:root[data-palette='classic'] {\n${classicLight}\n${CLASSIC_EFFECTS_LIGHT}\n}\n\n` +
     `:root[data-theme='dark'] {\n  color-scheme: dark;\n${dark}\n${EFFECTS_DARK}\n}\n\n` +
+    `:root[data-palette='classic'][data-theme='dark'] {\n${classicDark}\n${CLASSIC_EFFECTS_DARK}\n}\n\n` +
     THEME_TRANSITION
   );
 }
@@ -226,3 +232,57 @@ export const lightHex: Record<string, string> = Object.fromEntries(
 export const darkHex: Record<string, string> = Object.fromEntries(
   COLOR_PAIRS.map((p) => [p.name, p.dark])
 );
+
+/**
+ * The original "Classic" palette (emerald green on slate), kept as a user choice alongside
+ * the current Aspire blue. Only the colours that differ are listed; [light, dark].
+ */
+export const CLASSIC_OVERRIDES: Record<string, [string, string]> = {
+  'slate-50': ['#f8fafc', '#0f1626'],
+  'gray-50': ['#f9fafb', '#0f1626'],
+  'slate-100': ['#f1f5f9', '#1a2338'],
+  'gray-100': ['#f3f4f6', '#1a2338'],
+  'slate-200': ['#e2e8f0', '#25304a'],
+  'gray-200': ['#e5e7eb', '#25304a'],
+  'emerald-600': ['#059669', '#10b981'],
+  'emerald-700': ['#047857', '#34d399'],
+  'emerald-800': ['#065f46', '#6ee7b7'],
+  'emerald-900': ['#064e3b', '#a7f3d0'],
+  'emerald-50': ['#ecfdf5', 'rgba(16, 185, 129, 0.13)'],
+  'emerald-100': ['#d1fae5', 'rgba(16, 185, 129, 0.18)'],
+  'emerald-200': ['#a7f3d0', 'rgba(16, 185, 129, 0.38)'],
+  'emerald-400': ['#34d399', '#6ee7b7'],
+  'emerald-300': ['#6ee7b7', '#a7f3d0'],
+  'emerald-500': ['#10b981', '#34d399'],
+  'teal-600': ['#0d9488', '#2dd4bf'],
+  'teal-700': ['#0f766e', '#5eead4'],
+  'teal-100': ['#ccfbf1', 'rgba(45, 212, 191, 0.16)'],
+  'banner-from': ['#1e293b', '#18243c'],
+  'banner-to': ['#0f172a', '#0d1526'],
+  'canvas': ['#eceef3', '#0b1120'],
+  'surface': ['#ffffff', '#131b2e'],
+  'surface-muted': ['#f6f7fa', '#18223a'],
+  'surface-sunken': ['#e4e7ee', '#1c2740'],
+  'border': ['#d5d9e2', '#25304a'],
+  'border-strong': ['#bcc2d0', '#33415c'],
+  'ink': ['#16161d', '#e8edf7'],
+  'ink-secondary': ['#5c5c6b', '#a3b0c7'],
+  'ink-tertiary': ['#7a7a8c', '#7482a0'],
+};
+const CLASSIC_EFFECTS_LIGHT = `  --shadow-focus-ring: rgba(5, 150, 105, 0.22);
+  --glow-a: rgba(5, 150, 105, 0.10);
+  --glow-b: rgba(13, 148, 136, 0.09);`;
+const CLASSIC_EFFECTS_DARK = `  --shadow-focus-ring: rgba(16, 185, 129, 0.30);
+  --glow-a: rgba(16, 185, 129, 0.20);
+  --glow-b: rgba(34, 211, 238, 0.16);`;
+
+export type Palette = 'aspire' | 'classic';
+
+/** Hex values for the MUI theme, for a mode and palette. */
+export function hexFor(mode: 'light' | 'dark', palette: Palette = 'aspire'): Record<string, string> {
+  const base = mode === 'dark' ? darkHex : lightHex;
+  if (palette !== 'classic') return base;
+  const out = { ...base };
+  for (const [k, v] of Object.entries(CLASSIC_OVERRIDES)) out[k] = v[mode === 'dark' ? 1 : 0];
+  return out;
+}
