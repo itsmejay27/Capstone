@@ -2,3 +2,20 @@
 @import './tailwind.css';
 @import './theme.css';
 @import './print.css';
+
+/* ── Phones ─────────────────────────────────────────────────────────────
+   Keep everything inside the screen: no sideways page scroll, media and
+   wide blocks shrink, and headings step down so they don't wrap badly. */
+html, body { max-width: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+img, video, canvas, svg, iframe { max-width: 100%; }
+@media (max-width: 600px) {
+  .MuiTypography-h3 { font-size: 1.6rem !important; }
+  .MuiTypography-h4 { font-size: 1.35rem !important; }
+  .MuiTypography-h5 { font-size: 1.15rem !important; }
+  .MuiTypography-h6 { font-size: 1.02rem !important; }
+  .MuiCardContent-root { padding: 14px !important; }
+  .MuiTableContainer-root { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .MuiTabs-root .MuiTab-root { min-width: 0; padding-left: 10px; padding-right: 10px; }
+  .MuiButton-root { white-space: nowrap; }
+  pre, code { white-space: pre-wrap; word-break: break-word; }
+}

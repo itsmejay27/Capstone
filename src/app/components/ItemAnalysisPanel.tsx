@@ -313,7 +313,9 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                 <TrendingDown sx={{ fontSize: 20, color: 'var(--c-red-600)' }} /> Most missed questions
               </Typography>
               <Typography variant="caption" sx={{ color: 'var(--c-slate-500)' }}>
-                Ranked by failure rate across the cohort. Expand a row for its distractor breakdown.
+                All {analysis.mostMissed.length} question{analysis.mostMissed.length === 1 ? '' : 's'} that at least one student missed, ranked by failure rate
+                {analysis.items.length > analysis.mostMissed.length && ` (${analysis.items.length - analysis.mostMissed.length} answered correctly by everyone are not listed)`}.
+                Scroll for the rest; expand a row for its distractor breakdown.
                 {!analysis.discriminationAvailable &&
                   ` Discrimination needs at least ${MIN_N_FOR_DISCRIMINATION} submissions (currently ${analysis.submittedAttempts}).`}
               </Typography>

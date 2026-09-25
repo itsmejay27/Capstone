@@ -200,14 +200,14 @@ export function createAppTheme(mode: 'light' | 'dark', palette: Palette = 'aspir
     },
     MuiDialog: {
       styleOverrides: {
-        paper: { borderRadius: radius.xl, border: `1px solid ${palette.border}`, boxShadow: shadow.lg },
+        paper: { borderRadius: radius.xl, border: `1px solid ${palette.border}`, boxShadow: shadow.lg, '@media (max-width:600px)': { margin: 12, width: 'calc(100% - 24px)', maxHeight: 'calc(100% - 24px)', borderRadius: radius.lg } },
       },
     },
     MuiDialogTitle: {
-      styleOverrides: { root: { fontSize: '1.05rem', fontWeight: 800, padding: '20px 24px 12px' } },
+      styleOverrides: { root: { fontSize: '1.05rem', fontWeight: 800, padding: '20px 24px 12px', '@media (max-width:600px)': { padding: '16px 16px 8px' } } },
     },
-    MuiDialogContent: { styleOverrides: { root: { padding: '8px 24px' } } },
-    MuiDialogActions: { styleOverrides: { root: { padding: '16px 24px 20px', gap: 8 } } },
+    MuiDialogContent: { styleOverrides: { root: { padding: '8px 24px', '@media (max-width:600px)': { padding: '8px 16px' } } } },
+    MuiDialogActions: { styleOverrides: { root: { padding: '16px 24px 20px', gap: 8, flexWrap: 'wrap', '@media (max-width:600px)': { padding: '12px 16px 16px' } } } },
 
     MuiChip: {
       styleOverrides: {
@@ -271,7 +271,7 @@ export function createAppTheme(mode: 'light' | 'dark', palette: Palette = 'aspir
     // ── Tables ──
     MuiTableCell: {
       styleOverrides: {
-        root: { borderColor: palette.border, fontSize: '0.85rem', padding: '12px 14px' },
+        root: { borderColor: palette.border, fontSize: '0.85rem', padding: '12px 14px', '@media (max-width:600px)': { padding: '8px 10px', fontSize: '0.8rem' } },
         head: { fontWeight: 700, color: palette.inkSecondary, backgroundColor: palette.surfaceMuted },
       },
     },
