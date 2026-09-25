@@ -28,7 +28,7 @@ const MODEL_ID = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/i;
  */
 const NON_GENERATIVE = /(^|[/_-])(rerank|embed|embedqa|reranking)([/_-]|$)/i;
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 120 };
 
 
 /**

@@ -168,9 +168,41 @@ export interface GeminiReviewerParams {
   uploadedText?: string;
 }
 
+/** A generation failure the user should see, with a plain-language reason. */
+export class AIGenerationError extends Error {
+  constructor(message: string) { super(message); this.name = 'AIGenerationError'; }
+}
+
+/** Turns an HTTP status / network failure into something a teacher can act on. */
+function friendlyAIError(provider: AIProvider, status: number, detail: string): string {
+  const who = provider === 'nvidia' ? 'NVIDIA' : 'Google Gemini';
+  const d = detail.toLowerCase();
+  if (status === 0) return 'No internet connection, or the AI server could not be reached. Check your connection and try again.';
+  if (status === -1) return `${who} took too long to answer. Try again, or pick a faster model.`;
+  if (status === 429) return `${who} is busy or your free quota is used up. Wait a minute, or pick another model.`;
+  if (status === 401 || status === 403) return `${who} rejected the API key. Check the key in the Vercel project settings.`;
+  if (status === 404 || status === 410 || d.includes('not found') || d.includes('end of life')) return `This model is no longer available on ${who}. Pick another model.`;
+  if (status === 503 && d.includes('not configured')) return `The ${who} API key is not set up on the server.`;
+  if (status >= 500) return `${who} is having problems right now (error ${status}). Try again in a moment or pick another model.`;
+  if (status === -2) return `The model answered, but not in a usable format. Try again or pick another model.`;
+  return `${who} returned an error (${status}). Try again or pick another model.`;
+}
+
+/** Pulls the JSON object/array out of a reply that may carry <think> blocks or prose. */
+function extractJson(raw: string): any {
+  let t = String(raw || '').replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try { return JSON.parse(t); } catch { /* fall through */ }
+  const start = t.search(/[[{]/);
+  const end = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
+  if (start >= 0 && end > start) return JSON.parse(t.slice(start, end + 1));
+  throw new Error('no json');
+}
+
 /**
- * Sends structured request to Google Gemini API with seamless topic-driven generation fallback.
- * Strictly respects Table of Specifications (TOS) item placement, topics per item, and Bloom cognitive levels.
+ * Sends one batch to the chosen AI. Throws AIGenerationError when every model candidate
+ * fails, so the generator stops and tells the user instead of quietly filling the exam
+ * with placeholder questions.
  */
 async function callGeminiApiForBatch(
   apiKey: string,
@@ -180,68 +212,78 @@ async function callGeminiApiForBatch(
   timeoutMs: number = 40000,
   provider: AIProvider = 'gemini'
 ): Promise<any[]> {
-  // NVIDIA is reached only through the server proxy, which supplies the key, so an empty
-  // client-side key is expected there and must not short-circuit the call.
-  if (provider === 'gemini' && !apiKey && !isGeminiAvailable(apiKey)) return [];
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new AIGenerationError(friendlyAIError(provider, 0, ''));
+  }
+  if (provider === 'gemini' && !apiKey && !isGeminiAvailable(apiKey)) {
+    throw new AIGenerationError('Google Gemini is not set up on the server (missing API key).');
+  }
+  // Reasoning models think before answering and need longer.
+  const wait = provider === 'nvidia' ? Math.max(timeoutMs, 110000) : timeoutMs;
+  let lastError = '';
   for (const modelCandidate of modelsToTry) {
-    try {
+    // NVIDIA: some models reject response_format, so retry once without it.
+    for (const strictJson of provider === 'nvidia' ? [true, false] : [true]) {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      const response = await fetch(
-        provider === 'nvidia' ? NVIDIA_PROXY_URL : geminiEndpoint(modelCandidate, apiKey),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify(
-            provider === 'nvidia'
-              ? {
-                  // NVIDIA NIM speaks the OpenAI chat-completions schema.
-                  model: modelCandidate,
-                  messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: promptText },
-                  ],
-                  temperature: 0.25,
-                  max_tokens: 8192,
-                  response_format: { type: 'json_object' },
-                }
-              : {
-                  system_instruction: { parts: [{ text: systemPrompt }] },
-                  contents: [{ role: 'user', parts: [{ text: promptText }] }],
-                  generationConfig: {
-                    responseMimeType: 'application/json',
+      const timeoutId = setTimeout(() => controller.abort(), wait);
+      try {
+        const response = await fetch(
+          provider === 'nvidia' ? NVIDIA_PROXY_URL : geminiEndpoint(modelCandidate, apiKey),
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify(
+              provider === 'nvidia'
+                ? {
+                    model: modelCandidate,
+                    messages: [
+                      { role: 'system', content: systemPrompt },
+                      { role: 'user', content: promptText },
+                    ],
                     temperature: 0.25,
-                    maxOutputTokens: 8192,
-                  },
-                }
-          ),
-        }
-      );
-      clearTimeout(timeoutId);
+                    max_tokens: 8192,
+                    ...(strictJson ? { response_format: { type: 'json_object' } } : {}),
+                  }
+                : {
+                    system_instruction: { parts: [{ text: systemPrompt }] },
+                    contents: [{ role: 'user', parts: [{ text: promptText }] }],
+                    generationConfig: { responseMimeType: 'application/json', temperature: 0.25, maxOutputTokens: 8192 },
+                  }
+            ),
+          }
+        );
+        clearTimeout(timeoutId);
 
-      if (response.ok) {
+        if (!response.ok) {
+          const detail = await response.text().catch(() => '');
+          console.warn(`${provider} batch HTTP ${response.status}: ${detail.slice(0, 300)}`);
+          lastError = friendlyAIError(provider, response.status, detail);
+          if (response.status === 400 && strictJson && provider === 'nvidia') continue;
+          break;
+        }
         const resData = await response.json();
+        const msg = resData.choices?.[0]?.message || {};
         const rawText =
           provider === 'nvidia'
-            ? resData.choices?.[0]?.message?.content || ''
+            ? msg.content || msg.reasoning_content || ''
             : resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim();
-        const parsed = JSON.parse(cleanJson);
-        const list = Array.isArray(parsed) ? parsed : (parsed.questions || []);
-        if (list.length > 0) return list;
-      } else {
-        // The proxies answer a misconfiguration with an explicit message (e.g. a missing
-        // server key); surfacing it beats a silent fall through to the offline generator.
-        const detail = await response.text().catch(() => '');
-        console.warn(`${provider} batch HTTP ${response.status}: ${detail.slice(0, 200)}`);
+        try {
+          const parsed = extractJson(rawText);
+          const list = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.items || []);
+          if (list.length > 0) return list;
+        } catch { /* unusable reply */ }
+        lastError = friendlyAIError(provider, -2, '');
+        if (strictJson && provider === 'nvidia') continue;
+        break;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        lastError = friendlyAIError(provider, err?.name === 'AbortError' ? -1 : 0, '');
+        break;
       }
-    } catch (err: any) {
-      // Continue to next model candidate
     }
   }
-  return [];
+  throw new AIGenerationError(lastError || 'The AI could not generate questions. Try again or pick another model.');
 }
 
 let geminiIdCounter = 1;
@@ -273,7 +315,12 @@ async function mapWithConcurrency<T, R>(
     while (true) {
       const index = cursor++;
       if (index >= items.length) return;
-      results[index] = await worker(items[index], index);
+      try {
+        results[index] = await worker(items[index], index);
+      } catch (err) {
+        cursor = items.length; // stop the other runners: one failure fails the whole run
+        throw err;
+      }
     }
   });
   await Promise.all(runners);
