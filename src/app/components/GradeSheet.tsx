@@ -129,21 +129,21 @@ export default function GradeSheet({ classroom, students, exams, attempts }: {
         </Box>
       </Box>
       <TableContainer sx={{ overflowX: 'auto' }}>
-        <Table size="small" sx={{ minWidth: 600 }}>
+        <Table size="small" sx={{ tableLayout: 'fixed', width: 220 + (exams.length + sheet.columns.length) * 170 + 150, minWidth: '100%' }}>
           <TableHead sx={{ bgcolor: 'var(--c-slate-50)' }}>
             <TableRow>
-              <TableCell sx={{ ...cellSx, fontWeight: 800, position: 'sticky', left: 0, bgcolor: 'var(--c-slate-50)', zIndex: 1 }}>Student</TableCell>
+              <TableCell sx={{ ...cellSx, width: 220, fontWeight: 800, position: 'sticky', left: 0, bgcolor: 'var(--c-slate-50)', zIndex: 1 }}>Student</TableCell>
               {exams.map((e) => (
-                <TableCell key={e.id} align="center" sx={{ ...cellSx, fontWeight: 800 }}>{e.title}<br /><Typography variant="caption">/{e.totalPoints} · exam</Typography></TableCell>
+                <TableCell key={e.id} align="center" sx={{ ...cellSx, width: 170, fontWeight: 800, whiteSpace: 'normal', verticalAlign: 'top' }}><Box sx={{ overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }} title={e.title}>{e.title}</Box><br /><Typography variant="caption">/{e.totalPoints} · exam</Typography></TableCell>
               ))}
               {sheet.columns.map((c) => (
-                <TableCell key={c.id} align="center" sx={{ ...cellSx, fontWeight: 800 }}>
+                <TableCell key={c.id} align="center" sx={{ ...cellSx, width: 170, fontWeight: 800, whiteSpace: 'normal', verticalAlign: 'top' }}>
                   {c.title}
                   <Tooltip title="Remove column"><IconButton size="small" onClick={() => removeColumn(c.id)}><Delete sx={{ fontSize: 14 }} /></IconButton></Tooltip>
                   <br /><Typography variant="caption">/{c.max} · weight {c.weight}</Typography>
                 </TableCell>
               ))}
-              <TableCell align="center" sx={{ ...cellSx, fontWeight: 900 }}>Final grade</TableCell>
+              <TableCell align="center" sx={{ ...cellSx, width: 150, fontWeight: 900 }}>Final grade</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -152,7 +152,7 @@ export default function GradeSheet({ classroom, students, exams, attempts }: {
             )}
             {rows.map(({ st, final }) => (
               <TableRow key={st.id} hover>
-                <TableCell sx={{ ...cellSx, fontWeight: 700, position: 'sticky', left: 0, bgcolor: 'var(--c-surface)', zIndex: 1 }}>{st.name}</TableCell>
+                <TableCell sx={{ ...cellSx, fontWeight: 700, position: 'sticky', left: 0, bgcolor: 'var(--c-surface)', zIndex: 1 }}><Box component="span" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' }}>{st.name}</Box></TableCell>
                 {exams.map((e) => {
                   const sc = examScore(st.id, e);
                   const pending = attempts.some((x) => x.examId === e.id && x.studentId === st.id && x.submittedAt && isPending(x));
