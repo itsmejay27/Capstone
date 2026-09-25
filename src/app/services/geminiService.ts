@@ -177,7 +177,7 @@ function friendlyAIError(provider: AIProvider, status: number, detail: string): 
   const who = provider === 'nvidia' ? 'NVIDIA' : 'Google Gemini';
   const d = detail.toLowerCase();
   if (status === 0) return 'No internet connection, or the AI server could not be reached. Check your connection and try again.';
-  if (status === -1) return `${who} took too long to answer. Try again, or pick a faster model.`;
+  if (status === -1) return `${who} took too long to answer (over 2 minutes). Free NVIDIA models can be slow when busy. Try again, pick a model marked Fast or Ultra fast, or switch to Google Gemini.`;
   if (status === 429) return `${who} is busy or your free quota is used up. Wait a minute, or pick another model.`;
   if (status === 401 || status === 403) return `${who} rejected the API key. Check the key in the Vercel project settings.`;
   if (status === 404 || status === 410 || d.includes('not found') || d.includes('end of life')) return `This model is no longer available on ${who}. Pick another model.`;
@@ -241,7 +241,9 @@ async function callGeminiApiForBatch(
                       { role: 'user', content: promptText },
                     ],
                     temperature: 0.25,
-                    max_tokens: 8192,
+                    max_tokens: 4096,
+                    // Keep thinking short so the answer arrives within the time limit.
+                    ...(/gpt-oss/i.test(modelCandidate) ? { reasoning_effort: 'low' } : {}),
                     ...(strictJson ? { response_format: { type: 'json_object' } } : {}),
                   }
                 : {
@@ -459,7 +461,8 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
   if (specsToGenerate.length > 0) {
     const totalQuestions = specsToGenerate.length;
     const finalQuestions: any[] = [];
-    const BATCH_SIZE = 8; // Optimal batch size: fast execution (~5-7s), avoids 8192 token truncation and HTTP ECONNRESET
+    // NVIDIA's free endpoints are slower per token, so smaller batches run in parallel finish sooner.
+    const BATCH_SIZE = (params as any).provider === 'nvidia' ? 3 : 8;
 
     // Slice the specs into batches up front so they can be dispatched concurrently.
     const specChunks: any[][] = [];
@@ -579,7 +582,7 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
     throw new Error('Please select at least 1 question type or attach a Table of Specifications to generate.');
   }
 
-  const BATCH_SIZE = 8;
+  const BATCH_SIZE = (params as any).provider === 'nvidia' ? 3 : 8;
   const finalQuestions: any[] = [];
   const diffDirective = getDifficultyPromptDirective(params.difficulty);
 
