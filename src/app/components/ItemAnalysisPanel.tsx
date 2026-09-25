@@ -236,8 +236,8 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
             <StatTile label="Submissions" value={String(analysis.submittedAttempts)} hint={analysis.inProgressAttempts > 0 ? `${analysis.inProgressAttempts} in progress` : undefined} />
             <StatTile label="Mean difficulty" value={analysis.meanDifficulty === null ? '—' : analysis.meanDifficulty.toFixed(2)} hint="p = proportion correct" />
             <StatTile
-              label="Avg. time"
-              value={formatDuration(analysis.timing.meanSeconds)}
+              label="Typical time"
+              value={formatDuration(analysis.timing.medianSeconds)}
               hint={analysis.timing.allottedMinutes ? `of ${analysis.timing.allottedMinutes} min allotted` : 'no time limit set'}
               color="var(--c-emerald-700)"
             />
@@ -278,7 +278,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                   <>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption" sx={{ color: 'var(--c-slate-600)', fontWeight: 700 }}>
-                        Average use of the allotted {analysis.timing.allottedMinutes} minutes
+                        Typical (median) use of the allotted {analysis.timing.allottedMinutes} minutes
                       </Typography>
                       <Typography variant="caption" sx={{ color: 'var(--c-slate-600)', fontWeight: 800 }}>
                         {formatPercent(analysis.timing.utilization)}

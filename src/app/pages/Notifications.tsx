@@ -193,7 +193,8 @@ export default function Notifications() {
 
   const counts = useMemo(() => {
     const c = { missing: 0, assigned: 0, done: 0, review: 0 };
-    todos.forEach((t) => { c[t.bucket]++; });
+    // "To review" counts submissions waiting to be graded, the same number the dashboard shows.
+    todos.forEach((t) => { c[t.bucket] += t.bucket === 'review' ? (t.pendingCount || 1) : 1; });
     return c;
   }, [todos]);
 

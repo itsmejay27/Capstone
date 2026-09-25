@@ -141,7 +141,7 @@ export function createAppTheme(mode: 'light' | 'dark', palette: Palette = 'aspir
           background: gradient.brand,
           color: onBrand,
           '&:hover': { background: gradient.brand, filter: 'brightness(1.06)', boxShadow: shadow.md },
-          '&.Mui-disabled': { background: palette.surfaceSunken, color: palette.inkDisabled },
+          '&.Mui-disabled': { background: palette.surfaceSunken, color: palette.inkSecondary },
         },
         outlined: {
           borderColor: palette.border,

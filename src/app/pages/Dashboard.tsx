@@ -160,12 +160,17 @@ export default function Dashboard() {
     if (!currentUser) return 0;
     const myExams = (exams || []).filter((e) => userClassrooms.some((c) => c.id === e.classroomId));
     if (isInstructor) {
-      return (examAttempts || []).filter((a) => a.submittedAt && myExams.some((e) => e.id === a.examId)).length;
+      // Only work still waiting on a grade: exam attempts with written items not yet checked,
+      // and turned-in classwork without a grade. Matches the To review page.
+      const pendingExams = (examAttempts || []).filter((a) => a.submittedAt && a.gradingStatus === 'pending' && myExams.some((e) => e.id === a.examId)).length;
+      const myWork = new Set(userClassrooms.flatMap((c) => ((classwork || {})[c.id] || []).map((w: any) => w.id)));
+      const pendingWork = (submissions || []).filter((s: any) => myWork.has(s.classworkId) && s.submittedAt && s.status !== 'returned' && s.status !== 'assigned' && (s.grade === undefined || s.grade === null)).length;
+      return pendingExams + pendingWork;
     }
     return myExams.filter(
       (e) => !(examAttempts || []).some((a) => a.examId === e.id && a.studentId === currentUser.id && a.submittedAt)
     ).length;
-  }, [currentUser, isInstructor, exams, examAttempts, userClassrooms]);
+  }, [currentUser, isInstructor, exams, examAttempts, userClassrooms, classwork, submissions]);
 
   const handleCreateClassroom = () => {
     // Only the class name is required, as in Google Classroom. The join code is derived
