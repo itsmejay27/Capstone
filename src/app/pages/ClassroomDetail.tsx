@@ -440,6 +440,7 @@ export default function ClassroomDetail() {
         {/* ── TAB 1: CLASSWORK (assignments, materials, questions, grouped by topic) ── */}
         {activeTab === 1 && (
           <ClassworkPanel
+            className={classroom.name}
             classroomId={classroomId || ''}
             classwork={classClasswork}
             topics={classTopics}

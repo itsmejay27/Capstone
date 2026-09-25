@@ -65,8 +65,9 @@ export default function ClassworkPanel({
   classroomId, classwork, topics, submissions, comments, students,
   isInstructor, currentUserId, currentUserName,
   onSaveClasswork, onDeleteClasswork, onSaveTopic, onDeleteTopic,
-  onSaveSubmission, onSaveComment, onDeleteComment,
+  onSaveSubmission, onSaveComment, onDeleteComment, className,
 }: {
+  className?: string;
   classroomId: string;
   classwork: Classwork[];
   topics: ClassroomTopic[];
@@ -90,6 +91,12 @@ export default function ClassworkPanel({
   const [toast, setToast] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
   const [menuFor, setMenuFor] = useState<{ el: HTMLElement; work: Classwork } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [createEl, setCreateEl] = useState<HTMLElement | null>(null);
+  const [topicFilter, setTopicFilter] = useState('all');
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [topicMenu, setTopicMenu] = useState<{ el: HTMLElement; topic: ClassroomTopic } | null>(null);
+  const [reuseOpen, setReuseOpen] = useState(false);
+  const [yourWorkOpen, setYourWorkOpen] = useState(false);
 
   // Editor dialog
   const [editorOpen, setEditorOpen] = useState(false);
@@ -140,16 +147,17 @@ export default function ClassworkPanel({
     return out.filter((g) => g.items.length > 0 || g.topic);
   }, [visibleWork, topics]);
 
-  const openEditor = (work?: Classwork) => {
+  const openEditor = (work?: Classwork, kind?: ClassworkKind, template?: Partial<Classwork>) => {
     setEditing(work ?? null);
+    const src: Partial<Classwork> | undefined = work ?? template;
     setForm({
-      title: work?.title ?? '',
-      instructions: work?.instructions ?? '',
-      kind: work?.kind ?? 'assignment',
-      points: work?.points != null ? String(work.points) : '',
-      dueDate: toLocalInput(work?.dueDate),
-      topicId: work?.topicId ?? '',
-      attachments: work?.attachments ?? [],
+      title: src?.title ?? '',
+      instructions: src?.instructions ?? '',
+      kind: work?.kind ?? kind ?? src?.kind ?? 'assignment',
+      points: src?.points != null ? String(src.points) : '',
+      dueDate: toLocalInput(src?.dueDate),
+      topicId: src?.topicId ?? '',
+      attachments: src?.attachments ?? [],
     });
     setEditorOpen(true);
   };
@@ -194,7 +202,7 @@ export default function ClassworkPanel({
       // Set only when editing, so the context knows not to re-send the "new assignment" email.
       updatedAt: editing ? new Date().toISOString() : undefined,
     };
-    report(await onSaveClasswork(work), editing ? 'Assignment updated.' : 'Assignment posted.');
+    report(await onSaveClasswork(work), editing ? 'Saved.' : `${KIND_META[work.kind].label} posted.`);
     setBusy(false);
     setEditorOpen(false);
   };
@@ -252,332 +260,335 @@ export default function ClassworkPanel({
     setTopicOpen(false);
   };
 
+  const whenLabel = (w: Classwork) => {
+    if (w.dueDate) {
+      const d = new Date(w.dueDate);
+      return `Due ${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    }
+    const c = new Date(w.createdAt);
+    const today = new Date();
+    if (c.toDateString() === today.toDateString()) return `Posted ${c.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    if (c.toDateString() === new Date(Date.now() - 86_400_000).toDateString()) return 'Posted Yesterday';
+    return `Posted ${c.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  };
+
+  const shownGroups = grouped.filter((g) => topicFilter === 'all' || (g.topic?.id ?? 'none') === topicFilter);
+  const allCollapsed = shownGroups.length > 0 && shownGroups.every((g) => collapsed.has(g.topic?.id ?? 'none'));
+  const toggleGroup = (id: string) => setCollapsed((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const openWork = (w: Classwork) => navigate(`/classroom/${classroomId}/work/${w.id}`);
+
+  const addLink = (kind: string) => {
+    const url = window.prompt(kind === 'youtube' ? 'Paste a YouTube link' : 'Paste a link');
+    if (!url || !/^https?:\/\//i.test(url.trim())) return;
+    const clean = url.trim();
+    const att: AnnouncementAttachment = {
+      id: crypto.randomUUID(),
+      name: /youtu\.?be/i.test(clean) ? `YouTube: ${clean.replace(/^https?:\/\//, '')}` : clean.replace(/^https?:\/\//, ''),
+      size: 0, mimeType: 'text/uri-list', fileUrl: clean, storagePath: null, isDataUrl: false,
+    };
+    setForm((f) => ({ ...f, attachments: [...f.attachments, att] }));
+  };
+
+  const createKinds: { kind: ClassworkKind | 'quiz' | 'reuse' | 'topic'; label: string; icon: any }[] = [
+    { kind: 'assignment', label: 'Assignment', icon: AssignmentTurnedIn },
+    { kind: 'quiz', label: 'Quiz assignment', icon: Grading },
+    { kind: 'question', label: 'Question', icon: HelpOutline },
+    { kind: 'material', label: 'Material', icon: Description },
+    { kind: 'reuse', label: 'Reuse post', icon: Undo },
+  ];
+
   return (
-    <Box>
-      {isInstructor && (
-        <Stack direction="row" spacing={1} sx={{ mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
-          <Button variant="contained" startIcon={<Add />} onClick={() => openEditor()}>
+    <Box sx={{ maxWidth: 940, mx: 'auto' }}>
+      {/* Toolbar */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 2.5 }}>
+        {isInstructor && (
+          <Button variant="contained" startIcon={<Add />} onClick={(e) => setCreateEl(e.currentTarget)}
+            sx={{ borderRadius: 999, px: 2.5, textTransform: 'none', fontWeight: 600 }}>
             Create
           </Button>
-          <Button variant="outlined" startIcon={<Folder />} onClick={() => setTopicOpen(true)}>
-            Add topic
+        )}
+        {topics.length > 0 && (
+          <TextField select size="small" label="Topic filter" value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)} fullWidth={false} sx={{ width: { xs: '100%', sm: 300 }, flex: '0 0 auto' }}>
+            <MenuItem value="all">All topics</MenuItem>
+            {[...topics].sort((x, y) => x.position - y.position).map((t) => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+          </TextField>
+        )}
+        <Box sx={{ flex: 1 }} />
+        {!isInstructor && (
+          <Button variant="outlined" startIcon={<AssignmentTurnedIn />} onClick={() => setYourWorkOpen(true)}
+            sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 600 }}>
+            View your work
           </Button>
-        </Stack>
-      )}
+        )}
+        {shownGroups.length > 1 && (
+          <Button startIcon={allCollapsed ? <ExpandMore /> : <ExpandLess />} sx={{ textTransform: 'none', fontWeight: 600 }}
+            onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(shownGroups.map((g) => g.topic?.id ?? 'none')))}>
+            {allCollapsed ? 'Expand all' : 'Collapse all'}
+          </Button>
+        )}
+      </Box>
 
-      {visibleWork.length === 0 ? (
-        <EmptyState
-          icon={<AssignmentTurnedIn />}
-          title="No classwork yet"
-          description={
-            isInstructor
-              ? 'Post an assignment, share a material, or ask a question. Group them under topics to keep the page tidy.'
-              : 'Assignments and materials your instructor posts will appear here.'
-          }
-          action={isInstructor ? <Button variant="contained" startIcon={<Add />} onClick={() => openEditor()}>Create classwork</Button> : undefined}
-        />
-      ) : (
-        grouped.map(({ topic, items }) => (
-          <Box key={topic?.id ?? 'untopiced'} sx={{ mb: 3.5 }}>
-            <SectionHeading
-              title={topic?.name ?? 'Other'}
-              count={items.length}
-              action={
-                isInstructor && topic ? (
-                  <Tooltip title="Delete topic (its classwork is kept)">
-                    <IconButton
-                      size="small"
-                      aria-label={`Delete topic ${topic.name}`}
-                      onClick={async () => report(await onDeleteTopic(topic.id), 'Topic removed.')}
-                    >
-                      <Delete sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  </Tooltip>
-                ) : undefined
-              }
-            />
-
-            {items.length === 0 && (
-              <Typography variant="body2" sx={{ color: palette.inkTertiary, mb: 1 }}>
-                Nothing under this topic yet.
-              </Typography>
-            )}
-
-            {items.map((work) => {
-              const meta = KIND_META[work.kind];
-              const Icon = meta.icon;
-              const open = expanded === work.id;
-              const sub = mySubmission(work.id);
-              const allSubs = submissionsFor(work.id);
-              const turnedIn = allSubs.filter((s) => s.submittedAt).length;
-              const overdue = isOverdue(work.dueDate) && !sub?.submittedAt;
-
-              return (
-                <Paper
-                  key={work.id}
-                  sx={{
-                    mb: 1.25, borderRadius: '14px', overflow: 'hidden',
-                    border: `1px solid ${overdue && !isInstructor ? palette.dangerSoft : palette.border}`,
-                  }}
-                >
-                  <Box
-                    onClick={() => setExpanded(open ? null : work.id)}
-                    sx={{
-                      p: 2, display: 'flex', alignItems: 'center', gap: 1.75, cursor: 'pointer',
-                      '&:hover': { bgcolor: palette.surfaceMuted },
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                        bgcolor: palette.surfaceSunken, display: 'flex',
-                        alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      <Icon sx={{ fontSize: 18, color: meta.tone }} />
-                    </Box>
-
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography
-                        component="a"
-                        href={`/classroom/${classroomId}/work/${work.id}`}
-                        onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); navigate(`/classroom/${classroomId}/work/${work.id}`); }}
-                        sx={{ display: 'block', fontSize: '0.92rem', fontWeight: 600, color: palette.ink, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                        noWrap
-                      >
-                        {work.title}
-                      </Typography>
-                      <Stack direction="row" spacing={0.75} sx={{ mt: 0.3, flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
-                        <Typography variant="caption" sx={{ color: palette.inkTertiary }}>{meta.label}</Typography>
-                        {work.dueDate && (
-                          <>
-                            <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: palette.inkDisabled }} />
-                            <Typography
-                              variant="caption"
-                              sx={{ color: overdue ? palette.danger : palette.inkTertiary, fontWeight: overdue ? 700 : 500 }}
-                            >
-                              {dueLabel(work.dueDate)}
-                            </Typography>
-                          </>
-                        )}
-                        {work.points != null && (
-                          <>
-                            <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: palette.inkDisabled }} />
-                            <Typography variant="caption" sx={{ color: palette.inkTertiary }}>{work.points} pts</Typography>
-                          </>
-                        )}
-                      </Stack>
-                    </Box>
-
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0 }}>
-                      {isInstructor ? (
-                        <Chip
-                          label={`${turnedIn}/${students.length} turned in`}
-                          size="small"
-                          sx={{ bgcolor: palette.surfaceSunken, color: palette.inkSecondary, fontWeight: 700 }}
-                        />
-                      ) : sub?.status === 'returned' ? (
-                        <StatusPill label={sub.grade != null ? `${sub.grade}/${work.points ?? '—'}` : 'Returned'} tone="success" />
-                      ) : sub?.submittedAt ? (
-                        <StatusPill label={sub.isLate ? 'Turned in late' : 'Turned in'} tone={sub.isLate ? 'warning' : 'success'} />
-                      ) : overdue ? (
-                        <StatusPill label="Missing" tone="danger" />
-                      ) : (
-                        <StatusPill label="Assigned" tone="info" />
-                      )}
-                      {isInstructor && (
-                        <IconButton
-                          size="small"
-                          aria-label="Classwork actions"
-                          onClick={(e) => { e.stopPropagation(); setMenuFor({ el: e.currentTarget, work }); }}
-                        >
-                          <MoreVert fontSize="small" />
-                        </IconButton>
-                      )}
-                      {open ? <ExpandLess sx={{ color: palette.inkTertiary }} /> : <ExpandMore sx={{ color: palette.inkTertiary }} />}
-                    </Stack>
-                  </Box>
-
-                  <Collapse in={open} unmountOnExit>
-                    <Divider />
-                    <Box sx={{ p: 2 }}>
-                      {work.instructions && (
-                        <Typography variant="body2" sx={{ color: palette.inkSecondary, whiteSpace: 'pre-wrap', mb: 1.5 }}>
-                          {work.instructions}
-                        </Typography>
-                      )}
-
-                      {work.attachments?.length > 0 && (
-                        <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap', mb: 2 }}>
-                          {work.attachments.map((a) => <AttachmentRow key={a.id} att={a} />)}
-                        </Stack>
-                      )}
-
-                      {/* Student turn-in */}
-                      {!isInstructor && work.kind !== 'material' && (
-                        <Paper sx={{ p: 2, bgcolor: palette.surfaceMuted, border: `1px solid ${palette.border}`, mb: 1.5 }}>
-                          {sub?.status === 'returned' ? (
-                            <>
-                              <Typography variant="subtitle2" sx={{ color: palette.success, mb: 0.5 }}>
-                                Graded: {sub.grade != null ? `${sub.grade} / ${work.points ?? '—'}` : 'returned'}
-                              </Typography>
-                              {sub.feedback && (
-                                <Typography variant="body2" sx={{ color: palette.inkSecondary, whiteSpace: 'pre-wrap' }}>
-                                  {sub.feedback}
-                                </Typography>
-                              )}
-                            </>
-                          ) : sub?.submittedAt ? (
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap', gap: 1 }}>
-                              <CheckCircle sx={{ color: palette.success, fontSize: 18 }} />
-                              <Typography variant="body2" sx={{ flex: 1, color: palette.inkSecondary }}>
-                                Turned in {sub.isLate ? '(late)' : ''} · {new Date(sub.submittedAt).toLocaleString()}
-                              </Typography>
-                              <Button size="small" startIcon={<Undo />} onClick={() => unsubmit(work)}>
-                                Unsubmit
-                              </Button>
-                            </Stack>
-                          ) : (
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap', gap: 1 }}>
-                              <Schedule sx={{ color: overdue ? palette.danger : palette.inkTertiary, fontSize: 18 }} />
-                              <Typography variant="body2" sx={{ flex: 1, color: palette.inkSecondary }}>
-                                {overdue ? 'This work is past its due date.' : 'Not turned in yet.'}
-                              </Typography>
-                              <Button
-                                variant="contained"
-                                size="small"
-                                onClick={() => {
-                                  setTurnInFor(work);
-                                  setAnswer(sub?.textAnswer ?? '');
-                                  setSubAttachments(sub?.attachments ?? []);
-                                }}
-                              >
-                                Turn in
-                              </Button>
-                            </Stack>
-                          )}
-                        </Paper>
-                      )}
-
-                      {/* Instructor grading summary */}
-                      {isInstructor && work.kind !== 'material' && (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<Grading />}
-                          onClick={() => setGradingFor(work)}
-                          sx={{ mb: 1.5 }}
-                        >
-                          Review {turnedIn} submission{turnedIn === 1 ? '' : 's'}
-                        </Button>
-                      )}
-
-                      <CommentThread
-                        classroomId={classroomId}
-                        postType="classwork"
-                        postId={work.id}
-                        comments={comments}
-                        currentUserId={currentUserId}
-                        currentUserName={currentUserName}
-                        isInstructor={isInstructor}
-                        onSave={onSaveComment}
-                        onDelete={onDeleteComment}
-                      />
-                    </Box>
-                  </Collapse>
-                </Paper>
-              );
-            })}
-          </Box>
-        ))
-      )}
-
-      {/* Instructor action menu */}
-      <Menu anchorEl={menuFor?.el} open={Boolean(menuFor)} onClose={() => setMenuFor(null)}>
-        <MenuItem onClick={() => { if (menuFor) openEditor(menuFor.work); setMenuFor(null); }}>
-          <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
-          <ListItemText>Edit</ListItemText>
-        </MenuItem>
-        <MenuItem
-          sx={{ color: palette.danger }}
-          onClick={async () => {
-            if (menuFor) report(await onDeleteClasswork(menuFor.work.id), 'Classwork deleted.');
-            setMenuFor(null);
-          }}
-        >
-          <ListItemIcon><Delete fontSize="small" sx={{ color: palette.danger }} /></ListItemIcon>
-          <ListItemText>Delete</ListItemText>
+      <Menu anchorEl={createEl} open={Boolean(createEl)} onClose={() => setCreateEl(null)}>
+        {createKinds.map((k) => (
+          <MenuItem key={k.kind} onClick={() => {
+            setCreateEl(null);
+            if (k.kind === 'quiz') navigate(`/exam-generator/${classroomId}`);
+            else if (k.kind === 'reuse') setReuseOpen(true);
+            else openEditor(undefined, k.kind as ClassworkKind);
+          }}>
+            <ListItemIcon><k.icon fontSize="small" /></ListItemIcon>
+            <ListItemText>{k.label}</ListItemText>
+          </MenuItem>
+        ))}
+        <Divider />
+        <MenuItem onClick={() => { setCreateEl(null); setTopicOpen(true); }}>
+          <ListItemIcon><Folder fontSize="small" /></ListItemIcon>
+          <ListItemText>Topic</ListItemText>
         </MenuItem>
       </Menu>
 
-      {/* Create / edit classwork */}
-      <Dialog open={editorOpen} onClose={() => setEditorOpen(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{editing ? 'Edit classwork' : 'Create classwork'}</DialogTitle>
-        <DialogContent>
-          <FieldRow>
-            <Field label="Type" required>
-              <TextField select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as ClassworkKind })}>
-                <MenuItem value="assignment">Assignment</MenuItem>
-                <MenuItem value="material">Material</MenuItem>
-                <MenuItem value="question">Question</MenuItem>
-              </TextField>
-            </Field>
-            <Field label="Topic" hint="Optional grouping">
-              <TextField select value={form.topicId} onChange={(e) => setForm({ ...form, topicId: e.target.value })}>
+      {visibleWork.length === 0 && topics.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8, borderTop: `1px solid ${palette.border}` }}>
+          <AssignmentTurnedIn sx={{ fontSize: 72, color: palette.inkDisabled, mb: 1 }} />
+          <Typography sx={{ fontWeight: 600 }}>{isInstructor ? 'This is where you’ll assign work' : 'No classwork yet'}</Typography>
+          <Typography variant="body2" sx={{ color: palette.inkSecondary, maxWidth: 360, mx: 'auto', mt: 0.5 }}>
+            {isInstructor
+              ? 'You can add assignments and other work for the class, then organize it into topics.'
+              : 'Assignments and materials your teacher posts will appear here.'}
+          </Typography>
+        </Box>
+      ) : (
+        shownGroups.map(({ topic, items }) => {
+          const gid = topic?.id ?? 'none';
+          const isCollapsed = collapsed.has(gid);
+          return (
+            <Box key={gid} sx={{ mb: 4 }}>
+              {(topic || grouped.length > 1) && (
+                <Box sx={{ display: 'flex', alignItems: 'center', px: 1, py: 1, borderBottom: `1px solid ${palette.border}` }}>
+                  <Typography sx={{ flex: 1, fontSize: '1.45rem', fontWeight: 400, color: palette.ink }}>{topic?.name ?? 'No topic'}</Typography>
+                  <IconButton size="small" onClick={() => toggleGroup(gid)} aria-label={isCollapsed ? 'Expand topic' : 'Collapse topic'}>
+                    {isCollapsed ? <ExpandMore /> : <ExpandLess />}
+                  </IconButton>
+                  {isInstructor && topic && (
+                    <IconButton size="small" aria-label={`Topic options for ${topic.name}`} onClick={(e) => setTopicMenu({ el: e.currentTarget, topic })}>
+                      <MoreVert fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+              )}
+              <Collapse in={!isCollapsed}>
+                {items.length === 0 && (
+                  <Typography variant="body2" sx={{ color: palette.inkTertiary, px: 1, py: 2 }}>Nothing under this topic yet.</Typography>
+                )}
+                {items.map((work) => {
+                  const Icon = KIND_META[work.kind].icon;
+                  const sub = mySubmission(work.id);
+                  const done = sub && sub.status !== 'assigned';
+                  const filled = work.kind !== 'material';
+                  return (
+                    <Box key={work.id} onClick={() => openWork(work)} role="link" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter') openWork(work); }}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 1, py: 1.25, borderBottom: `1px solid ${palette.border}`, cursor: 'pointer', '&:hover': { bgcolor: palette.surfaceMuted } }}>
+                      <Box sx={{
+                        width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0,
+                        bgcolor: filled ? (done ? palette.surfaceSunken : palette.primarySoft) : 'transparent',
+                        border: filled ? 'none' : `2px solid ${palette.inkTertiary}`,
+                      }}>
+                        <Icon sx={{ fontSize: 19, color: filled ? (done ? palette.inkTertiary : palette.primary) : palette.inkSecondary }} />
+                      </Box>
+                      <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: '0.95rem' }}>{work.title}</Typography>
+                      {!isInstructor && done && <StatusPill label={sub?.status === 'returned' ? 'Graded' : 'Done'} tone="success" />}
+                      <Typography variant="body2" sx={{ color: isOverdue(work.dueDate) && !done && !isInstructor ? palette.danger : palette.inkSecondary, whiteSpace: 'nowrap', display: { xs: 'none', sm: 'block' } }}>
+                        {whenLabel(work)}
+                      </Typography>
+                      <IconButton size="small" aria-label="Options" onClick={(e) => { e.stopPropagation(); setMenuFor({ el: e.currentTarget, work }); }}>
+                        <MoreVert fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  );
+                })}
+              </Collapse>
+            </Box>
+          );
+        })
+      )}
+
+      {/* Item menu */}
+      <Menu anchorEl={menuFor?.el} open={Boolean(menuFor)} onClose={() => setMenuFor(null)}>
+        <MenuItem onClick={async () => {
+          if (menuFor) { try { await navigator.clipboard.writeText(`${window.location.origin}/classroom/${classroomId}/work/${menuFor.work.id}`); setToast({ severity: 'success', message: 'Link copied.' }); } catch { /* ignore */ } }
+          setMenuFor(null);
+        }}>
+          <ListItemIcon><InsertDriveFile fontSize="small" /></ListItemIcon>
+          <ListItemText>Copy link</ListItemText>
+        </MenuItem>
+        {isInstructor && menuFor?.work.kind !== 'material' && (
+          <MenuItem onClick={() => { if (menuFor) setGradingFor(menuFor.work); setMenuFor(null); }}>
+            <ListItemIcon><Grading fontSize="small" /></ListItemIcon>
+            <ListItemText>Review submissions</ListItemText>
+          </MenuItem>
+        )}
+        {isInstructor && (
+          <MenuItem onClick={() => { if (menuFor) openEditor(menuFor.work); setMenuFor(null); }}>
+            <ListItemIcon><Edit fontSize="small" /></ListItemIcon>
+            <ListItemText>Edit</ListItemText>
+          </MenuItem>
+        )}
+        {isInstructor && (
+          <MenuItem sx={{ color: palette.danger }} onClick={async () => {
+            if (menuFor && window.confirm(`Delete "${menuFor.work.title}"? Comments and student work will also be deleted.`)) report(await onDeleteClasswork(menuFor.work.id), 'Classwork deleted.');
+            setMenuFor(null);
+          }}>
+            <ListItemIcon><Delete fontSize="small" sx={{ color: palette.danger }} /></ListItemIcon>
+            <ListItemText>Delete</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
+
+      {/* Topic menu */}
+      <Menu anchorEl={topicMenu?.el} open={Boolean(topicMenu)} onClose={() => setTopicMenu(null)}>
+        <MenuItem onClick={async () => {
+          const t = topicMenu?.topic; setTopicMenu(null);
+          const name = t ? window.prompt('Rename topic', t.name) : null;
+          if (t && name && name.trim()) report(await onSaveTopic({ ...t, name: name.trim() }), 'Topic renamed.');
+        }}>Rename</MenuItem>
+        <MenuItem sx={{ color: palette.danger }} onClick={async () => {
+          const t = topicMenu?.topic; setTopicMenu(null);
+          if (t && window.confirm(`Delete topic "${t.name}"? Its classwork is kept under "No topic".`)) report(await onDeleteTopic(t.id), 'Topic removed.');
+        }}>Delete</MenuItem>
+      </Menu>
+
+      {/* Create / edit classwork: full screen, like Google Classroom */}
+      <Dialog open={editorOpen} onClose={() => setEditorOpen(false)} fullScreen>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1, borderBottom: `1px solid ${palette.border}` }}>
+          <IconButton onClick={() => setEditorOpen(false)} aria-label="Close"><Close /></IconButton>
+          <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: palette.primarySoft, display: 'grid', placeItems: 'center' }}>
+            {(() => { const I = KIND_META[form.kind].icon; return <I sx={{ fontSize: 20, color: palette.primary }} />; })()}
+          </Box>
+          <Typography sx={{ fontSize: '1.4rem', flex: 1 }}>{KIND_META[form.kind].label}</Typography>
+          <Button variant="contained" onClick={saveWork} disabled={!form.title.trim() || busy || uploading} sx={{ borderRadius: 999, px: 3, textTransform: 'none', fontWeight: 600 }}>
+            {editing ? 'Save' : form.kind === 'assignment' || form.kind === 'question' ? 'Assign' : 'Post'}
+          </Button>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flex: 1, overflow: 'auto', bgcolor: palette.canvas }}>
+          <Box sx={{ flex: 1, p: { xs: 2, md: 4 }, display: 'flex', flexDirection: 'column', gap: 2.5, alignItems: 'center' }}>
+            <Paper elevation={0} sx={{ width: '100%', maxWidth: 900, p: 3, borderRadius: '10px', border: `1px solid ${palette.border}` }}>
+              <TextField fullWidth variant="filled" label="Title" required autoFocus value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })} helperText="*Required" sx={{ mb: 2 }} />
+              <TextField fullWidth variant="filled" multiline minRows={4}
+                label={form.kind === 'question' ? 'Question details (optional)' : form.kind === 'material' ? 'Description (optional)' : 'Instructions (optional)'}
+                value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} />
+            </Paper>
+            <Paper elevation={0} sx={{ width: '100%', maxWidth: 900, p: 3, borderRadius: '10px', border: `1px solid ${palette.border}` }}>
+              <Typography sx={{ fontWeight: 500, mb: 2 }}>Attach</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 2, sm: 4 }, flexWrap: 'wrap' }}>
+                {[
+                  { key: 'upload', label: uploading ? 'Uploading…' : 'Upload', icon: <AttachFile /> },
+                  { key: 'youtube', label: 'YouTube', icon: <Box component="span" sx={{ color: '#ff0000', fontWeight: 900, fontSize: 18 }}>▶</Box> },
+                  { key: 'link', label: 'Link', icon: <InsertDriveFile /> },
+                ].map((b) => (
+                  <Box key={b.key} sx={{ textAlign: 'center' }}>
+                    {b.key === 'upload' ? (
+                      <IconButton component="label" disabled={uploading} sx={{ width: 52, height: 52, border: `1px solid ${palette.border}` }}>
+                        {b.icon}
+                        <input type="file" hidden multiple onChange={(e) => { uploadTo(e.target.files, 'work'); e.target.value = ''; }} />
+                      </IconButton>
+                    ) : (
+                      <IconButton onClick={() => addLink(b.key)} sx={{ width: 52, height: 52, border: `1px solid ${palette.border}` }}>{b.icon}</IconButton>
+                    )}
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>{b.label}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              {form.attachments.length > 0 && (
+                <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap', mt: 2 }}>
+                  {form.attachments.map((a) => (
+                    <AttachmentRow key={a.id} att={a} onRemove={() => setForm((f) => ({ ...f, attachments: f.attachments.filter((x) => x.id !== a.id) }))} />
+                  ))}
+                </Stack>
+              )}
+            </Paper>
+          </Box>
+          <Box sx={{ width: { xs: '100%', md: 340 }, borderLeft: { md: `1px solid ${palette.border}` }, p: 3, bgcolor: palette.surface, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>For</Typography>
+              <TextField fullWidth size="small" value={className || 'This class'} InputProps={{ readOnly: true }} />
+            </Box>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>Assign to</Typography>
+              <Button fullWidth variant="outlined" disabled sx={{ borderRadius: 999, textTransform: 'none' }}>All students</Button>
+            </Box>
+            {form.kind !== 'material' && (
+              <>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>Points</Typography>
+                  <TextField fullWidth size="small" type="number" placeholder="Ungraded" value={form.points}
+                    onChange={(e) => setForm({ ...form, points: e.target.value })} inputProps={{ min: 0 }} />
+                </Box>
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>Due</Typography>
+                  <TextField fullWidth size="small" type="datetime-local" value={form.dueDate}
+                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })} helperText={form.dueDate ? '' : 'No due date'} />
+                </Box>
+              </>
+            )}
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>Topic</Typography>
+              <TextField select fullWidth size="small" value={form.topicId} SelectProps={{ displayEmpty: true }} onChange={(e) => {
+                if (e.target.value === '__new') { setTopicOpen(true); return; }
+                setForm({ ...form, topicId: e.target.value });
+              }}>
                 <MenuItem value="">No topic</MenuItem>
                 {topics.map((t) => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                <MenuItem value="__new"><em>Create topic…</em></MenuItem>
               </TextField>
-            </Field>
-          </FieldRow>
+            </Box>
+          </Box>
+        </Box>
+      </Dialog>
 
-          <Field label="Title" required>
-            <TextField autoFocus value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Laboratory Exercise 3 — ERD Design" />
-          </Field>
-
-          <Field label="Instructions">
-            <TextField
-              multiline rows={4} value={form.instructions}
-              onChange={(e) => setForm({ ...form, instructions: e.target.value })}
-              placeholder="What students need to do…"
-            />
-          </Field>
-
-          {form.kind !== 'material' && (
-            <FieldRow>
-              <Field label="Points" hint="Leave blank for ungraded">
-                <TextField type="number" value={form.points} onChange={(e) => setForm({ ...form, points: e.target.value })} inputProps={{ min: 0 }} />
-              </Field>
-              <Field label="Due date">
-                <TextField
-                  type="datetime-local"
-                  value={form.dueDate}
-                  onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Field>
-            </FieldRow>
-          )}
-
-          <Field label="Attachments">
-            <Button component="label" variant="outlined" startIcon={<AttachFile />} disabled={uploading} fullWidth>
-              {uploading ? 'Uploading…' : 'Attach files'}
-              <input type="file" hidden multiple onChange={(e) => { uploadTo(e.target.files, 'work'); e.target.value = ''; }} />
-            </Button>
-            {form.attachments.length > 0 && (
-              <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap', mt: 1 }}>
-                {form.attachments.map((a) => (
-                  <AttachmentRow key={a.id} att={a} onRemove={() => setForm((f) => ({ ...f, attachments: f.attachments.filter((x) => x.id !== a.id) }))} />
-                ))}
-              </Stack>
-            )}
-          </Field>
+      {/* Reuse post */}
+      <Dialog open={reuseOpen} onClose={() => setReuseOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Reuse post</DialogTitle>
+        <DialogContent dividers>
+          {classwork.length === 0 ? (
+            <Typography variant="body2" sx={{ color: palette.inkSecondary }}>Nothing to reuse yet.</Typography>
+          ) : classwork.map((w) => {
+            const I = KIND_META[w.kind].icon;
+            return (
+              <MenuItem key={w.id} onClick={() => {
+                setReuseOpen(false);
+                openEditor(undefined, w.kind, { ...w, title: `${w.title} (copy)`, dueDate: undefined });
+              }}>
+                <ListItemIcon><I fontSize="small" /></ListItemIcon>
+                <ListItemText primary={w.title} secondary={KIND_META[w.kind].label} />
+              </MenuItem>
+            );
+          })}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditorOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={saveWork} disabled={!form.title.trim() || busy || uploading}>
-            {editing ? 'Save changes' : 'Post'}
-          </Button>
-        </DialogActions>
+        <DialogActions><Button onClick={() => setReuseOpen(false)}>Cancel</Button></DialogActions>
+      </Dialog>
+
+      {/* View your work (students) */}
+      <Dialog open={yourWorkOpen} onClose={() => setYourWorkOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Your work</DialogTitle>
+        <DialogContent dividers>
+          {visibleWork.filter((w) => w.kind !== 'material').length === 0 ? (
+            <Typography variant="body2" sx={{ color: palette.inkSecondary }}>No assigned work yet.</Typography>
+          ) : visibleWork.filter((w) => w.kind !== 'material').map((w) => {
+            const sub = mySubmission(w.id);
+            const st = sub?.status === 'returned' ? (sub.grade != null ? `${sub.grade}/${w.points ?? '—'}` : 'Returned')
+              : sub && sub.status !== 'assigned' ? (sub.isLate ? 'Turned in late' : 'Turned in')
+              : isOverdue(w.dueDate) ? 'Missing' : 'Assigned';
+            return (
+              <MenuItem key={w.id} onClick={() => { setYourWorkOpen(false); openWork(w); }} sx={{ justifyContent: 'space-between', gap: 2 }}>
+                <ListItemText primary={w.title} secondary={whenLabel(w)} />
+                <StatusPill label={st} tone={st === 'Missing' ? 'danger' : st === 'Assigned' ? 'info' : 'success'} />
+              </MenuItem>
+            );
+          })}
+        </DialogContent>
+        <DialogActions><Button onClick={() => setYourWorkOpen(false)}>Close</Button></DialogActions>
       </Dialog>
 
       {/* Add topic */}
