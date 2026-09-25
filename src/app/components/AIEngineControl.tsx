@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -15,7 +15,11 @@ import {
   Paper,
 } from '@mui/material';
 import { SmartToy, AutoAwesome } from '@mui/icons-material';
-import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel } from '../services/geminiService';
+import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel, checkNvidiaModel, speedFromMs, prettyModelName, ModelCheck } from '../services/geminiService';
+
+const CHECKS_KEY = 'nvidiaModelChecks';
+const CHECK_TTL = 6 * 60 * 60 * 1000;
+const readChecks = (): Record<string, ModelCheck> => { try { return JSON.parse(localStorage.getItem(CHECKS_KEY) || '{}'); } catch { return {}; } };
 
 export type AIEngineType = 'gemini' | 'nvidia';
 
@@ -45,6 +49,46 @@ export default function AIEngineControl({
   const [nvidiaModels, setNvidiaModels] = useState<NvidiaModel[]>([]);
   const [nvidiaLoading, setNvidiaLoading] = useState(false);
   const [nvidiaError, setNvidiaError] = useState('');
+  const [checks, setChecks] = useState<Record<string, ModelCheck>>(readChecks);
+  const [checking, setChecking] = useState<Record<string, boolean>>({});
+
+  // Measure each model for real (a tiny prompt) instead of trusting fixed labels.
+  const runChecks = useCallback((models: NvidiaModel[], force = false) => {
+    const stored = readChecks();
+    const todo = models.filter((m) => force || !stored[m.id] || Date.now() - stored[m.id].at > CHECK_TTL);
+    if (todo.length === 0) return;
+    setChecking((c) => ({ ...c, ...Object.fromEntries(todo.map((m) => [m.id, true])) }));
+    todo.forEach((m) => {
+      checkNvidiaModel(m.id).then((r) => {
+        setChecks((prev) => {
+          const next = { ...prev, [m.id]: r };
+          try { localStorage.setItem(CHECKS_KEY, JSON.stringify(next)); } catch { /* not persisted */ }
+          return next;
+        });
+        setChecking((c) => ({ ...c, [m.id]: false }));
+      });
+    });
+  }, []);
+
+  // If the chosen model turned out broken, move to the fastest one that works.
+  useEffect(() => {
+    if (engine !== 'nvidia' || !nvidiaModels.length) return;
+    const cur = checks[nvidiaModel];
+    if (cur && !cur.ok) {
+      const best = nvidiaModels.filter((m) => checks[m.id]?.ok).sort((a, b) => checks[a.id].ms - checks[b.id].ms)[0];
+      if (best) onNvidiaModelChange?.(best.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checks, nvidiaModels, engine]);
+
+  const labelFor = (m: NvidiaModel) => {
+    const c = checks[m.id];
+    const best = m.bestFor === 'Best overall' ? 'Best overall' : `Best for ${String(m.bestFor || '').toLowerCase()}`;
+    if (checking[m.id]) return `${prettyModelName(m.id)} · testing speed… · ${best}`;
+    if (c && !c.ok) return `${prettyModelName(m.id)} · Not working right now`;
+    if (c) return `${prettyModelName(m.id)} · ${speedFromMs(c.ms)} (${(c.ms / 1000).toFixed(1)}s) · ${best}`;
+    return `${prettyModelName(m.id)} · ${best}`;
+  };
 
   useEffect(() => {
     if (engine !== 'nvidia' || nvidiaModels.length > 0) return;
@@ -55,6 +99,7 @@ export default function AIEngineControl({
       .then((models) => {
         if (cancelled) return;
         setNvidiaModels(models);
+        runChecks(models);
         if (models.length === 0) {
           setNvidiaError('Could not load the NVIDIA model list. Check NVIDIA_API_KEY in the Vercel project settings.');
         } else if (!models.some((m) => m.id === nvidiaModel)) {
@@ -186,10 +231,16 @@ export default function AIEngineControl({
                 sx={{ borderRadius: 2, bgcolor: 'var(--c-surface)' }}
               >
                 {nvidiaModels.map((m) => (
-                  <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                  <MenuItem key={m.id} value={m.id} disabled={checks[m.id] ? !checks[m.id].ok : false}>{labelFor(m)}</MenuItem>
                 ))}
               </Select>
             </FormControl>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.75, gap: 1 }}>
+              <Typography variant="caption" color="text.secondary">
+                Speeds are measured live on your key and re-checked every 6 hours.
+              </Typography>
+              <Chip size="small" label={Object.values(checking).some(Boolean) ? 'Testing…' : 'Test again'} onClick={() => runChecks(nvidiaModels, true)} disabled={Object.values(checking).some(Boolean)} />
+            </Box>
             {nvidiaError && (
               <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
                 {nvidiaError}

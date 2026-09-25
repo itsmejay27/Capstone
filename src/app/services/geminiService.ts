@@ -69,6 +69,46 @@ const CURATED: { re: RegExp; speed: ModelSpeed; bestFor: string; rank: number }[
   { re: /^nvidia\/llama-3\.1-nemotron-ultra-253b-v1$/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 10 },
 ];
 
+/** Result of a live check: did the model answer, and how long did it take. */
+export interface ModelCheck { ok: boolean; ms: number; at: number }
+
+/** Speed label from a measured round trip for a tiny prompt. */
+export function speedFromMs(ms: number): ModelSpeed {
+  if (ms < 2500) return 'Ultra fast';
+  if (ms < 6000) return 'Fast';
+  if (ms < 15000) return 'Balanced';
+  return 'Slow · deep thinking';
+}
+
+/** Sends a tiny prompt to one NVIDIA model and times the reply. */
+export async function checkNvidiaModel(id: string, timeoutMs = 45000): Promise<ModelCheck> {
+  const started = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(NVIDIA_PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: id,
+        messages: [{ role: 'user', content: 'Write one multiple-choice question about the sun as JSON: {"q":"","options":["","","",""],"answer":0}' }],
+        max_tokens: 400,
+        temperature: 0.2,
+        ...(/gpt-oss/i.test(id) ? { reasoning_effort: 'low' } : {}),
+      }),
+    });
+    const data = res.ok ? await res.json().catch(() => null) : null;
+    const msg = data?.choices?.[0]?.message || {};
+    const ok = res.ok && !!String(msg.content || msg.reasoning_content || '').trim();
+    return { ok, ms: Date.now() - started, at: Date.now() };
+  } catch {
+    return { ok: false, ms: Date.now() - started, at: Date.now() };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** "meta/llama-3.3-70b-instruct" → "Llama 3.3 70B Instruct". */
 export function prettyModelName(id: string): string {
   return (id.split('/').pop() || id)

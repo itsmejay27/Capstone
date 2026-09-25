@@ -413,6 +413,10 @@ export default function Settings() {
           {([
             { id: 'aspire', name: 'Aspire Blue', colors: ['#0891b2', '#2563eb', '#05070c'] },
             { id: 'classic', name: 'Classic Green', colors: ['#059669', '#0d9488', '#0b1120'] },
+            { id: 'purple', name: 'Royal Purple', colors: ['#7c3aed', '#c026d3', '#05070c'] },
+            { id: 'sunset', name: 'Sunset Orange', colors: ['#ea580c', '#d97706', '#05070c'] },
+            { id: 'rose', name: 'Rose Pink', colors: ['#e11d48', '#db2777', '#05070c'] },
+            { id: 'indigo', name: 'Midnight Indigo', colors: ['#4f46e5', '#0284c7', '#05070c'] },
           ] as const).map((t) => (
             <Box key={t.id} role="button" tabIndex={0} onClick={() => setPalette(t.id)}
               onKeyDown={(e) => { if (e.key === 'Enter') setPalette(t.id); }}

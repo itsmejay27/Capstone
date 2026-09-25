@@ -65,7 +65,7 @@ import {
   Link as LinkIcon,
   InfoOutlined,
 } from '@mui/icons-material';
-import { CLASS_THEMES, classThemeFor, BANNER_GRID } from '../theme/classThemes';
+import { CLASS_THEMES, classThemeFor, isGlowTheme, BANNER_GRID } from '../theme/classThemes';
 import AttemptInsight from '../components/AttemptInsight';
 import ClassArt, { artVariant } from '../components/classroom/ClassArt';
 import StreamSidebar from '../components/classroom/StreamSidebar';
@@ -308,7 +308,8 @@ export default function ClassroomDetail() {
         <Box
           sx={{
             position: 'relative', mb: 3, borderRadius: '10px', overflow: 'hidden', color: '#fff',
-            bgcolor: classTheme.flat, minHeight: { xs: 150, md: 240 }, px: { xs: 2.5, md: 3.5 }, py: { xs: 2.5, md: 3 },
+            bgcolor: classTheme.flat, minHeight: { xs: 150, md: 240 },
+            ...(isGlowTheme(classroom?.theme) ? { backgroundImage: `${BANNER_GRID}, ${classTheme.background}`, backgroundSize: '32px 32px, 32px 32px, auto' } : {}), px: { xs: 2.5, md: 3.5 }, py: { xs: 2.5, md: 3 },
             display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
           }}
         >
@@ -336,6 +337,18 @@ export default function ClassroomDetail() {
         </Box>
 
         <Menu anchorEl={themeAnchor} open={Boolean(themeAnchor)} onClose={() => setThemeAnchor(null)}>
+          <Box sx={{ px: 1.5, pt: 1, display: 'flex', gap: 1 }}>
+            {(['solid', 'glow'] as const).map((style) => {
+              const active = (style === 'glow') === isGlowTheme(classroom?.theme);
+              return (
+                <Button key={style} size="small" variant={active ? 'contained' : 'outlined'}
+                  onClick={() => updateClassroom(classroom.id, { theme: `${classTheme.id}${style === 'glow' ? ':glow' : ''}` })}
+                  sx={{ textTransform: 'none', flex: 1 }}>
+                  {style === 'solid' ? 'Solid' : 'Glow'}
+                </Button>
+              );
+            })}
+          </Box>
           <Box sx={{ p: 1.5, display: 'grid', gridTemplateColumns: 'repeat(4, 56px)', gap: 1 }}>
             {CLASS_THEMES.map((t) => (
               <Box
@@ -343,11 +356,11 @@ export default function ClassroomDetail() {
                 role="button"
                 tabIndex={0}
                 aria-label={`${t.name} colour`}
-                onClick={() => { updateClassroom(classroom.id, { theme: t.id }); setThemeAnchor(null); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { updateClassroom(classroom.id, { theme: t.id }); setThemeAnchor(null); } }}
+                onClick={() => { updateClassroom(classroom.id, { theme: `${t.id}${isGlowTheme(classroom?.theme) ? ':glow' : ''}` }); setThemeAnchor(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { updateClassroom(classroom.id, { theme: `${t.id}${isGlowTheme(classroom?.theme) ? ':glow' : ''}` }); setThemeAnchor(null); } }}
                 sx={{ cursor: 'pointer', textAlign: 'center' }}
               >
-                <Box sx={{ height: 36, borderRadius: '8px', bgcolor: t.flat, outline: classTheme.id === t.id ? `2px solid ${t.flat}` : 'none', outlineOffset: 2 }} />
+                <Box sx={{ height: 36, borderRadius: '8px', bgcolor: t.flat, ...(isGlowTheme(classroom?.theme) ? { backgroundImage: t.background } : {}), outline: classTheme.id === t.id ? `2px solid ${t.flat}` : 'none', outlineOffset: 2 }} />
                 <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.68rem' }}>{t.name}</Typography>
               </Box>
             ))}
