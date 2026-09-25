@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import {
   PushPin, PushPinOutlined, MoreVert, Edit, Delete, AttachFile, Close, Campaign,
-  FormatBold, FormatItalic, FormatListBulleted, InsertLink, Send, InsertDriveFile,
+  FormatBold, FormatItalic, FormatListBulleted, InsertLink, Send, InsertDriveFile, EditOutlined,
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import type { Announcement, AnnouncementAttachment, MutationResult, PostComment } from '../types';
@@ -329,7 +329,12 @@ export default function AnnouncementFeed({
   comments = [],
   onSaveComment,
   onDeleteComment,
+  activity = [],
+  accent,
 }: {
+  /** Other stream items (e.g. "posted a new assignment"), interleaved by date. */
+  activity?: { id: string; at: string; node: React.ReactNode }[];
+  accent?: string;
   classroomId: string;
   announcements: Announcement[];
   isInstructor: boolean;
@@ -342,6 +347,7 @@ export default function AnnouncementFeed({
   onDeleteComment?: (id: string) => Promise<MutationResult>;
 }) {
   const [editing, setEditing] = useState<Announcement | null>(null);
+  const [composing, setComposing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
 
@@ -373,6 +379,7 @@ export default function AnnouncementFeed({
     };
     report(await onSave(announcement), 'Announcement posted.');
     setBusy(false);
+    setComposing(false);
   };
 
   const handleUpdate = async (bodyHtml: string, attachments: AnnouncementAttachment[], isPinned: boolean) => {
@@ -396,8 +403,19 @@ export default function AnnouncementFeed({
 
   return (
     <Box>
-      {isInstructor && !editing && (
-        <Composer classroomId={classroomId} onSubmit={handleCreate} busy={busy} />
+      {isInstructor && !editing && !composing && (
+        <Button
+          startIcon={<EditOutlined />}
+          onClick={() => setComposing(true)}
+          sx={{ mb: 2, borderRadius: 999, px: 2.5, py: 1, textTransform: 'none', fontWeight: 600,
+            bgcolor: accent ? `${accent}22` : 'var(--c-primary-soft)', color: accent || 'var(--c-primary)',
+            '&:hover': { bgcolor: accent ? `${accent}33` : 'var(--c-primary-soft)' } }}
+        >
+          New announcement
+        </Button>
+      )}
+      {isInstructor && !editing && composing && (
+        <Composer classroomId={classroomId} onSubmit={handleCreate} onCancel={() => setComposing(false)} busy={busy} />
       )}
       {isInstructor && editing && (
         <Composer
@@ -409,7 +427,7 @@ export default function AnnouncementFeed({
         />
       )}
 
-      {ordered.length === 0 ? (
+      {ordered.length === 0 && activity.length === 0 ? (
         <Paper elevation={0} sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center', borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
           <Campaign sx={{ fontSize: 44, color: 'var(--c-slate-400)', mb: 1 }} />
           <Typography variant="h6" fontWeight={800} color="var(--c-slate-900)">No announcements yet</Typography>
@@ -420,7 +438,10 @@ export default function AnnouncementFeed({
           </Typography>
         </Paper>
       ) : (
-        ordered.map((a) => (
+        [...ordered.map((a) => ({ kind: 'a' as const, a, at: a.createdAt, pinned: a.isPinned })),
+          ...activity.map((x) => ({ kind: 'x' as const, x, at: x.at, pinned: false }))]
+          .sort((p, q) => (p.pinned !== q.pinned ? (p.pinned ? -1 : 1) : (new Date(q.at).getTime() || 0) - (new Date(p.at).getTime() || 0)))
+          .map((item) => item.kind === 'x' ? <Box key={`x-${item.x.id}`}>{item.x.node}</Box> : (() => { const a = item.a; return (
           <AnnouncementCard
             key={a.id}
             announcement={a}
@@ -444,7 +465,7 @@ export default function AnnouncementFeed({
               ) : undefined
             }
           />
-        ))
+        ); })())
       )}
 
       <Snackbar

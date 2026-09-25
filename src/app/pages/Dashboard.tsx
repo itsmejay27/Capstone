@@ -1,5 +1,6 @@
 import { teachesClass } from '../services/classAccess';
 import { useState, useMemo, useEffect } from 'react';
+import ClassCard from '../components/classroom/ClassCard';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -54,7 +55,21 @@ export default function Dashboard() {
     examAttempts,
     archiveClassroom,
     unarchiveClassroom,
+    classwork,
+    submissions,
   } = useAuth();
+
+  // Work due in the next week, for the body of each class card (like Google Classroom).
+  const upcomingFor = (classroomId: string) => {
+    const now = Date.now();
+    const week = now + 7 * 86_400_000;
+    return ((classwork || {})[classroomId] || [])
+      .filter((w: any) => w.isPublished !== false && w.dueDate && (w.kind === 'assignment' || w.kind === 'question'))
+      .filter((w: any) => { const t = new Date(w.dueDate).getTime(); return t >= now && t <= week; })
+      .filter((w: any) => isInstructor || !(submissions || []).some((s: any) => s.classworkId === w.id && s.studentId === currentUser?.id && s.status !== 'assigned'))
+      .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      .map((w: any) => ({ id: w.id, title: w.title, due: `Due ${new Date(w.dueDate).toLocaleDateString(undefined, { weekday: 'long' })}` }));
+  };
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
@@ -402,51 +417,21 @@ export default function Dashboard() {
           }
         />
       ) : (
-        <CardGrid>
+        <CardGrid min={280}>
           {filteredClassrooms.map((classroom) => {
             const instructor = users.find((u) => u.id === classroom.instructorId);
-            const examCount = (exams || []).filter((e) => e.classroomId === classroom.id).length;
             return (
-              <EntityCard
+              <ClassCard
                 key={classroom.id}
-                id={classroom.id}
-                title={classroom.name}
-                metaLeft={`${classroom.subject} · ${classroom.section}`}
-                metaRight={
-                  classroom.isArchived
-                    ? <StatusPill label="Archived" tone="neutral" />
-                    : <StatusPill label="Active" tone="success" />
-                }
-                members={membersOf(classroom)}
-                onClick={() => navigate(`/classroom/${classroom.id}`)}
-                action={cardAction(classroom.id)}
-                footerRight={
-                  <Stack direction="row" spacing={0.75} alignItems="center">
-                    <Typography variant="caption" sx={{ color: palette.inkTertiary, whiteSpace: 'nowrap' }}>
-                      {examCount} exam{examCount === 1 ? '' : 's'}
-                    </Typography>
-                    {isInstructor && (
-                      <Tooltip title={`Copy class code ${classroom.classCode}`}>
-                        <Chip
-                          label={classroom.classCode}
-                          size="small"
-                          icon={<ContentCopy sx={{ fontSize: '0.7rem !important' }} />}
-                          onClick={(e) => { e.stopPropagation(); handleCopyCode(classroom.classCode); }}
-                          sx={{
-                            bgcolor: palette.surfaceSunken, color: palette.inkSecondary,
-                            fontFamily: font.mono, fontWeight: 700, cursor: 'pointer',
-                            '&:hover': { bgcolor: palette.primarySoft, color: palette.primary },
-                          }}
-                        />
-                      </Tooltip>
-                    )}
-                    {!isInstructor && instructor && (
-                      <Typography variant="caption" sx={{ color: palette.inkTertiary }} noWrap>
-                        {instructor.name}
-                      </Typography>
-                    )}
-                  </Stack>
-                }
+                classroom={classroom}
+                teacherName={instructor?.name}
+                teacherAvatar={instructor?.avatar}
+                upcoming={upcomingFor(classroom.id)}
+                onOpen={() => navigate(`/classroom/${classroom.id}`)}
+                onMenu={(el) => { setMenuAnchorEl(el); setSelectedClassroomId(classroom.id); }}
+                onOpenWork={() => navigate(`/classroom/${classroom.id}?tab=classwork`)}
+                onOpenFiles={() => navigate(`/classroom/${classroom.id}?tab=materials`)}
+                badge={classroom.isArchived ? <StatusPill label="Archived" tone="neutral" /> : undefined}
               />
             );
           })}

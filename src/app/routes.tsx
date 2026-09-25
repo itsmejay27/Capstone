@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router';
 import RootLayout from './layouts/RootLayout';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
+import ClassworkDetail from './pages/ClassworkDetail';
 import ClassroomDetail from './pages/ClassroomDetail';
 import ExamGenerator from './pages/ExamGenerator';
 import ExamRepository from './pages/ExamRepository';
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { index: true, Component: LoginPage },
       { path: 'dashboard', Component: Dashboard },
       { path: 'classroom/:classroomId', Component: ClassroomDetail },
+      { path: 'classroom/:classroomId/work/:workId', Component: ClassworkDetail },
       { path: 'exam-generator', Component: ExamGenerator },
       { path: 'exam-generator/:classroomId', Component: ExamGenerator },
       { path: 'exam-repository', Component: ExamRepository },

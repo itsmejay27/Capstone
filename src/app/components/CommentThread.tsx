@@ -43,6 +43,7 @@ export default function CommentThread({
   /** When set, the private channel is scoped to this student (instructor viewing one turn-in). */
   privateWithStudentId,
   allowPrivate = true,
+  fixedVisibility,
 }: {
   classroomId: string;
   postType: 'announcement' | 'classwork';
@@ -55,9 +56,11 @@ export default function CommentThread({
   onDelete: (id: string) => Promise<MutationResult>;
   privateWithStudentId?: string;
   allowPrivate?: boolean;
+  /** Show and post only this kind of comment (the Google-Classroom-style side panels). */
+  fixedVisibility?: CommentVisibility;
 }) {
   const [draft, setDraft] = useState('');
-  const [visibility, setVisibility] = useState<CommentVisibility>('class');
+  const [visibility, setVisibility] = useState<CommentVisibility>(fixedVisibility || 'class');
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [menuFor, setMenuFor] = useState<{ el: HTMLElement; id: string; authorId: string } | null>(null);
@@ -119,12 +122,14 @@ export default function CommentThread({
           onClick={() => setExpanded((v) => !v)}
           sx={{ color: palette.inkSecondary, fontWeight: 700 }}
         >
-          {classComments.length === 0
-            ? 'Add class comment'
-            : `${classComments.length} class comment${classComments.length === 1 ? '' : 's'}`}
+          {fixedVisibility === 'private'
+            ? (privateComments.length === 0 ? 'Add comment to your teacher' : `${privateComments.length} private comment${privateComments.length === 1 ? '' : 's'}`)
+            : classComments.length === 0
+              ? 'Add class comment'
+              : `${classComments.length} class comment${classComments.length === 1 ? '' : 's'}`}
         </Button>
 
-        {allowPrivate && (
+        {allowPrivate && !fixedVisibility && (
           <Chip
             icon={visibility === 'private' ? <Lock sx={{ fontSize: '0.75rem !important' }} /> : <Public sx={{ fontSize: '0.75rem !important' }} />}
             label={visibility === 'private' ? 'Private' : 'Class'}
