@@ -19,6 +19,14 @@ import {
 import { SmartToy, AutoAwesome } from '@mui/icons-material';
 import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel } from '../services/geminiService';
 
+/** Green = quick, amber = slower. */
+function speedSx(speed: string) {
+  if (speed === 'Ultra fast') return { bgcolor: 'rgba(22,163,74,.15)', color: 'var(--c-green-700)' };
+  if (speed === 'Fast') return { bgcolor: 'rgba(14,165,198,.15)', color: 'var(--c-emerald-700)' };
+  if (speed === 'Balanced') return { bgcolor: 'rgba(100,116,139,.15)', color: 'var(--c-slate-700)' };
+  return { bgcolor: 'rgba(217,119,6,.15)', color: 'var(--c-amber-700)' };
+}
+
 export type AIEngineType = 'gemini' | 'nvidia';
 
 interface AIEngineControlProps {
@@ -166,7 +174,7 @@ export default function AIEngineControl({
                     <Typography variant="body2" fontWeight="bold" color="var(--c-green-700)">NVIDIA Cloud (NIM)</Typography>
                   </Box>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.75rem' }}>
-                    Llama, GLM, Qwen, DeepSeek and more — works on the deployed site
+                    Labelled by speed and what each model is best at
                   </Typography>
                 </Box>
               </Paper>
@@ -208,25 +216,26 @@ export default function AIEngineControl({
               renderOption={(optProps, option: any) => (
                 <Box component="li" {...optProps} key={option.id} sx={{ display: 'block !important', py: 1 }}>
                   <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-                    {option.name || option.id}
+                    {option.recommended ? '★ ' : ''}{option.id.split('/').pop()}
                   </Typography>
-                  {option.name && option.name !== option.id && (
-                    <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)' }} noWrap>
-                      {option.id}
-                    </Typography>
-                  )}
+                  <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                    {option.speed && <Chip size="small" label={option.speed} sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, ...speedSx(option.speed) }} />}
+                    {option.bestFor && <Chip size="small" variant="outlined" label={option.bestFor} sx={{ height: 20, fontSize: '0.68rem' }} />}
+                    <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)', alignSelf: 'center' }} noWrap>{option.id}</Typography>
+                  </Box>
                 </Box>
               )}
+              groupBy={(o: any) => (o.recommended ? 'Recommended' : 'All other models')}
               renderInput={(inputProps) => (
                 <TextField
                   {...inputProps}
                   label={nvidiaLoading ? 'Loading available models…' : 'Search NVIDIA models'}
                   placeholder="Type to filter, e.g. glm, llama, qwen"
-                  helperText={
-                    nvidiaModels.length > 0
-                      ? `${nvidiaModels.length} models available on your key.`
-                      : undefined
-                  }
+                  helperText={(() => {
+                    const cur = nvidiaModels.find((m) => m.id === nvidiaModel);
+                    if (!cur) return nvidiaModels.length > 0 ? `${nvidiaModels.length} models available.` : undefined;
+                    return `${cur.speed} · ${cur.bestFor}. ★ = recommended. ${nvidiaModels.length} models available.`;
+                  })()}
                 />
               )}
             />

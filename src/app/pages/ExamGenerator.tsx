@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import ExamImportDialog from '../components/ExamImportDialog';
 import AIEngineControl, { AIEngineType } from '../components/AIEngineControl';
-import { DEFAULT_NVIDIA_MODEL } from '../services/geminiService';
+import { DEFAULT_NVIDIA_MODEL, modelProfile } from '../services/geminiService';
 import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey, regenerateItemsForSpecs } from '../services/geminiService';
 import { parseTOSFile, extractFilesContentEnhanced, TOSData, BLOOM_LEVELS } from '../services/tosParser';
 import { enforceTOSCompliance, type TOSComplianceReport } from '../services/tosValidator';
@@ -1492,11 +1492,11 @@ export default function ExamGenerator() {
             <Grid container spacing={4}>
               {/* Left Column: Config Profile */}
               <Grid size={{ xs: 12, md: 8 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
 
                   {/* Summary Profile */}
-                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: 'var(--c-slate-300)', borderLeft: '6px solid var(--c-emerald-600)', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
-                    <CardContent sx={{ p: 3.5 }}>
+                  <Card variant="outlined" sx={{ borderRadius: 3, borderColor: 'var(--c-slate-200)', bgcolor: 'var(--c-surface)', boxShadow: 'none' }}>
+                    <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <Assignment color="primary" sx={{ fontSize: 20 }} />
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.main', letterSpacing: '0.05em' }}>
@@ -1510,9 +1510,9 @@ export default function ExamGenerator() {
                         {examDescription || 'No description provided.'}
                       </Typography>
 
-                      <Grid container spacing={2.5}>
+                      <Grid container spacing={1.5}>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <Box sx={{ p: 2, bgcolor: 'var(--c-slate-50)', borderRadius: 3, border: '1px solid var(--c-slate-200)', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ p: 1.5, height: '100%', bgcolor: 'var(--c-surface-sunken, var(--c-slate-50))', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Assignment sx={{ color: 'var(--c-emerald-600)', fontSize: 22 }} />
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>TYPE</Typography>
@@ -1523,7 +1523,7 @@ export default function ExamGenerator() {
                           </Box>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <Box sx={{ p: 2, bgcolor: 'var(--c-slate-50)', borderRadius: 3, border: '1px solid var(--c-slate-200)', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ p: 1.5, height: '100%', bgcolor: 'var(--c-surface-sunken, var(--c-slate-50))', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <AccessTime sx={{ color: 'var(--c-emerald-500)', fontSize: 22 }} />
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>DURATION</Typography>
@@ -1532,7 +1532,7 @@ export default function ExamGenerator() {
                           </Box>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <Box sx={{ p: 2, bgcolor: 'var(--c-slate-50)', borderRadius: 3, border: '1px solid var(--c-slate-200)', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ p: 1.5, height: '100%', bgcolor: 'var(--c-surface-sunken, var(--c-slate-50))', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <SportsScore sx={{ color: 'var(--c-amber-600)', fontSize: 22 }} />
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>CAP LIMIT</Typography>
@@ -1541,7 +1541,7 @@ export default function ExamGenerator() {
                           </Box>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                          <Box sx={{ p: 2, bgcolor: 'var(--c-slate-50)', borderRadius: 3, border: '1px solid var(--c-slate-200)', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Box sx={{ p: 1.5, height: '100%', bgcolor: 'var(--c-surface-sunken, var(--c-slate-50))', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <TrendingUp sx={{ color: 'var(--c-emerald-600)', fontSize: 22 }} />
                             <Box>
                               <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, display: 'block', lineHeight: 1.1 }}>DIFFICULTY</Typography>
@@ -1556,8 +1556,8 @@ export default function ExamGenerator() {
                   </Card>
 
                   {/* Summary Files */}
-                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: 'var(--c-slate-300)', borderLeft: '6px solid var(--c-emerald-700)', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
-                    <CardContent sx={{ p: 3.5 }}>
+                  <Card variant="outlined" sx={{ borderRadius: 3, borderColor: 'var(--c-slate-200)', bgcolor: 'var(--c-surface)', boxShadow: 'none' }}>
+                    <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <FolderZip color="secondary" sx={{ fontSize: 20 }} />
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'secondary.main', letterSpacing: '0.05em' }}>
@@ -1598,8 +1598,8 @@ export default function ExamGenerator() {
                   </Card>
 
                   {/* Summary Topics */}
-                  <Card variant="outlined" sx={{ borderRadius: 4, borderColor: 'var(--c-slate-300)', borderLeft: '6px solid #0891b2', boxShadow: '0 4px 12px rgba(0,0,0,0.01)' }}>
-                    <CardContent sx={{ p: 3.5 }}>
+                  <Card variant="outlined" sx={{ borderRadius: 3, borderColor: 'var(--c-slate-200)', bgcolor: 'var(--c-surface)', boxShadow: 'none' }}>
+                    <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                         <Topic sx={{ color: '#0891b2', fontSize: 20 }} />
                         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#0891b2', letterSpacing: '0.05em' }}>
@@ -1622,19 +1622,18 @@ export default function ExamGenerator() {
 
               {/* Sidebar Matrix Manifest (Upgraded Design) */}
               <Grid size={{ xs: 12, md: 4 }}>
-                <Card variant="outlined" sx={{ borderRadius: 4, borderColor: 'var(--c-emerald-500)', bgcolor: 'rgba(14,165,198,0.01)', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Card variant="outlined" sx={{ borderRadius: 3, borderColor: 'var(--c-slate-200)', bgcolor: 'var(--c-surface)', boxShadow: 'none', position: { md: 'sticky' }, top: { md: 16 } }}>
 
-                  {/* Indigo Mini Header Banner */}
-                  <Box sx={{ background: 'linear-gradient(135deg, var(--c-emerald-500) 0%, var(--c-emerald-600) 100%)', p: 3, color: 'white', textAlign: 'center' }}>
-                    <AutoAwesome sx={{ fontSize: 28, mb: 1, color: 'var(--c-emerald-100)' }} />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, letterSpacing: '0.08em' }}>
+                  <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', gap: 1, borderBottom: '1px solid var(--c-slate-200)' }}>
+                    <AutoAwesome sx={{ fontSize: 20, color: 'primary.main' }} />
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800, letterSpacing: '0.05em', color: 'primary.main' }}>
                       AI BLUEPRINT MANIFEST
                     </Typography>
                   </Box>
 
-                  <CardContent sx={{ p: 3.5, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
                     <Box sx={{ width: '100%' }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         {isTosActive && tosData ? (
                           <>
                             <Box sx={{ p: 1.5, bgcolor: 'var(--c-green-50)', borderRadius: 2, border: '1px solid var(--c-green-200)', mb: 0.5 }}>
@@ -1719,27 +1718,25 @@ export default function ExamGenerator() {
         {activeStep === 2 && (
           <Box sx={{ animation: 'fadeIn 0.3s ease' }}>
             {generating ? (
-              <Box sx={{ textAlign: 'center', py: 8 }}>
-                <AutoAwesome
-                  sx={{
-                    fontSize: 70,
-                    color: 'var(--c-emerald-500)',
-                    mb: 3,
-                    animation: 'pulseSpinBlue 3s infinite ease-in-out',
-                    '@keyframes pulseSpinBlue': {
-                      '0%': { transform: 'rotate(0deg) scale(1)', filter: 'drop-shadow(0 0 0px rgba(14,165,198,0))' },
-                      '50%': { transform: 'rotate(180deg) scale(1.15)', filter: 'drop-shadow(0 0 15px rgba(14,165,198,0.4))' },
-                      '100%': { transform: 'rotate(360deg) scale(1)', filter: 'drop-shadow(0 0 0px rgba(14,165,198,0))' },
-                    }
-                  }}
-                />
-                <Typography variant="h5" gutterBottom fontWeight="black" sx={{ color: 'var(--c-slate-900)', letterSpacing: '-0.02em' }}>
-                  {aiEngine === 'gemini' ? `Google Gemini (${geminiModel}) Generating Exam...` : `NVIDIA (${nvidiaModel}) Generating Exam...`}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 4, maxWidth: 550, mx: 'auto', px: 2 }}>
-                  {generationStatusText || `Analyzing source files and building ${totalGeneratedCount} high-fidelity items (${activeQuestionCount} active drawer items, ${extraCount} extra anti-cheat items).`}
-                </Typography>
-                <LinearProgress sx={{ maxWidth: 400, mx: 'auto', height: 6, borderRadius: 3 }} />
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: { xs: 4, md: 7 } }}>
+                <Box sx={{ width: '100%', maxWidth: 520, textAlign: 'center', p: { xs: 3, sm: 4 }, borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
+                  <Box sx={{ width: 64, height: 64, mx: 'auto', mb: 2, borderRadius: '50%', display: 'grid', placeItems: 'center', bgcolor: 'rgba(14,165,198,0.12)' }}>
+                    <AutoAwesome sx={{ fontSize: 34, color: 'primary.main', animation: 'genPulse 1.8s infinite ease-in-out', '@keyframes genPulse': { '0%,100%': { transform: 'scale(1)', opacity: 1 }, '50%': { transform: 'scale(1.15)', opacity: 0.7 } } }} />
+                  </Box>
+                  <Typography variant="h6" fontWeight={900} sx={{ color: 'var(--c-slate-900)' }}>Generating your exam…</Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 0.75, mt: 1.25, mb: 2 }}>
+                    <Chip size="small" label={aiEngine === 'gemini' ? 'Google Gemini' : 'NVIDIA'} sx={{ fontWeight: 700 }} />
+                    <Chip size="small" variant="outlined" label={(aiEngine === 'gemini' ? geminiModel : nvidiaModel).split('/').pop()} sx={{ maxWidth: 260 }} />
+                    {aiEngine === 'nvidia' && <Chip size="small" color="primary" variant="outlined" label={modelProfile(nvidiaModel).speed} />}
+                  </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, minHeight: 20 }}>
+                    {generationStatusText || `Building ${totalGeneratedCount} items (${activeQuestionCount} active, ${extraCount} anti-cheat extras).`}
+                  </Typography>
+                  <LinearProgress sx={{ height: 6, borderRadius: 3 }} />
+                  <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'var(--c-ink-tertiary)' }}>
+                    Keep this tab open. Larger "deep thinking" models can take a minute or two.
+                  </Typography>
+                </Box>
               </Box>
             ) : (
               <Box>

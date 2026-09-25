@@ -11,9 +11,9 @@ export const DEFAULT_GEMINI_API_KEY =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) || '';
 
 export const GEMINI_MODELS = [
-  { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (Ultra Fast 1.9s - Recommended)' },
-  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash (Balanced)' },
-  { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash (High Performance)' },
+  { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite · Ultra fast · Best for multiple choice & true/false (Recommended)' },
+  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash · Fast · Best overall' },
+  { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash · Balanced · Best for essay & hard questions' },
 ];
 
 export function getStoredGeminiApiKey(): string {
@@ -45,6 +45,42 @@ export const DEFAULT_NVIDIA_MODEL = '';
 export interface NvidiaModel {
   id: string;
   name: string;
+  speed?: ModelSpeed;
+  bestFor?: string;
+  recommended?: boolean;
+}
+
+export type ModelSpeed = 'Ultra fast' | 'Fast' | 'Balanced' | 'Slow · deep thinking';
+
+/**
+ * Hand-picked NVIDIA models, best first. Matched by pattern so a new version of the same
+ * family (e.g. -v3.1 → -v3.2) keeps its label. `rank` orders the dropdown.
+ */
+const CURATED: { re: RegExp; speed: ModelSpeed; bestFor: string; rank: number }[] = [
+  { re: /llama-3\.3-70b-instruct|llama-4-maverick/i, speed: 'Fast', bestFor: 'Best overall', rank: 1 },
+  { re: /gpt-oss-120b/i, speed: 'Fast', bestFor: 'Essay & hard questions', rank: 2 },
+  { re: /qwen3-next-80b-a3b-instruct|qwen3-.*a3b.*instruct/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 3 },
+  { re: /nemotron.*super/i, speed: 'Balanced', bestFor: 'Best overall', rank: 4 },
+  { re: /gpt-oss-20b/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 5 },
+  { re: /llama-4-scout/i, speed: 'Ultra fast', bestFor: 'Multiple choice & short answer', rank: 6 },
+  { re: /mistral-(medium|large)|mistral-small-3/i, speed: 'Fast', bestFor: 'Short answer', rank: 7 },
+  { re: /deepseek-v3/i, speed: 'Balanced', bestFor: 'Essay & hard questions', rank: 8 },
+  { re: /qwen3.*(235b|thinking)|qwq/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 9 },
+  { re: /kimi|deepseek-r1|nemotron.*ultra|glm/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 10 },
+  { re: /nemotron.*nano|llama-3\.1-8b|phi-4|gemma|mistral-7b|ministral/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 11 },
+];
+
+/** Speed and "best for" label for any model id; curated first, then a size-based guess. */
+export function modelProfile(id: string): { speed: ModelSpeed; bestFor: string; rank: number; recommended: boolean } {
+  const hit = CURATED.find((c) => c.re.test(id));
+  if (hit) return { speed: hit.speed, bestFor: hit.bestFor, rank: hit.rank, recommended: hit.rank <= 5 };
+  const size = Number((id.match(/(\d+(?:\.\d+)?)b\b/i) || [])[1] || 0);
+  const thinks = /(reason|thinking|\br1\b|-r1|qwq)/i.test(id);
+  if (thinks) return { speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 40, recommended: false };
+  if (size && size <= 12) return { speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 30, recommended: false };
+  if (size && size <= 40) return { speed: 'Fast', bestFor: 'Short answer', rank: 25, recommended: false };
+  if (size && size > 200) return { speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 35, recommended: false };
+  return { speed: 'Balanced', bestFor: 'Best overall', rank: 20, recommended: false };
 }
 
 /** A reranker scores relevance and an embedding model returns a vector: neither writes text. */
@@ -78,16 +114,13 @@ export async function fetchNvidiaModels(): Promise<NvidiaModel[]> {
       .map((m: any) => String(m?.id || ''))
       .filter((id: string) => id && !NON_GENERATIVE_MODEL.test(id) && !NOT_FOR_STUDY.test(id) && STUDY_CAPABLE.test(id));
 
-    const rank = (id: string) => {
-      const l = id.toLowerCase();
-      if (REASONING.test(l)) return 0;
-      if (l.includes('llama') && l.includes('instruct') && /(70b|405b|90b)/.test(l)) return 1;
-      if (l.includes('instruct') || l.includes('chat')) return 2;
-      return 3;
-    };
-    ids.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    // Hand-picked, well-rounded models first; the rest by the size-based guess.
+    ids.sort((a, b) => modelProfile(a).rank - modelProfile(b).rank || a.localeCompare(b));
 
-    return ids.map((id) => ({ id, name: id }));
+    return ids.map((id) => {
+      const p = modelProfile(id);
+      return { id, name: id, speed: p.speed, bestFor: p.bestFor, recommended: p.recommended };
+    });
   } catch (err) {
     console.warn('Could not list NVIDIA models:', err);
     return [];
