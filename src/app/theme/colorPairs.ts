@@ -212,15 +212,17 @@ const THEME_TRANSITION = `.theme-transition, .theme-transition *, .theme-transit
 export function buildThemeStylesheet(): string {
   const light = COLOR_PAIRS.map((p) => `  ${varName(p.name)}: ${p.light};`).join('\n');
   const dark = COLOR_PAIRS.map((p) => `  ${varName(p.name)}: ${p.dark};`).join('\n');
-  const classicLight = Object.entries(CLASSIC_OVERRIDES).map(([k, v]) => `  ${varName(k)}: ${v[0]};`).join('\n');
-  const classicDark = Object.entries(CLASSIC_OVERRIDES).map(([k, v]) => `  ${varName(k)}: ${v[1]};`).join('\n');
-  // Order matters: each classic block follows the base block of the same mode, and the
-  // classic light block comes before the dark base so dark mode still wins.
+  // Each palette block follows the base block of the same mode, and the light blocks come
+  // before the dark base so dark mode still wins.
+  const block = (mode: 0 | 1) => Object.entries(PALETTES).map(([id, p]) =>
+    `:root[data-palette='${id}']${mode ? "[data-theme='dark']" : ''} {\n` +
+    Object.entries(p.overrides).map(([k, v]) => `  ${varName(k)}: ${v[mode]};`).join('\n') +
+    `\n${p.effects[mode]}\n}\n\n`).join('');
   return (
     `:root {\n  color-scheme: light;\n${light}\n${EFFECTS_LIGHT}\n}\n\n` +
-    `:root[data-palette='classic'] {\n${classicLight}\n${CLASSIC_EFFECTS_LIGHT}\n}\n\n` +
+    block(0) +
     `:root[data-theme='dark'] {\n  color-scheme: dark;\n${dark}\n${EFFECTS_DARK}\n}\n\n` +
-    `:root[data-palette='classic'][data-theme='dark'] {\n${classicDark}\n${CLASSIC_EFFECTS_DARK}\n}\n\n` +
+    block(1) +
     THEME_TRANSITION
   );
 }
@@ -276,13 +278,46 @@ const CLASSIC_EFFECTS_DARK = `  --shadow-focus-ring: rgba(16, 185, 129, 0.30);
   --glow-a: rgba(16, 185, 129, 0.20);
   --glow-b: rgba(34, 211, 238, 0.16);`;
 
-export type Palette = 'aspire' | 'classic';
+/** Accent scales (Tailwind 50…900) used to build the extra palettes. */
+const SCALES: Record<string, { s: string[]; rgb: string; alt: [string, string] }> = {
+  purple: { s: ['#f5f3ff', '#ede9fe', '#ddd6fe', '#c4b5fd', '#a78bfa', '#8b5cf6', '#7c3aed', '#6d28d9', '#5b21b6', '#4c1d95'], rgb: '139, 92, 246', alt: ['#c026d3', '#e879f9'] },
+  sunset: { s: ['#fff7ed', '#ffedd5', '#fed7aa', '#fdba74', '#fb923c', '#f97316', '#ea580c', '#c2410c', '#9a3412', '#7c2d12'], rgb: '249, 115, 22', alt: ['#d97706', '#fbbf24'] },
+  rose: { s: ['#fff1f2', '#ffe4e6', '#fecdd3', '#fda4af', '#fb7185', '#f43f5e', '#e11d48', '#be123c', '#9f1239', '#881337'], rgb: '244, 63, 94', alt: ['#db2777', '#f472b6'] },
+  indigo: { s: ['#eef2ff', '#e0e7ff', '#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4f46e5', '#4338ca', '#3730a3', '#312e81'], rgb: '99, 102, 241', alt: ['#0284c7', '#38bdf8'] },
+};
+
+function scaleOverrides(key: keyof typeof SCALES): Record<string, [string, string]> {
+  const { s, rgb, alt } = SCALES[key];
+  const [c50, c100, c200, c300, c400, c500, c600, c700, c800, c900] = s;
+  return {
+    'emerald-50': [c50, `rgba(${rgb}, 0.12)`], 'emerald-100': [c100, `rgba(${rgb}, 0.18)`], 'emerald-200': [c200, `rgba(${rgb}, 0.36)`],
+    'emerald-300': [c300, c200], 'emerald-400': [c400, c300], 'emerald-500': [c500, c400],
+    'emerald-600': [c600, c400], 'emerald-700': [c700, c300], 'emerald-800': [c800, c200], 'emerald-900': [c900, c100],
+    'teal-600': [alt[0], alt[1]], 'teal-700': [alt[0], alt[1]], 'teal-100': [c100, `rgba(${rgb}, 0.16)`],
+  };
+}
+const effects = (rgb: string): [string, string] => [
+  `  --shadow-focus-ring: rgba(${rgb}, 0.22);\n  --glow-a: rgba(${rgb}, 0.10);\n  --glow-b: rgba(${rgb}, 0.08);`,
+  `  --shadow-focus-ring: rgba(${rgb}, 0.30);\n  --glow-a: rgba(${rgb}, 0.20);\n  --glow-b: rgba(${rgb}, 0.14);`,
+];
+
+export type Palette = 'aspire' | 'classic' | 'purple' | 'sunset' | 'rose' | 'indigo';
+export const PALETTE_IDS: Palette[] = ['aspire', 'classic', 'purple', 'sunset', 'rose', 'indigo'];
+
+/** Every non-default palette: colour overrides [light, dark] plus glow effects. */
+export const PALETTES: Record<Exclude<Palette, 'aspire'>, { overrides: Record<string, [string, string]>; effects: [string, string] }> = {
+  classic: { overrides: CLASSIC_OVERRIDES, effects: [CLASSIC_EFFECTS_LIGHT, CLASSIC_EFFECTS_DARK] },
+  purple: { overrides: scaleOverrides('purple'), effects: effects(SCALES.purple.rgb) },
+  sunset: { overrides: scaleOverrides('sunset'), effects: effects(SCALES.sunset.rgb) },
+  rose: { overrides: scaleOverrides('rose'), effects: effects(SCALES.rose.rgb) },
+  indigo: { overrides: scaleOverrides('indigo'), effects: effects(SCALES.indigo.rgb) },
+};
 
 /** Hex values for the MUI theme, for a mode and palette. */
 export function hexFor(mode: 'light' | 'dark', palette: Palette = 'aspire'): Record<string, string> {
   const base = mode === 'dark' ? darkHex : lightHex;
-  if (palette !== 'classic') return base;
+  if (palette === 'aspire' || !PALETTES[palette]) return base;
   const out = { ...base };
-  for (const [k, v] of Object.entries(CLASSIC_OVERRIDES)) out[k] = v[mode === 'dark' ? 1 : 0];
+  for (const [k, v] of Object.entries(PALETTES[palette].overrides)) out[k] = v[mode === 'dark' ? 1 : 0];
   return out;
 }

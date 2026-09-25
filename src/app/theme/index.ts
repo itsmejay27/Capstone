@@ -1,3 +1,4 @@
+import type { Palette } from './colorPairs';
 import { createTheme } from '@mui/material/styles';
 import { palette, muiPalette, gradient, radius, shadow, layout, font } from './tokens';
 
@@ -15,7 +16,7 @@ import { palette, muiPalette, gradient, radius, shadow, layout, font } from './t
  * - Controls default to `fullWidth` so a grid cell governs the width, not the control.
  * - Labels are shrunk-by-default outlined labels; no floating-label jump.
  */
-export function createAppTheme(mode: 'light' | 'dark', palette: 'aspire' | 'classic' = 'aspire') {
+export function createAppTheme(mode: 'light' | 'dark', palette: Palette = 'aspire') {
   const mui = muiPalette(mode, palette);
   // In dark mode the brand greens are light (they have to be, to read on navy), so text
   // sitting ON the brand must be near-black rather than white — otherwise every contained

@@ -1,3 +1,4 @@
+import { PALETTE_IDS, type Palette } from '../theme/colorPairs';
 import {
   createContext, useContext, useEffect, useMemo, useRef, useState, ReactNode, useCallback,
 } from 'react';
@@ -22,8 +23,8 @@ interface ThemeModeContextValue {
   mode: ResolvedMode;
   setPreference: (p: ThemePreference) => void;
   /** Colour scheme: the current Aspire blue or the original Classic green. */
-  palette: 'aspire' | 'classic';
-  setPalette: (p: 'aspire' | 'classic') => void;
+  palette: Palette;
+  setPalette: (p: Palette) => void;
   /** Flips between light and dark, leaving 'system' behind. */
   toggle: () => void;
 }
@@ -64,11 +65,11 @@ function systemPrefersDark(): boolean {
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>(readStoredPreference);
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
-  const [palette, setPaletteState] = useState<'aspire' | 'classic'>(() => {
-    try { return localStorage.getItem('themePalette') === 'classic' ? 'classic' : 'aspire'; } catch { return 'aspire'; }
+  const [palette, setPaletteState] = useState<Palette>(() => {
+    try { const v = localStorage.getItem('themePalette') as Palette; return PALETTE_IDS.includes(v) ? v : 'aspire'; } catch { return 'aspire'; }
   });
   useEffect(() => { document.documentElement.setAttribute('data-palette', palette); }, [palette]);
-  const setPalette = useCallback((p: 'aspire' | 'classic') => {
+  const setPalette = useCallback((p: Palette) => {
     setPaletteState(p);
     try { localStorage.setItem('themePalette', p); } catch { /* not persisted */ }
   }, []);

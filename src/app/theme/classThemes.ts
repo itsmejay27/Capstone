@@ -15,7 +15,9 @@ export const CLASS_THEMES: ClassTheme[] = [
   { id: 'graphite', flat: '#455a64', name: 'Graphite', swatch: '#64748b', background: 'radial-gradient(90% 120% at 50% -20%, rgba(148,163,184,.35), transparent 60%), linear-gradient(135deg, #1e293b 0%, #111827 60%, #05070c 100%)' },
 ];
 
-export const classThemeFor = (id?: string) => CLASS_THEMES.find((t) => t.id === id) || CLASS_THEMES[0];
+/** A class theme id may end in ":glow" for the gradient banner; the colour is the same. */
+export const classThemeFor = (id?: string) => CLASS_THEMES.find((t) => t.id === String(id || '').split(':')[0]) || CLASS_THEMES[0];
+export const isGlowTheme = (id?: string) => String(id || '').endsWith(':glow');
 
 /** The faint grid laid over every banner, echoing the landing page floor. */
 export const BANNER_GRID =
