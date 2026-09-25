@@ -148,6 +148,8 @@ export interface ExamItemAnalysis {
 }
 
 const OMITTED_KEY = '__omitted__';
+/** Only questions at least this share of students got wrong count as "most missed". */
+export const MOST_MISSED_THRESHOLD = 0.8;
 const OTHER_KEY = '__other__';
 
 function normKey(v: unknown): string {
@@ -515,7 +517,7 @@ export function analyzeExam(exam: any, attempts: any[]): ExamItemAnalysis {
     : null;
 
   const mostMissed = [...analysable]
-    .filter((i) => (i.missRate ?? 0) > 0)
+    .filter((i) => (i.missRate ?? 0) >= MOST_MISSED_THRESHOLD)
     .sort((a, b) => (b.missRate ?? 0) - (a.missRate ?? 0) || a.order - b.order);
 
   return {
