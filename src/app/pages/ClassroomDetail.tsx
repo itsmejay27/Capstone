@@ -37,6 +37,7 @@ import {
   Snackbar,
   Alert,
   Menu,
+  Popover,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -62,9 +63,13 @@ import {
   AssignmentTurnedIn,
   Palette as PaletteIcon,
   Link as LinkIcon,
+  InfoOutlined,
 } from '@mui/icons-material';
 import { CLASS_THEMES, classThemeFor, BANNER_GRID } from '../theme/classThemes';
 import AttemptInsight from '../components/AttemptInsight';
+import ClassArt, { artVariant } from '../components/classroom/ClassArt';
+import StreamSidebar from '../components/classroom/StreamSidebar';
+import StreamActivityRow from '../components/classroom/StreamActivityRow';
 import GradeAttemptDialog from '../components/GradeAttemptDialog';
 import GradeSheet from '../components/GradeSheet';
 import { gradeFor, isPending } from '../services/grading';
@@ -124,6 +129,7 @@ export default function ClassroomDetail() {
 
   const isInstructor = currentUser?.role === 'instructor';
   const [themeAnchor, setThemeAnchor] = useState<HTMLElement | null>(null);
+  const [infoAnchor, setInfoAnchor] = useState<HTMLElement | null>(null);
   const classTheme = classThemeFor(classroom?.theme);
   const materials = classroomMaterials[classroomId || ''] || [];
   const classAnnouncements = announcements[classroomId || ''] || [];
@@ -277,217 +283,159 @@ export default function ClassroomDetail() {
           Back to Classrooms
         </Button>
 
-        {/* ── Grounded LMS Classroom Header Banner ── */}
-        <Paper
-          elevation={0}
+        {/* ── Tabs, then a Google-Classroom-style banner ── */}
+        <Tabs
+          value={activeTab}
+          onChange={(_, val) => setActiveTab(val)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{
-            mb: 3,
-            borderRadius: 3.5,
-            color: 'white',
-            overflow: 'hidden',
-            position: 'relative',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 24px 60px -30px rgba(0,0,0,0.6)',
-            // The instructor's chosen theme, with the landing page's faint grid over it.
-            backgroundImage: `${BANNER_GRID}, ${classTheme.background}`,
-            // Grid lines tile; the theme's two gradient layers must not.
-            backgroundSize: '44px 44px, 44px 44px, auto, auto',
-            transition: 'background-image .3s ease',
+            mb: 2, borderBottom: '1px solid var(--c-border)',
+            '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '0.9rem', minHeight: 48, color: 'var(--c-ink-secondary)', px: { xs: 1.5, sm: 2.5 }, minWidth: 'auto' },
+            '& .Mui-selected': { color: `${classTheme.flat} !important` },
+            '& .MuiTabs-indicator': { bgcolor: classTheme.flat, height: 3, borderRadius: '3px 3px 0 0' },
           }}
         >
-          {isInstructor && (
-            <Tooltip title="Change class theme">
-              <IconButton
-                onClick={(e) => setThemeAnchor(e.currentTarget)}
-                aria-label="Change class theme"
-                sx={{ position: 'absolute', top: 12, right: 12, zIndex: 1, color: 'white', bgcolor: 'rgba(255,255,255,0.1)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' } }}
-              >
-                <PaletteIcon fontSize="small" />
+          <Tab label="Stream" />
+          <Tab label="Classwork" />
+          <Tab label="Assessments" />
+          <Tab label="Course Materials" />
+          <Tab label="People" />
+          {isInstructor && <Tab label="Gradebook" />}
+        </Tabs>
+
+        <Box
+          sx={{
+            position: 'relative', mb: 3, borderRadius: '10px', overflow: 'hidden', color: '#fff',
+            bgcolor: classTheme.flat, minHeight: { xs: 150, md: 240 }, px: { xs: 2.5, md: 3.5 }, py: { xs: 2.5, md: 3 },
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          }}
+        >
+          <ClassArt variant={artVariant(classroom.id)} />
+          <Box sx={{ position: 'relative', maxWidth: '70%' }}>
+            <Typography sx={{ fontSize: { xs: '1.8rem', md: '2.4rem' }, fontWeight: 500, lineHeight: 1.15 }}>{classroom.name}</Typography>
+            <Typography sx={{ fontSize: { xs: '1rem', md: '1.3rem' }, fontWeight: 400, mt: 0.5, opacity: 0.95 }}>
+              {classroom.section}{classroom.subject ? ` · ${classroom.subject}` : ''}
+            </Typography>
+          </Box>
+          <Box sx={{ position: 'absolute', right: 10, bottom: 10, display: 'flex', gap: 0.5 }}>
+            {isInstructor && classroom.instructorId === currentUser?.id && (
+              <Tooltip title="Customize colour">
+                <IconButton onClick={(e) => setThemeAnchor(e.currentTarget)} aria-label="Change class theme" sx={{ color: '#fff' }}>
+                  <PaletteIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title="Class information">
+              <IconButton onClick={(e) => setInfoAnchor(e.currentTarget)} aria-label="Class information" sx={{ color: '#fff' }}>
+                <InfoOutlined />
               </IconButton>
             </Tooltip>
-          )}
-          <Menu anchorEl={themeAnchor} open={Boolean(themeAnchor)} onClose={() => setThemeAnchor(null)}>
-            <Box sx={{ p: 1.5, display: 'grid', gridTemplateColumns: 'repeat(4, 64px)', gap: 1 }}>
-              {CLASS_THEMES.map((t) => (
-                <Box
-                  key={t.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${t.name} theme`}
-                  onClick={() => { updateClassroom(classroom.id, { theme: t.id }); setThemeAnchor(null); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { updateClassroom(classroom.id, { theme: t.id }); setThemeAnchor(null); } }}
-                  sx={{ cursor: 'pointer', textAlign: 'center' }}
-                >
-                  <Box sx={{
-                    height: 40, borderRadius: '10px', backgroundImage: t.background,
-                    outline: classTheme.id === t.id ? `2px solid ${t.swatch}` : '1px solid var(--c-border)',
-                    outlineOffset: 2, transition: 'transform .15s', '&:hover': { transform: 'scale(1.06)' },
-                  }} />
-                  <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.68rem' }}>{t.name}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </Menu>
-          <Box sx={{ p: { xs: 3, md: 4 }, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, gap: 3 }}>
-            <Box>
-              <Typography variant="h4" fontWeight={900} sx={{ letterSpacing: '-0.02em', mb: 0.5, fontSize: { xs: '1.6rem', md: '2.1rem' } }}>
-                {classroom.name}
-              </Typography>
-              <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
-                {classroom.subject} &bull; Section {classroom.section}
-              </Typography>
-              {classroom.description && (
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.78)', mt: 1, maxWidth: 650, lineHeight: 1.5 }}>
-                  {classroom.description}
-                </Typography>
-              )}
-
-              {/* Class Info Pills */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2.5, flexWrap: 'wrap' }}>
-                <Tooltip title="Click to copy Class Code">
-                  <Chip
-                    icon={<Code sx={{ color: 'white !important', fontSize: '14px !important' }} />}
-                    label={`Class Code: ${classroom.classCode}`}
-                    onClick={handleCopyClassCode}
-                    deleteIcon={<ContentCopy sx={{ color: 'white !important', fontSize: '13px !important' }} />}
-                    onDelete={handleCopyClassCode}
-                    sx={{
-                      bgcolor: 'rgba(255,255,255,0.12)',
-                      color: 'white',
-                      fontWeight: 800,
-                      fontSize: '0.75rem',
-                      fontFamily: 'monospace',
-                      cursor: 'pointer',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' },
-                    }}
-                  />
-                </Tooltip>
-
-                {isInstructor && (
-                  <Tooltip title="Copy a link students can open to join this class">
-                    <Chip
-                      icon={<LinkIcon sx={{ color: 'white !important', fontSize: '15px !important' }} />}
-                      label="Copy invite link"
-                      onClick={handleCopyInviteLink}
-                      sx={{
-                        bgcolor: 'rgba(255,255,255,0.12)', color: 'white', fontWeight: 800, fontSize: '0.75rem',
-                        cursor: 'pointer', border: '1px solid rgba(255,255,255,0.2)',
-                        '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' },
-                      }}
-                    />
-                  </Tooltip>
-                )}
-
-                <Chip
-                  icon={<People sx={{ color: 'white !important', fontSize: '14px !important' }} />}
-                  label={`${classroom.students?.length || 0} Students`}
-                  sx={{
-                    bgcolor: 'rgba(255,255,255,0.08)',
-                    color: 'white',
-                    fontWeight: 700,
-                    fontSize: '0.72rem',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                  }}
-                />
-
-                {instructor && (
-                  <Chip
-                    avatar={<Avatar sx={{ width: 20, height: 20, bgcolor: 'var(--c-emerald-500)', fontSize: '0.65rem', color: 'white' }}>{instructor.name.charAt(0)}</Avatar>}
-                    label={`Instructor: ${instructor.name}`}
-                    sx={{
-                      bgcolor: 'rgba(255,255,255,0.08)',
-                      color: 'white',
-                      fontWeight: 700,
-                      fontSize: '0.72rem',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                    }}
-                  />
-                )}
-              </Box>
-            </Box>
-
-            {isInstructor && (
-              <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => navigate(`/exam-generator/${classroomId}`)}
-                  sx={{
-                    bgcolor: 'var(--c-emerald-600)',
-                    color: 'white',
-                    fontWeight: 800,
-                    px: 3,
-                    py: 1.2,
-                    borderRadius: 2.5,
-                    textTransform: 'none',
-                    boxShadow: '0 4px 14px rgba(5,150,105,0.4)',
-                    '&:hover': { bgcolor: 'var(--c-emerald-700)' },
-                  }}
-                >
-                  Create Exam for Class
-                </Button>
-              </Box>
-            )}
           </Box>
+        </Box>
 
-          {/* Clean LMS Navigation Tabs */}
-          <Tabs
-            value={activeTab}
-            onChange={(_, val) => setActiveTab(val)}
-            variant="scrollable"
-            scrollButtons="auto"
-            // Without allowScrollButtonsMobile, MUI hides the scroll arrows on touch/small
-            // viewports, leaving the tabs as an undiscoverable horizontal scroll strip.
-            allowScrollButtonsMobile
-            sx={{
-              bgcolor: 'var(--c-banner-from)',
-              borderTop: '1px solid var(--c-slate-700)',
-              px: { xs: 0.5, sm: 2 },
-              '& .MuiTab-root': {
-                color: 'var(--c-slate-400)',
-                fontWeight: 700,
-                fontSize: { xs: '0.78rem', sm: '0.85rem' },
-                textTransform: 'none',
-                minHeight: 50,
-                px: { xs: 1.5, sm: 3 },
-                minWidth: 'auto',
-              },
-              '& .Mui-selected': {
-                color: '#ffffff !important',
-              },
-              '& .MuiTabs-indicator': {
-                bgcolor: 'var(--c-emerald-500)',
-                height: 3,
-              },
-            }}
-          >
-            <Tab label="Stream" icon={<Campaign />} iconPosition="start" />
-            <Tab label="Classwork" icon={<AssignmentTurnedIn />} iconPosition="start" />
-            <Tab label="Assessments" icon={<Assignment />} iconPosition="start" />
-            <Tab label="Course Materials" icon={<MenuBook />} iconPosition="start" />
-            <Tab label="People & Roster" icon={<People />} iconPosition="start" />
+        <Menu anchorEl={themeAnchor} open={Boolean(themeAnchor)} onClose={() => setThemeAnchor(null)}>
+          <Box sx={{ p: 1.5, display: 'grid', gridTemplateColumns: 'repeat(4, 56px)', gap: 1 }}>
+            {CLASS_THEMES.map((t) => (
+              <Box
+                key={t.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`${t.name} colour`}
+                onClick={() => { updateClassroom(classroom.id, { theme: t.id }); setThemeAnchor(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { updateClassroom(classroom.id, { theme: t.id }); setThemeAnchor(null); } }}
+                sx={{ cursor: 'pointer', textAlign: 'center' }}
+              >
+                <Box sx={{ height: 36, borderRadius: '8px', bgcolor: t.flat, outline: classTheme.id === t.id ? `2px solid ${t.flat}` : 'none', outlineOffset: 2 }} />
+                <Typography variant="caption" sx={{ fontWeight: 700, fontSize: '0.68rem' }}>{t.name}</Typography>
+              </Box>
+            ))}
+          </Box>
+        </Menu>
+
+        <Popover
+          open={Boolean(infoAnchor)} anchorEl={infoAnchor} onClose={() => setInfoAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Box sx={{ p: 2.5, width: 300 }}>
+            <Typography sx={{ fontWeight: 700, mb: 1 }}>{classroom.name}</Typography>
+            {classroom.description && <Typography variant="body2" sx={{ color: 'var(--c-ink-secondary)', mb: 1.5 }}>{classroom.description}</Typography>}
+            <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)', display: 'block' }}>Class code</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <Typography sx={{ fontFamily: 'monospace', fontSize: '1.3rem', fontWeight: 700, color: classTheme.flat }}>{classroom.classCode}</Typography>
+              <IconButton size="small" onClick={handleCopyClassCode} aria-label="Copy class code"><ContentCopy fontSize="small" /></IconButton>
+            </Box>
             {isInstructor && (
-              <Tab label="Gradebook" icon={<Assessment />} iconPosition="start" />
+              <Button size="small" startIcon={<LinkIcon />} onClick={handleCopyInviteLink} sx={{ textTransform: 'none', mb: 1 }}>Copy invite link</Button>
             )}
-          </Tabs>
-        </Paper>
+            <Typography variant="body2" sx={{ color: 'var(--c-ink-secondary)' }}>
+              {instructor ? `Teacher: ${instructor.name}` : ''}{instructor ? ' · ' : ''}{classroom.students?.length || 0} students
+            </Typography>
+          </Box>
+        </Popover>
 
         {/* ── TAB 0: STREAM (ANNOUNCEMENTS) ── */}
-        {activeTab === 0 && (
-          <AnnouncementFeed
-            classroomId={classroomId || ''}
-            announcements={classAnnouncements}
-            isInstructor={isInstructor}
-            currentUserId={currentUser?.id || ''}
-            currentUserName={currentUser?.name || 'Instructor'}
-            onSave={saveAnnouncement}
-            onDelete={(id) => deleteAnnouncement(classroomId || '', id)}
-            comments={comments}
-            onSaveComment={saveComment}
-            onDeleteComment={deleteComment}
-          />
-        )}
+        {activeTab === 0 && (() => {
+          const now = Date.now();
+          const week = now + 7 * 86_400_000;
+          const nameOf = (id?: string) => users.find((u) => u.id === id)?.name || instructor?.name || 'Your teacher';
+          const upcoming = classClasswork
+            .filter((w: any) => w.isPublished !== false && w.dueDate && w.kind !== 'material')
+            .filter((w: any) => { const t = new Date(w.dueDate).getTime(); return t >= now && t <= week; })
+            .filter((w: any) => isInstructor || !submissions.some((x: any) => x.classworkId === w.id && x.studentId === currentUser?.id && x.status !== 'assigned'))
+            .sort((x: any, y: any) => new Date(x.dueDate).getTime() - new Date(y.dueDate).getTime())
+            .map((w: any) => ({ id: w.id, title: w.title, due: `Due ${new Date(w.dueDate).toLocaleDateString(undefined, { weekday: 'long' })}` }));
+          const activity = [
+            ...classClasswork.filter((w: any) => w.isPublished !== false).map((w: any) => ({
+              id: w.id, at: w.createdAt,
+              node: <StreamActivityRow kind={w.kind} author={nameOf(w.createdBy).toUpperCase()} title={w.title} at={w.createdAt} accent={classTheme.flat}
+                onOpen={() => navigate(`/classroom/${classroomId}/work/${w.id}`)} />,
+            })),
+            ...classExams.filter((e: any) => e.createdAt || e.postDate).map((e: any) => ({
+              id: `exam-${e.id}`, at: e.postDate || e.createdAt,
+              node: <StreamActivityRow kind="exam" author={(instructor?.name || 'Your teacher').toUpperCase()} title={e.title} at={e.postDate || e.createdAt} accent={classTheme.flat}
+                onOpen={() => setActiveTab(2)} />,
+            })),
+          ];
+          return (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '200px 1fr' }, gap: 3, alignItems: 'start' }}>
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <StreamSidebar
+                  classCode={classroom.classCode}
+                  isInstructor={isInstructor}
+                  upcoming={upcoming}
+                  accent={classTheme.flat}
+                  onCopyCode={handleCopyClassCode}
+                  onViewAll={() => setActiveTab(1)}
+                  onOpen={(id) => navigate(`/classroom/${classroomId}/work/${id}`)}
+                  extra={isInstructor ? (
+                    <Button fullWidth variant="outlined" startIcon={<Add />} onClick={() => navigate(`/exam-generator/${classroomId}`)}
+                      sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px', borderColor: 'var(--c-border)', color: classTheme.flat }}>
+                      Create exam
+                    </Button>
+                  ) : undefined}
+                />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <AnnouncementFeed
+                  classroomId={classroomId || ''}
+                  announcements={classAnnouncements}
+                  isInstructor={isInstructor}
+                  currentUserId={currentUser?.id || ''}
+                  currentUserName={currentUser?.name || 'Instructor'}
+                  onSave={saveAnnouncement}
+                  onDelete={(id) => deleteAnnouncement(classroomId || '', id)}
+                  comments={comments}
+                  onSaveComment={saveComment}
+                  onDeleteComment={deleteComment}
+                  activity={activity}
+                  accent={classTheme.flat}
+                />
+              </Box>
+            </Box>
+          );
+        })()}
 
         {/* ── TAB 1: CLASSWORK (assignments, materials, questions, grouped by topic) ── */}
         {activeTab === 1 && (

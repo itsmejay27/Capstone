@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Box, Paper, Typography, Button, IconButton, Menu, MenuItem, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, Chip, Stack, Collapse, Divider, Avatar,
@@ -84,6 +85,7 @@ export default function ClassworkPanel({
   onDeleteComment: (id: string) => Promise<MutationResult>;
 }) {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [toast, setToast] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
   const [menuFor, setMenuFor] = useState<{ el: HTMLElement; work: Classwork } | null>(null);
@@ -336,7 +338,13 @@ export default function ClassworkPanel({
                     </Box>
 
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontFamily: font.mono, fontSize: '0.9rem', fontWeight: 600, color: palette.ink }} noWrap>
+                      <Typography
+                        component="a"
+                        href={`/classroom/${classroomId}/work/${work.id}`}
+                        onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); navigate(`/classroom/${classroomId}/work/${work.id}`); }}
+                        sx={{ display: 'block', fontSize: '0.92rem', fontWeight: 600, color: palette.ink, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                        noWrap
+                      >
                         {work.title}
                       </Typography>
                       <Stack direction="row" spacing={0.75} sx={{ mt: 0.3, flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
