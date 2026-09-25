@@ -23,3 +23,25 @@ img, video, canvas, svg, iframe { max-width: 100%; }
   /* Class card and banner artwork sits behind the title instead of on top of it. */
   .class-art { opacity: .35; }
 }
+
+/* ── Phones: scale the whole app down a notch ─────────────────────────────
+   Typography is in rem, so a slightly smaller root shrinks every heading, label and
+   button together. Corners are capped so small cards don't look like pills, nested
+   cards drop their extra inset, and page sections sit closer together. */
+@media (max-width: 600px) {
+  html { font-size: 14px; }
+  .ea-app .MuiCard-root,
+  .ea-app .MuiPaper-root:not(.MuiDialog-paper):not(.MuiMenu-paper):not(.MuiPopover-paper):not(.MuiSnackbarContent-root):not(.MuiAlert-root) {
+    border-radius: min(14px, var(--r, 14px)) !important;
+  }
+  .ea-app .MuiOutlinedInput-root { border-radius: 10px !important; }
+  .ea-app .MuiButton-root { min-height: 38px; }
+  .ea-app .MuiCard-root .MuiCard-root,
+  .ea-app .MuiPaper-root .MuiCard-root { box-shadow: none !important; }
+  .ea-app .MuiCard-root .MuiCardContent-root .MuiCardContent-root { padding: 10px !important; }
+  .ea-page .MuiCard-root:hover { transform: none; }
+  .MuiStepLabel-iconContainer .MuiSvgIcon-root { width: 1.4rem; height: 1.4rem; }
+}
+@media (min-width: 601px) and (max-width: 1024px) {
+  html { font-size: 15px; }
+}

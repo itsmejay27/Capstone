@@ -903,9 +903,9 @@ export default function ExamGenerator() {
       {/* Modern High-End Banner */}
       <Box sx={{
         background: 'linear-gradient(135deg, var(--c-banner-from) 0%, var(--c-banner-to) 100%)',
-        borderRadius: 4,
-        p: { xs: 3, md: 4 },
-        mb: 4,
+        borderRadius: { xs: 3, sm: 4 },
+        p: { xs: 2, md: 4 },
+        mb: { xs: 2, sm: 4 },
         color: 'white',
         display: 'flex',
         flexDirection: { xs: 'column', md: 'row' },
@@ -952,8 +952,8 @@ export default function ExamGenerator() {
         </Box>
       </Box>
 
-      <Paper sx={{ p: { xs: 3, md: 4 }, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid var(--c-slate-100)' }}>
-        <Stepper activeStep={activeStep} sx={{ mb: 5 }}>
+      <Paper sx={{ p: { xs: 1.5, sm: 3, md: 4 }, borderRadius: { xs: 3, sm: 4 }, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid var(--c-slate-100)' }}>
+        <Stepper activeStep={activeStep} sx={{ mb: { xs: 2.5, sm: 5 }, px: { xs: 1, sm: 0 }, pt: { xs: 1, sm: 0 } }}>
           {steps.map((label) => (
             <Step key={label}>
               <StepLabel sx={{ '& .MuiStepLabel-labelContainer': { display: { xs: 'none', sm: 'block' } } }}>
@@ -968,7 +968,7 @@ export default function ExamGenerator() {
           <Grid container spacing={3} sx={{ animation: 'fadeIn 0.3s ease' }}>
             {/* LEFT COLUMN: Basic Details & AI Engine Selection */}
             <Grid size={{ xs: 12, md: 6 }}>
-              <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: 'var(--c-slate-200)', height: '100%', p: 1 }}>
+              <Card variant="outlined" sx={{ borderRadius: 3.5, borderColor: 'var(--c-slate-200)', height: '100%', p: { xs: 0, sm: 1 } }}>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
                     <ListAlt color="primary" />
