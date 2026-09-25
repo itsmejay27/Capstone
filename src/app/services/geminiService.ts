@@ -70,6 +70,14 @@ const CURATED: { re: RegExp; speed: ModelSpeed; bestFor: string; rank: number }[
   { re: /nemotron.*nano|llama-3\.1-8b|phi-4|gemma|mistral-7b|ministral/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 11 },
 ];
 
+/** "meta/llama-3.3-70b-instruct" → "Llama 3.3 70B Instruct". */
+export function prettyModelName(id: string): string {
+  return (id.split('/').pop() || id)
+    .split(/[-_]/)
+    .map((w) => (/^\d+(\.\d+)?[bm]$/i.test(w) ? w.toUpperCase() : /^[a-z]/.test(w) ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
 /** Speed and "best for" label for any model id; curated first, then a size-based guess. */
 export function modelProfile(id: string): { speed: ModelSpeed; bestFor: string; rank: number; recommended: boolean } {
   const hit = CURATED.find((c) => c.re.test(id));
@@ -114,12 +122,18 @@ export async function fetchNvidiaModels(): Promise<NvidiaModel[]> {
       .map((m: any) => String(m?.id || ''))
       .filter((id: string) => id && !NON_GENERATIVE_MODEL.test(id) && !NOT_FOR_STUDY.test(id) && STUDY_CAPABLE.test(id));
 
-    // Hand-picked, well-rounded models first; the rest by the size-based guess.
-    ids.sort((a, b) => modelProfile(a).rank - modelProfile(b).rank || a.localeCompare(b));
+    // Only the hand-picked models are offered; the full catalogue is hundreds long.
+    const curated = ids.filter((id) => CURATED.some((c) => c.re.test(id)));
+    curated.sort((a, b) => modelProfile(a).rank - modelProfile(b).rank || a.localeCompare(b));
 
-    return ids.map((id) => {
+    return curated.map((id) => {
       const p = modelProfile(id);
-      return { id, name: id, speed: p.speed, bestFor: p.bestFor, recommended: p.recommended };
+      const recommended = curated[0] === id;
+      return {
+        id,
+        name: `${prettyModelName(id)} · ${p.speed} · Best ${p.bestFor === 'Best overall' ? 'overall' : `for ${p.bestFor.toLowerCase()}`}${recommended ? ' (Recommended)' : ''}`,
+        speed: p.speed, bestFor: p.bestFor, recommended,
+      };
     });
   } catch (err) {
     console.warn('Could not list NVIDIA models:', err);

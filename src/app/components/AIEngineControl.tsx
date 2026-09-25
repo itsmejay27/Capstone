@@ -12,20 +12,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Autocomplete,
   Paper,
-  TextField,
 } from '@mui/material';
 import { SmartToy, AutoAwesome } from '@mui/icons-material';
 import { GEMINI_MODELS, fetchNvidiaModels, NvidiaModel } from '../services/geminiService';
-
-/** Green = quick, amber = slower. */
-function speedSx(speed: string) {
-  if (speed === 'Ultra fast') return { bgcolor: 'rgba(22,163,74,.15)', color: 'var(--c-green-700)' };
-  if (speed === 'Fast') return { bgcolor: 'rgba(14,165,198,.15)', color: 'var(--c-emerald-700)' };
-  if (speed === 'Balanced') return { bgcolor: 'rgba(100,116,139,.15)', color: 'var(--c-slate-700)' };
-  return { bgcolor: 'rgba(217,119,6,.15)', color: 'var(--c-amber-700)' };
-}
 
 export type AIEngineType = 'gemini' | 'nvidia';
 
@@ -186,59 +176,20 @@ export default function AIEngineControl({
 
         {engine === 'nvidia' && (
           <>
-            <Autocomplete
-              options={nvidiaModels}
-              getOptionLabel={(m: any) => m?.name || m?.id || ''}
-              isOptionEqualToValue={(a: any, b: any) => a?.id === b?.id}
-              value={nvidiaModels.find((m) => m.id === nvidiaModel) || null}
-              onChange={(_, picked: any) => onNvidiaModelChange?.(picked?.id || '')}
-              disabled={nvidiaLoading || nvidiaModels.length === 0}
-              size="small"
-              fullWidth
-              autoHighlight
-              openOnFocus
-              // Cap both the rendered list and its height: the catalogue is several hundred
-              // entries, which overflowed the viewport and made the popup unusable.
-              filterOptions={(opts, state) => {
-                const needle = state.inputValue.trim().toLowerCase();
-                const matched = needle
-                  ? opts.filter((o: any) =>
-                      `${o.name || ''} ${o.id || ''}`.toLowerCase().includes(needle))
-                  : opts;
-                return matched.slice(0, 50);
-              }}
-              slotProps={{
-                listbox: { sx: { maxHeight: 280 } },
-                paper: { sx: { borderRadius: '12px', border: '1px solid var(--c-border)', boxShadow: '0 12px 32px rgba(0,0,0,.35)' } },
-                // Always open below the box so the list never covers the form above it.
-                popper: { placement: 'bottom-start', modifiers: [{ name: 'flip', enabled: false }] },
-              }}
-              renderOption={(optProps, option: any) => (
-                <Box component="li" {...optProps} key={option.id} sx={{ display: 'block !important', py: 1 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-                    {option.recommended ? '★ ' : ''}{option.id.split('/').pop()}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                    {option.speed && <Chip size="small" label={option.speed} sx={{ height: 20, fontSize: '0.68rem', fontWeight: 700, ...speedSx(option.speed) }} />}
-                    {option.bestFor && <Chip size="small" variant="outlined" label={option.bestFor} sx={{ height: 20, fontSize: '0.68rem' }} />}
-                    <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)', alignSelf: 'center' }} noWrap>{option.id}</Typography>
-                  </Box>
-                </Box>
-              )}
-              groupBy={(o: any) => (o.recommended ? 'Recommended' : 'All other models')}
-              renderInput={(inputProps) => (
-                <TextField
-                  {...inputProps}
-                  label={nvidiaLoading ? 'Loading available models…' : 'Search NVIDIA models'}
-                  placeholder="Type to filter, e.g. glm, llama, qwen"
-                  helperText={(() => {
-                    const cur = nvidiaModels.find((m) => m.id === nvidiaModel);
-                    if (!cur) return nvidiaModels.length > 0 ? `${nvidiaModels.length} models available.` : undefined;
-                    return `${cur.speed} · ${cur.bestFor}. ★ = recommended. ${nvidiaModels.length} models available.`;
-                  })()}
-                />
-              )}
-            />
+            <FormControl fullWidth size="small" disabled={nvidiaLoading || nvidiaModels.length === 0}>
+              <InputLabel id="nvidia-model-label">{nvidiaLoading ? 'Loading models…' : 'Select NVIDIA Model'}</InputLabel>
+              <Select
+                labelId="nvidia-model-label"
+                value={nvidiaModels.some((m) => m.id === nvidiaModel) ? nvidiaModel : ''}
+                label={nvidiaLoading ? 'Loading models…' : 'Select NVIDIA Model'}
+                onChange={(e) => onNvidiaModelChange?.(String(e.target.value))}
+                sx={{ borderRadius: 2, bgcolor: 'var(--c-surface)' }}
+              >
+                {nvidiaModels.map((m) => (
+                  <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             {nvidiaError && (
               <Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
                 {nvidiaError}
