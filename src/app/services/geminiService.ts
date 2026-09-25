@@ -57,17 +57,16 @@ export type ModelSpeed = 'Ultra fast' | 'Fast' | 'Balanced' | 'Slow · deep thin
  * family (e.g. -v3.1 → -v3.2) keeps its label. `rank` orders the dropdown.
  */
 const CURATED: { re: RegExp; speed: ModelSpeed; bestFor: string; rank: number }[] = [
-  { re: /llama-3\.3-70b-instruct|llama-4-maverick/i, speed: 'Fast', bestFor: 'Best overall', rank: 1 },
-  { re: /gpt-oss-120b/i, speed: 'Fast', bestFor: 'Essay & hard questions', rank: 2 },
-  { re: /qwen3-next-80b-a3b-instruct|qwen3-.*a3b.*instruct/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 3 },
-  { re: /nemotron.*super/i, speed: 'Balanced', bestFor: 'Best overall', rank: 4 },
-  { re: /gpt-oss-20b/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 5 },
-  { re: /llama-4-scout/i, speed: 'Ultra fast', bestFor: 'Multiple choice & short answer', rank: 6 },
-  { re: /mistral-(medium|large)|mistral-small-3/i, speed: 'Fast', bestFor: 'Short answer', rank: 7 },
-  { re: /deepseek-v3/i, speed: 'Balanced', bestFor: 'Essay & hard questions', rank: 8 },
-  { re: /qwen3.*(235b|thinking)|qwq/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 9 },
-  { re: /kimi|deepseek-r1|nemotron.*ultra|glm/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 10 },
-  { re: /nemotron.*nano|llama-3\.1-8b|phi-4|gemma|mistral-7b|ministral/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 11 },
+  { re: /\/deepseek-v4\.1-flash$/i, speed: 'Fast', bestFor: 'Best overall', rank: 1 },
+  { re: /\/nemotron-3\.5-lightning-30b-a3b$/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 2 },
+  { re: /\/glm-5-3-flash$/i, speed: 'Fast', bestFor: 'Best overall', rank: 3 },
+  { re: /\/gpt-oss-120b$/i, speed: 'Balanced', bestFor: 'Essay & hard questions', rank: 4 },
+  { re: /\/gpt-oss-20b$/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 5 },
+  { re: /\/qwen3-next-80b-a3b-instruct$/i, speed: 'Ultra fast', bestFor: 'Short answer', rank: 6 },
+  { re: /\/llama-4-maverick-17b-128e-instruct$/i, speed: 'Fast', bestFor: 'Short answer', rank: 7 },
+  { re: /\/llama-3\.3-nemotron-super-49b-v1\.5$/i, speed: 'Balanced', bestFor: 'Best overall', rank: 8 },
+  { re: /\/glm-5-3$/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 9 },
+  { re: /\/kimi-k3$/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 10 },
 ];
 
 /** "meta/llama-3.3-70b-instruct" → "Llama 3.3 70B Instruct". */
