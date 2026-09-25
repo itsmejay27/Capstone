@@ -3,6 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography, TextField, Chip, IconButton, Divider,
 } from '@mui/material';
 import { Close, CheckCircle, Cancel, RateReview } from '@mui/icons-material';
+import AttemptInsight from './AttemptInsight';
 import { autoPoints, gradeFor, isManual, scoreAttempt } from '../services/grading';
 
 /**
@@ -63,6 +64,7 @@ export default function GradeAttemptDialog({
         <IconButton onClick={onClose} sx={{ position: 'absolute', right: 12, top: 12 }} aria-label="Close"><Close /></IconButton>
       </DialogTitle>
       <DialogContent dividers>
+        <Box sx={{ mb: 1.5 }}><AttemptInsight attempt={attempt} studentName={studentName} /></Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
           <Chip label={`Auto-scored: ${scored.auto}`} />
           <Chip label={`Checked by you: ${scored.manual}`} />

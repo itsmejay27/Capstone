@@ -5,11 +5,12 @@ import {
 } from '@mui/material';
 import {
   PushPin, PushPinOutlined, MoreVert, Edit, Delete, AttachFile, Close, Campaign,
-  FormatBold, FormatItalic, FormatListBulleted, InsertLink, Send, InsertDriveFile, EditOutlined,
+  FormatBold, FormatItalic, FormatListBulleted, InsertLink, Send, InsertDriveFile, EditOutlined, Repeat,
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import type { Announcement, AnnouncementAttachment, MutationResult, PostComment } from '../types';
 import CommentThread from './CommentThread';
+import FileCard from './classroom/FileCard';
 import { sanitizeRichText, isBlankRichText } from '../utils/sanitizeHtml';
 import { uploadClassroomFile, formatBytes } from '../services/fileStorage';
 import { useIsMobile } from '../hooks/useResponsive';
@@ -68,12 +69,14 @@ function Composer({
   classroomId,
   initial,
   onCancel,
+  submitLabel,
   onSubmit,
   busy,
 }: {
   classroomId: string;
   initial?: Announcement;
   onCancel?: () => void;
+  submitLabel?: string;
   onSubmit: (bodyHtml: string, attachments: AnnouncementAttachment[], isPinned: boolean) => void;
   busy: boolean;
 }) {
@@ -227,7 +230,7 @@ function Composer({
           disabled={!canSubmit}
           sx={{ bgcolor: 'var(--c-emerald-600)', fontWeight: 800, textTransform: 'none', '&:hover': { bgcolor: 'var(--c-emerald-700)' } }}
         >
-          {initial ? 'Save changes' : 'Post'}
+          {submitLabel || (initial ? 'Save changes' : 'Post')}
         </Button>
       </Box>
     </Paper>
@@ -235,8 +238,10 @@ function Composer({
 }
 
 function AnnouncementCard({
-  announcement, isInstructor, onEdit, onDelete, onTogglePin, commentSlot,
+  announcement, isInstructor, onEdit, onDelete, onTogglePin, commentSlot, accent, authorAvatar,
 }: {
+  accent?: string;
+  authorAvatar?: string;
   announcement: Announcement;
   isInstructor: boolean;
   onEdit: () => void;
@@ -247,73 +252,80 @@ function AnnouncementCard({
 }) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
 
+  const d = new Date(announcement.createdAt);
+  const when = d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : d.toDateString() === new Date(Date.now() - 86_400_000).toDateString()
+      ? 'Yesterday'
+      : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
   return (
     <Paper
       elevation={0}
       sx={{
-        p: { xs: 1.75, sm: 2.5 }, mb: 2, borderRadius: 3, bgcolor: 'var(--c-surface)',
-        border: announcement.isPinned ? '2px solid #fbbf24' : '1px solid var(--c-slate-200)',
+        mb: 2, borderRadius: '10px', overflow: 'hidden', bgcolor: 'var(--c-surface)',
+        border: announcement.isPinned ? '2px solid #fbbf24' : '1px solid var(--c-border)',
       }}
     >
-      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-        <Avatar sx={{ bgcolor: 'var(--c-emerald-600)', width: 40, height: 40, fontWeight: 800, flexShrink: 0 }}>
-          {(announcement.authorName || '?').charAt(0).toUpperCase()}
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Typography sx={{ fontWeight: 800, color: 'var(--c-slate-900)', fontSize: '0.92rem' }}>
+      <Box sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.75, alignItems: 'center' }}>
+          <Avatar src={authorAvatar} sx={{ bgcolor: accent || '#0b8ea8', width: 40, height: 40, flexShrink: 0 }}>
+            {(announcement.authorName || '?').charAt(0).toUpperCase()}
+          </Avatar>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 500, fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 1 }}>
               {announcement.authorName}
+              {announcement.isPinned && <PushPin sx={{ fontSize: 15, color: '#d97706' }} />}
             </Typography>
-            {announcement.isPinned && (
-              <Chip icon={<PushPin sx={{ fontSize: '0.75rem !important' }} />} label="Pinned" size="small"
-                sx={{ bgcolor: 'var(--c-amber-100)', color: 'var(--c-amber-800)', fontWeight: 800, height: 20, fontSize: '0.65rem' }} />
-            )}
-            <Typography variant="caption" sx={{ color: 'var(--c-slate-400)' }}>
-              {relativeTime(announcement.createdAt)}
-              {announcement.updatedAt && ' · edited'}
+            <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>
+              {when}{announcement.updatedAt ? ' (Edited)' : ''}
             </Typography>
           </Box>
+          {isInstructor && (
+            <>
+              <IconButton size="small" onClick={(e) => setAnchor(e.currentTarget)} aria-label="Announcement actions">
+                <MoreVert fontSize="small" />
+              </IconButton>
+              <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
+                <MenuItem onClick={() => { setAnchor(null); onTogglePin(); }}>
+                  {announcement.isPinned ? <PushPinOutlined fontSize="small" sx={{ mr: 1 }} /> : <PushPin fontSize="small" sx={{ mr: 1 }} />}
+                  {announcement.isPinned ? 'Unpin' : 'Move to top'}
+                </MenuItem>
+                <MenuItem onClick={() => { setAnchor(null); onEdit(); }}>
+                  <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
+                </MenuItem>
+                <MenuItem onClick={() => { setAnchor(null); onDelete(); }} sx={{ color: 'var(--c-red-600)' }}>
+                  <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
+                </MenuItem>
+              </Menu>
+            </>
+          )}
         </Box>
-        {isInstructor && (
-          <>
-            <IconButton size="small" onClick={(e) => setAnchor(e.currentTarget)} aria-label="Announcement actions">
-              <MoreVert fontSize="small" />
-            </IconButton>
-            <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}>
-              <MenuItem onClick={() => { setAnchor(null); onTogglePin(); }}>
-                {announcement.isPinned ? <PushPinOutlined fontSize="small" sx={{ mr: 1 }} /> : <PushPin fontSize="small" sx={{ mr: 1 }} />}
-                {announcement.isPinned ? 'Unpin' : 'Pin to top'}
-              </MenuItem>
-              <MenuItem onClick={() => { setAnchor(null); onEdit(); }}>
-                <Edit fontSize="small" sx={{ mr: 1 }} /> Edit
-              </MenuItem>
-              <MenuItem onClick={() => { setAnchor(null); onDelete(); }} sx={{ color: 'var(--c-red-600)' }}>
-                <Delete fontSize="small" sx={{ mr: 1 }} /> Delete
-              </MenuItem>
-            </Menu>
-          </>
+
+        {/* Re-sanitized at render: stored HTML predates any later tightening of the allow-list,
+            and a database row is not a trust boundary. */}
+        <Box
+          sx={{
+            mt: 1.5, color: 'var(--c-ink)', fontSize: '0.9rem', lineHeight: 1.6, wordBreak: 'break-word',
+            '& ul, & ol': { pl: 3, my: 0.5 },
+            '& a': { color: accent || 'var(--c-primary)' },
+            '& p': { my: 0.5 },
+          }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichText(announcement.bodyHtml, MAX_BODY_LENGTH) }}
+        />
+
+        {announcement.attachments?.length > 0 && (
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 300px))' }, gap: 1.5, mt: 1.5 }}>
+            {announcement.attachments.map((a) => <FileCard key={a.id} att={a} />)}
+          </Box>
         )}
       </Box>
 
-      {/* Re-sanitized at render: stored HTML predates any later tightening of the allow-list,
-          and a database row is not a trust boundary. */}
-      <Box
-        sx={{
-          mt: 1.25, color: 'var(--c-slate-700)', fontSize: '0.92rem', lineHeight: 1.65, wordBreak: 'break-word',
-          '& ul, & ol': { pl: 3, my: 0.5 },
-          '& a': { color: 'var(--c-emerald-600)' },
-          '& p': { my: 0.5 },
-        }}
-        dangerouslySetInnerHTML={{ __html: sanitizeRichText(announcement.bodyHtml, MAX_BODY_LENGTH) }}
-      />
-
-      {announcement.attachments?.length > 0 && (
-        <Stack direction="row" sx={{ gap: 0.75, flexWrap: 'wrap', mt: 1.5 }}>
-          {announcement.attachments.map((a) => <AttachmentChip key={a.id} att={a} />)}
-        </Stack>
+      {commentSlot && (
+        <Box sx={{ px: { xs: 1.5, sm: 2.5 }, pb: 0.5 }}>
+          {commentSlot}
+        </Box>
       )}
-
-      {commentSlot}
     </Paper>
   );
 }
@@ -331,7 +343,9 @@ export default function AnnouncementFeed({
   onDeleteComment,
   activity = [],
   accent,
+  avatarFor,
 }: {
+  avatarFor?: (userId: string) => string | undefined;
   /** Other stream items (e.g. "posted a new assignment"), interleaved by date. */
   activity?: { id: string; at: string; node: React.ReactNode }[];
   accent?: string;
@@ -348,6 +362,8 @@ export default function AnnouncementFeed({
 }) {
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [composing, setComposing] = useState(false);
+  const [repostEl, setRepostEl] = useState<HTMLElement | null>(null);
+  const [repostFrom, setRepostFrom] = useState<Announcement | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
 
@@ -380,6 +396,7 @@ export default function AnnouncementFeed({
     report(await onSave(announcement), 'Announcement posted.');
     setBusy(false);
     setComposing(false);
+    setRepostFrom(null);
   };
 
   const handleUpdate = async (bodyHtml: string, attachments: AnnouncementAttachment[], isPinned: boolean) => {
@@ -403,16 +420,33 @@ export default function AnnouncementFeed({
 
   return (
     <Box>
-      {isInstructor && !editing && !composing && (
+      {isInstructor && !editing && !composing && !repostFrom && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
         <Button
           startIcon={<EditOutlined />}
           onClick={() => setComposing(true)}
-          sx={{ mb: 2, borderRadius: 999, px: 2.5, py: 1, textTransform: 'none', fontWeight: 600,
+          sx={{ borderRadius: 999, px: 2.5, py: 1, textTransform: 'none', fontWeight: 600,
             bgcolor: accent ? `${accent}22` : 'var(--c-primary-soft)', color: accent || 'var(--c-primary)',
             '&:hover': { bgcolor: accent ? `${accent}33` : 'var(--c-primary-soft)' } }}
         >
           New announcement
         </Button>
+        {ordered.length > 0 && (
+          <Button startIcon={<Repeat />} onClick={(e) => setRepostEl(e.currentTarget)} sx={{ textTransform: 'none', fontWeight: 600, color: accent || 'var(--c-primary)' }}>
+            Repost
+          </Button>
+        )}
+        </Box>
+      )}
+      <Menu anchorEl={repostEl} open={Boolean(repostEl)} onClose={() => setRepostEl(null)} PaperProps={{ sx: { maxWidth: 420 } }}>
+        {ordered.slice(0, 15).map((a) => (
+          <MenuItem key={a.id} onClick={() => { setRepostEl(null); setRepostFrom(a); }}>
+            <Typography noWrap variant="body2">{(a.bodyHtml || '').replace(/<[^>]+>/g, ' ').trim().slice(0, 80) || 'Announcement'}</Typography>
+          </MenuItem>
+        ))}
+      </Menu>
+      {isInstructor && repostFrom && (
+        <Composer classroomId={classroomId} initial={{ ...repostFrom, isPinned: false }} onSubmit={handleCreate} onCancel={() => setRepostFrom(null)} busy={busy} submitLabel="Post" />
       )}
       {isInstructor && !editing && composing && (
         <Composer classroomId={classroomId} onSubmit={handleCreate} onCancel={() => setComposing(false)} busy={busy} />
@@ -449,6 +483,8 @@ export default function AnnouncementFeed({
             onEdit={() => setEditing(a)}
             onDelete={() => handleDelete(a.id)}
             onTogglePin={() => handleTogglePin(a)}
+            accent={accent}
+            authorAvatar={avatarFor?.(a.authorId)}
             commentSlot={
               onSaveComment && onDeleteComment ? (
                 <CommentThread
@@ -461,6 +497,7 @@ export default function AnnouncementFeed({
                   isInstructor={isInstructor}
                   onSave={onSaveComment}
                   onDelete={onDeleteComment}
+                  allowPrivate={false}
                 />
               ) : undefined
             }

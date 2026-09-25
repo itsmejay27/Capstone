@@ -15,8 +15,11 @@ export type ClassroomTabSlug = 'stream' | 'classwork' | 'assessments' | 'materia
 
 /** Ordered to match the <Tab> children in ClassroomDetail. */
 export const CLASSROOM_TAB_SLUGS: ClassroomTabSlug[] = [
-  'stream', 'classwork', 'assessments', 'materials', 'people', 'gradebook',
+  'stream', 'classwork', 'people', 'gradebook',
 ];
+
+/** Old tabs whose content now lives in Classwork (quizzes and course files). */
+const MERGED_INTO_CLASSWORK = new Set(['assessments', 'materials']);
 
 /** Instructor-only tabs. A student asking for one of these is sent to the first tab. */
 const INSTRUCTOR_ONLY: ReadonlySet<ClassroomTabSlug> = new Set<ClassroomTabSlug>(['gradebook']);
@@ -27,8 +30,8 @@ export const CLASSROOM_TAB_LABELS: Record<ClassroomTabSlug, string> = {
   classwork: 'Classwork',
   assessments: 'Assessments',
   materials: 'Course Materials',
-  people: 'People & Roster',
-  gradebook: 'Gradebook',
+  people: 'People',
+  gradebook: 'Grades',
 };
 
 export function isClassroomTabSlug(value: unknown): value is ClassroomTabSlug {
@@ -46,6 +49,7 @@ export function visibleTabSlugs(isInstructor: boolean): ClassroomTabSlug[] {
  * renders no panel at all.
  */
 export function tabSlugToIndex(slug: string | null | undefined, isInstructor: boolean): number {
+  if (slug && MERGED_INTO_CLASSWORK.has(slug)) slug = 'classwork';
   if (!isClassroomTabSlug(slug)) return 0;
   if (!isInstructor && INSTRUCTOR_ONLY.has(slug)) return 0;
   const idx = visibleTabSlugs(isInstructor).indexOf(slug);
