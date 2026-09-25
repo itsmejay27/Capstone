@@ -9,6 +9,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import CommentThread from '../components/CommentThread';
+import { usePrompt } from '../components/PromptDialog';
 import FileCard from '../components/classroom/FileCard';
 import { classThemeFor } from '../theme/classThemes';
 import { uploadClassroomFile } from '../services/fileStorage';
@@ -32,6 +33,7 @@ export default function ClassworkDetail() {
   const [menuEl, setMenuEl] = useState<HTMLElement | null>(null);
   const [addEl, setAddEl] = useState<HTMLElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { prompt, PromptHost } = usePrompt();
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
@@ -217,10 +219,10 @@ export default function ClassworkDetail() {
                   </Button>
                   <input ref={fileRef} type="file" hidden multiple onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
                   <Menu anchorEl={addEl} open={Boolean(addEl)} onClose={() => setAddEl(null)} PaperProps={{ sx: { width: addEl?.offsetWidth } }}>
-                    <MenuItem onClick={() => {
+                    <MenuItem onClick={async () => {
                       setAddEl(null);
-                      const url = window.prompt('Paste a link');
-                      if (!url || !/^https?:\/\//i.test(url.trim())) return;
+                      const url = await prompt({ title: 'Add link', kind: 'link', message: 'Paste a link to your work (Google Docs, Drive, a website…).' });
+                      if (!url) return;
                       const u = url.trim();
                       setDraftFiles([...(files || []), { id: crypto.randomUUID(), name: u.replace(/^https?:\/\//, ''), size: 0, mimeType: 'text/uri-list', fileUrl: u, storagePath: null, isDataUrl: false }]);
                     }}>
@@ -284,6 +286,7 @@ export default function ClassworkDetail() {
         )}
       </Menu>
 
+      {PromptHost}
       <Snackbar open={Boolean(toast)} autoHideDuration={4000} onClose={() => setToast(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity={toast?.severity} onClose={() => setToast(null)}>{toast?.message}</Alert>
       </Snackbar>
