@@ -19,3 +19,7 @@ img, video, canvas, svg, iframe { max-width: 100%; }
   .MuiButton-root { white-space: nowrap; }
   pre, code { white-space: pre-wrap; word-break: break-word; }
 }
+@media (max-width: 600px) {
+  /* Class card and banner artwork sits behind the title instead of on top of it. */
+  .class-art { opacity: .35; }
+}
