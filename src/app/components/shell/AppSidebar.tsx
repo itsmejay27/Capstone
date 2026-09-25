@@ -152,7 +152,7 @@ export default function AppSidebar({
 
       <List sx={{ px: 1, py: 0 }}>
         {navButton({ label: 'Notifications', icon: <Notifications fontSize="small" />, path: '/notifications', badge: notificationCount })}
-        {isInstructor && navButton({ label: 'Plans & billing', icon: <WorkspacePremium fontSize="small" />, path: '/billing' })}
+        {navButton({ label: 'Plans & billing', icon: <WorkspacePremium fontSize="small" />, path: '/billing' })}
         {navButton({ label: 'Settings', icon: <SettingsIcon fontSize="small" />, path: '/settings' })}
       </List>
 

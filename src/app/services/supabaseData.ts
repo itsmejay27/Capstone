@@ -829,6 +829,7 @@ export async function fetchSubscriptionPlans() {
     maxClassrooms: p.max_classrooms ?? null,
     maxExamsPerMonth: p.max_exams_per_month ?? null,
     sortOrder: p.sort_order ?? 0,
+    audience: p.audience === 'student' ? 'student' : 'instructor',
   }));
 }
 
