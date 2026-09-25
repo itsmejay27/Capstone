@@ -65,9 +65,14 @@ export default function ClassworkPanel({
   classroomId, classwork, topics, submissions, comments, students,
   isInstructor, currentUserId, currentUserName,
   onSaveClasswork, onDeleteClasswork, onSaveTopic, onDeleteTopic,
-  onSaveSubmission, onSaveComment, onDeleteComment, className,
+  onSaveSubmission, onSaveComment, onDeleteComment, className, extraGroups = [],
 }: {
   className?: string;
+  /** Other things shown as Classwork sections: the class's quizzes/exams and older course files. */
+  extraGroups?: {
+    id: string; name: string;
+    rows: { id: string; title: string; kind: 'quiz' | 'file'; when: string; status?: string; onOpen: () => void; onDelete?: () => void }[];
+  }[];
   classroomId: string;
   classwork: Classwork[];
   topics: ClassroomTopic[];
@@ -273,7 +278,8 @@ export default function ClassworkPanel({
   };
 
   const shownGroups = grouped.filter((g) => topicFilter === 'all' || (g.topic?.id ?? 'none') === topicFilter);
-  const allCollapsed = shownGroups.length > 0 && shownGroups.every((g) => collapsed.has(g.topic?.id ?? 'none'));
+  const shownExtra = extraGroups.filter((g) => g.rows.length > 0 && (topicFilter === 'all' || topicFilter === `x:${g.id}`));
+  const allCollapsed = shownGroups.length + shownExtra.length > 0 && shownGroups.every((g) => collapsed.has(g.topic?.id ?? 'none')) && shownExtra.every((g) => collapsed.has(`x:${g.id}`));
   const toggleGroup = (id: string) => setCollapsed((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const openWork = (w: Classwork) => navigate(`/classroom/${classroomId}/work/${w.id}`);
 
@@ -307,10 +313,11 @@ export default function ClassworkPanel({
             Create
           </Button>
         )}
-        {topics.length > 0 && (
+        {(topics.length > 0 || extraGroups.some((g) => g.rows.length > 0)) && (
           <TextField select size="small" label="Topic filter" value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)} fullWidth={false} sx={{ width: { xs: '100%', sm: 300 }, flex: '0 0 auto' }}>
             <MenuItem value="all">All topics</MenuItem>
             {[...topics].sort((x, y) => x.position - y.position).map((t) => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+            {extraGroups.filter((g) => g.rows.length > 0).map((g) => <MenuItem key={g.id} value={`x:${g.id}`}>{g.name}</MenuItem>)}
           </TextField>
         )}
         <Box sx={{ flex: 1 }} />
@@ -320,9 +327,9 @@ export default function ClassworkPanel({
             View your work
           </Button>
         )}
-        {shownGroups.length > 1 && (
+        {shownGroups.length + shownExtra.length > 1 && (
           <Button startIcon={allCollapsed ? <ExpandMore /> : <ExpandLess />} sx={{ textTransform: 'none', fontWeight: 600 }}
-            onClick={() => setCollapsed(allCollapsed ? new Set() : new Set(shownGroups.map((g) => g.topic?.id ?? 'none')))}>
+            onClick={() => setCollapsed(allCollapsed ? new Set() : new Set([...shownGroups.map((g) => g.topic?.id ?? 'none'), ...shownExtra.map((g) => `x:${g.id}`)]))}>
             {allCollapsed ? 'Expand all' : 'Collapse all'}
           </Button>
         )}
@@ -347,7 +354,7 @@ export default function ClassworkPanel({
         </MenuItem>
       </Menu>
 
-      {visibleWork.length === 0 && topics.length === 0 ? (
+      {visibleWork.length === 0 && topics.length === 0 && !extraGroups.some((g) => g.rows.length > 0) ? (
         <Box sx={{ textAlign: 'center', py: 8, borderTop: `1px solid ${palette.border}` }}>
           <AssignmentTurnedIn sx={{ fontSize: 72, color: palette.inkDisabled, mb: 1 }} />
           <Typography sx={{ fontWeight: 600 }}>{isInstructor ? 'This is where you’ll assign work' : 'No classwork yet'}</Typography>
@@ -412,6 +419,40 @@ export default function ClassworkPanel({
           );
         })
       )}
+
+      {shownExtra.map((g) => {
+        const gid = `x:${g.id}`;
+        const isCollapsed = collapsed.has(gid);
+        return (
+          <Box key={gid} sx={{ mb: 4 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', px: 1, py: 1, borderBottom: `1px solid ${palette.border}` }}>
+              <Typography sx={{ flex: 1, fontSize: '1.45rem', fontWeight: 400, color: palette.ink }}>{g.name}</Typography>
+              <IconButton size="small" onClick={() => toggleGroup(gid)} aria-label={isCollapsed ? 'Expand' : 'Collapse'}>
+                {isCollapsed ? <ExpandMore /> : <ExpandLess />}
+              </IconButton>
+            </Box>
+            <Collapse in={!isCollapsed}>
+              {g.rows.map((r) => (
+                <Box key={r.id} onClick={r.onOpen} role="link" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') r.onOpen(); }}
+                  sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 1, py: 1.25, borderBottom: `1px solid ${palette.border}`, cursor: 'pointer', '&:hover': { bgcolor: palette.surfaceMuted } }}>
+                  <Box sx={{ width: 36, height: 36, borderRadius: '50%', display: 'grid', placeItems: 'center', flexShrink: 0,
+                    bgcolor: r.kind === 'quiz' ? palette.primarySoft : 'transparent', border: r.kind === 'quiz' ? 'none' : `2px solid ${palette.inkTertiary}` }}>
+                    {r.kind === 'quiz' ? <Grading sx={{ fontSize: 19, color: palette.primary }} /> : <InsertDriveFile sx={{ fontSize: 18, color: palette.inkSecondary }} />}
+                  </Box>
+                  <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: '0.95rem' }}>{r.title}</Typography>
+                  {r.status && <StatusPill label={r.status} tone="success" />}
+                  <Typography variant="body2" sx={{ color: palette.inkSecondary, whiteSpace: 'nowrap', display: { xs: 'none', sm: 'block' } }}>{r.when}</Typography>
+                  {r.onDelete && (
+                    <IconButton size="small" aria-label={`Delete ${r.title}`} onClick={(e) => { e.stopPropagation(); r.onDelete?.(); }}>
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+              ))}
+            </Collapse>
+          </Box>
+        );
+      })}
 
       {/* Item menu */}
       <Menu anchorEl={menuFor?.el} open={Boolean(menuFor)} onClose={() => setMenuFor(null)}>

@@ -70,8 +70,10 @@ import AttemptInsight from '../components/AttemptInsight';
 import ClassArt, { artVariant } from '../components/classroom/ClassArt';
 import StreamSidebar from '../components/classroom/StreamSidebar';
 import StreamActivityRow from '../components/classroom/StreamActivityRow';
+import StreamWorkCard from '../components/classroom/StreamWorkCard';
+import CommentThread from '../components/CommentThread';
 import GradeAttemptDialog from '../components/GradeAttemptDialog';
-import GradeSheet from '../components/GradeSheet';
+import GradesView from '../components/classroom/GradesView';
 import { gradeFor, isPending } from '../services/grading';
 import { useState } from 'react';
 
@@ -299,10 +301,8 @@ export default function ClassroomDetail() {
         >
           <Tab label="Stream" />
           <Tab label="Classwork" />
-          <Tab label="Assessments" />
-          <Tab label="Course Materials" />
           <Tab label="People" />
-          {isInstructor && <Tab label="Gradebook" />}
+          {isInstructor && <Tab label="Grades" />}
         </Tabs>
 
         <Box
@@ -387,15 +387,32 @@ export default function ClassroomDetail() {
             .sort((x: any, y: any) => new Date(x.dueDate).getTime() - new Date(y.dueDate).getTime())
             .map((w: any) => ({ id: w.id, title: w.title, due: `Due ${new Date(w.dueDate).toLocaleDateString(undefined, { weekday: 'long' })}` }));
           const activity = [
-            ...classClasswork.filter((w: any) => w.isPublished !== false).map((w: any) => ({
-              id: w.id, at: w.createdAt,
-              node: <StreamActivityRow kind={w.kind} author={nameOf(w.createdBy).toUpperCase()} title={w.title} at={w.createdAt} accent={classTheme.flat}
-                onOpen={() => navigate(`/classroom/${classroomId}/work/${w.id}`)} />,
-            })),
+            ...classClasswork.filter((w: any) => w.isPublished !== false).map((w: any) => {
+              const open = () => navigate(`/classroom/${classroomId}/work/${w.id}`);
+              if (w.kind === 'material') {
+                return { id: w.id, at: w.createdAt, node: <StreamActivityRow kind={w.kind} author={nameOf(w.createdBy).toUpperCase()} title={w.title} at={w.createdAt} accent={classTheme.flat} onOpen={open} /> };
+              }
+              const sub = submissions.find((x: any) => x.classworkId === w.id && x.studentId === currentUser?.id);
+              const status = isInstructor ? undefined
+                : sub?.status === 'returned' ? (typeof sub.grade === 'number' ? `${sub.grade}/${w.points ?? 100}` : 'Returned')
+                : sub && sub.status !== 'assigned' ? 'Turned in'
+                : w.dueDate && new Date(w.dueDate).getTime() < Date.now() ? 'Missing' : 'Assigned';
+              return {
+                id: w.id, at: w.createdAt,
+                node: (
+                  <StreamWorkCard work={w} author={nameOf(w.createdBy).toUpperCase()} accent={classTheme.flat} status={status} onOpen={open}
+                    comments={
+                      <CommentThread classroomId={classroomId || ''} postType="classwork" postId={w.id} comments={comments}
+                        currentUserId={currentUser?.id || ''} currentUserName={currentUser?.name || ''} isInstructor={isInstructor}
+                        onSave={saveComment} onDelete={deleteComment} fixedVisibility="class" />
+                    } />
+                ),
+              };
+            }),
             ...classExams.filter((e: any) => e.createdAt || e.postDate).map((e: any) => ({
               id: `exam-${e.id}`, at: e.postDate || e.createdAt,
               node: <StreamActivityRow kind="exam" author={(instructor?.name || 'Your teacher').toUpperCase()} title={e.title} at={e.postDate || e.createdAt} accent={classTheme.flat}
-                onOpen={() => setActiveTab(2)} />,
+                onOpen={() => setActiveTab(1)} />,
             })),
           ];
           return (
@@ -431,6 +448,7 @@ export default function ClassroomDetail() {
                   onDeleteComment={deleteComment}
                   activity={activity}
                   accent={classTheme.flat}
+                  avatarFor={(id) => users.find((u: any) => u.id === id)?.avatar}
                 />
               </Box>
             </Box>
@@ -440,6 +458,37 @@ export default function ClassroomDetail() {
         {/* ── TAB 1: CLASSWORK (assignments, materials, questions, grouped by topic) ── */}
         {activeTab === 1 && (
           <ClassworkPanel
+            extraGroups={[
+              {
+                id: 'quizzes',
+                name: 'Quizzes & exams',
+                rows: classExams.map((exam: any) => {
+                  const st = !isInstructor ? getExamStatus(exam.id) : null;
+                  return {
+                    id: exam.id,
+                    title: exam.title,
+                    kind: 'quiz' as const,
+                    when: exam.dueDate
+                      ? `Due ${new Date(exam.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${new Date(exam.dueDate).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+                      : `${exam.activeQuestionCount || exam.questions?.length || 0} questions · ${exam.duration} min`,
+                    status: st === 'completed' ? 'Done' : st === 'in-progress' ? 'In progress' : undefined,
+                    onOpen: () => navigate(isInstructor ? `/classroom/${classroomId}?tab=gradebook` : st === 'completed' ? `/exam/${exam.id}/results` : `/exam/${exam.id}/take`),
+                  };
+                }),
+              },
+              {
+                id: 'files',
+                name: 'Course files',
+                rows: materials.map((mat: any) => ({
+                  id: mat.id,
+                  title: mat.name,
+                  kind: 'file' as const,
+                  when: mat.uploadedAt ? `Posted ${new Date(mat.uploadedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : '',
+                  onOpen: () => setViewMaterial(mat),
+                  onDelete: isInstructor ? () => setDeleteConfirm(mat.id) : undefined,
+                })),
+              },
+            ]}
             className={classroom.name}
             classroomId={classroomId || ''}
             classwork={classClasswork}
@@ -462,252 +511,6 @@ export default function ClassroomDetail() {
 
         {/* ── TAB 2: ASSESSMENTS (AI-generated exams) ── */}
         {activeTab === 2 && (
-          <Box>
-            {classExams.length === 0 ? (
-              <Paper elevation={0} sx={{ p: 6, textAlign: 'center', borderRadius: 3.5, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
-                <Assignment sx={{ fontSize: 48, color: 'var(--c-slate-400)', mb: 1.5 }} />
-                <Typography variant="h6" fontWeight={800} color="var(--c-slate-900)">No assessments scheduled yet</Typography>
-                <Typography variant="body2" color="var(--c-slate-500)" sx={{ mb: 3, maxWidth: 360, mx: 'auto' }}>
-                  {isInstructor
-                    ? 'Generate a new examination with AI or assign an existing exam from your repository.'
-                    : 'Your instructor has not posted any active exams yet. Check back soon.'}
-                </Typography>
-                {isInstructor && (
-                  <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
-                    <Button variant="contained" onClick={() => navigate(`/exam-generator/${classroomId}`)} sx={{ bgcolor: 'var(--c-emerald-600)', fontWeight: 700, textTransform: 'none' }}>
-                      Generate Exam
-                    </Button>
-                    <Button variant="outlined" onClick={() => navigate('/exam-repository')} sx={{ fontWeight: 700, textTransform: 'none' }}>
-                      Assign from Repository
-                    </Button>
-                  </Box>
-                )}
-              </Paper>
-            ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {classExams.map((exam) => {
-                  const status = !isInstructor ? getExamStatus(exam.id) : null;
-                  const attempt = examAttempts.find(
-                    (a) => a.examId === exam.id && a.studentId === currentUser?.id
-                  );
-
-                  return (
-                    <Paper
-                      key={exam.id}
-                      elevation={0}
-                      sx={{
-                        p: 3,
-                        borderRadius: 3,
-                        bgcolor: 'var(--c-surface)',
-                        border: '1px solid var(--c-slate-200)',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                        display: 'flex',
-                        flexDirection: { xs: 'column', md: 'row' },
-                        alignItems: { xs: 'flex-start', md: 'center' },
-                        justifyContent: 'space-between',
-                        gap: 2.5,
-                        transition: 'all 0.15s ease',
-                        '&:hover': {
-                          borderColor: 'var(--c-slate-300)',
-                          boxShadow: '0 6px 18px rgba(0,0,0,0.05)',
-                        },
-                      }}
-                    >
-                      {/* Left: Icon + Title + Due Date */}
-                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', minWidth: 0, flexGrow: 1 }}>
-                        <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: 'var(--c-emerald-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--c-emerald-600)', flexShrink: 0 }}>
-                          <Assignment sx={{ fontSize: 24 }} />
-                        </Box>
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography variant="subtitle1" fontWeight={800} sx={{ color: 'var(--c-slate-900)', lineHeight: 1.25, mb: 0.5 }}>
-                            {exam.title}
-                          </Typography>
-                          {exam.description && (
-                            <Typography variant="body2" noWrap sx={{ color: 'var(--c-slate-500)', fontSize: '0.82rem', mb: 1 }}>
-                              {exam.description}
-                            </Typography>
-                          )}
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                            {exam.dueDate && (
-                              <Typography variant="caption" sx={{ color: 'var(--c-red-600)', fontWeight: 700 }}>
-                                Due: {new Date(exam.dueDate).toLocaleDateString()} at {new Date(exam.dueDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </Typography>
-                            )}
-                            <Typography variant="caption" sx={{ color: 'var(--c-slate-500)', fontWeight: 600 }}>
-                              {exam.totalPoints} points &bull; {exam.duration} mins &bull; {exam.activeQuestionCount || exam.questions?.length || 0} questions
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-
-                      {/* Right: Status / Action Button */}
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexShrink: 0, width: { xs: '100%', md: 'auto' }, justifyContent: { xs: 'space-between', md: 'flex-end' }, pt: { xs: 1.5, md: 0 }, borderTop: { xs: '1px solid var(--c-slate-100)', md: 'none' } }}>
-                        {!isInstructor ? (
-                          status === 'completed' ? (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              {isPending(attempt) ? (
-                                <Chip label="Submitted · awaiting instructor check" size="small" sx={{ bgcolor: 'var(--c-amber-100)', color: 'var(--c-amber-800)', fontWeight: 800 }} />
-                              ) : (
-                                <Chip
-                                  label={`Score: ${attempt?.score ?? 0} / ${exam.totalPoints} · Grade ${gradeFor(attempt?.score ?? 0, exam.totalPoints).grade}`}
-                                  size="small"
-                                  sx={{ bgcolor: 'var(--c-green-100)', color: 'var(--c-green-700)', fontWeight: 800 }}
-                                />
-                              )}
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => navigate(`/exam/${exam.id}/results`)}
-                                sx={{ fontWeight: 700, textTransform: 'none' }}
-                              >
-                                View Results
-                              </Button>
-                            </Box>
-                          ) : (
-                            <Button
-                              variant="contained"
-                              onClick={() => navigate(`/exam/${exam.id}/take`)}
-                              sx={{
-                                bgcolor: 'var(--c-emerald-600)',
-                                color: 'white',
-                                fontWeight: 800,
-                                px: 3,
-                                py: 1,
-                                borderRadius: 2,
-                                textTransform: 'none',
-                                '&:hover': { bgcolor: 'var(--c-emerald-700)' },
-                              }}
-                            >
-                              Take Exam
-                            </Button>
-                          )
-                        ) : (
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => setActiveTab(5)}
-                              sx={{ fontWeight: 700, textTransform: 'none' }}
-                            >
-                              View Scores
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              onClick={() => navigate('/exam-repository')}
-                              sx={{ fontWeight: 700, textTransform: 'none' }}
-                            >
-                              Edit in Repository
-                            </Button>
-                          </Box>
-                        )}
-                      </Box>
-                    </Paper>
-                  );
-                })}
-              </Box>
-            )}
-          </Box>
-        )}
-
-        {/* ── TAB 1: COURSE MATERIALS ── */}
-        {activeTab === 3 && (
-          <Box>
-            {isInstructor && (
-              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button
-                  component="label"
-                  variant="contained"
-                  startIcon={<Upload />}
-                  sx={{ bgcolor: 'var(--c-emerald-600)', fontWeight: 800, textTransform: 'none', borderRadius: 2.5 }}
-                >
-                  {uploading ? 'Uploading…' : 'Upload Study Material'}
-                  <input type="file" hidden disabled={uploading} onChange={handleMaterialUpload} accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.xlsx,.csv" />
-                </Button>
-              </Box>
-            )}
-
-            {materials.length === 0 ? (
-              <Paper elevation={0} sx={{ p: 6, textAlign: 'center', borderRadius: 3.5, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
-                <MenuBook sx={{ fontSize: 48, color: 'var(--c-slate-400)', mb: 1.5 }} />
-                <Typography variant="h6" fontWeight={800} color="var(--c-slate-900)">No study materials uploaded yet</Typography>
-                <Typography variant="body2" color="var(--c-slate-500)" sx={{ maxWidth: 360, mx: 'auto' }}>
-                  {isInstructor
-                    ? 'Upload lecture notes, slide handouts, or syllabus files for students.'
-                    : 'Course notes uploaded by your instructor will appear here.'}
-                </Typography>
-              </Paper>
-            ) : (
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2.5 }}>
-                {materials.map((mat: any) => (
-                  <Paper
-                    key={mat.id}
-                    elevation={0}
-                    sx={{
-                      p: 2.5,
-                      borderRadius: 3,
-                      bgcolor: 'var(--c-surface)',
-                      border: '1px solid var(--c-slate-200)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 2,
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0, flex: '1 1 200px' }}>
-                      <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: 'var(--c-slate-50)', border: '1px solid var(--c-slate-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {getMaterialIcon(mat.name)}
-                      </Box>
-                      <Box sx={{ minWidth: 0 }}>
-                        {/* `noWrap` is a Typography PROP, not a CSS property — inside sx it was
-                            emitted as an invalid declaration and dropped, so long filenames
-                            never truncated. */}
-                        <Typography variant="subtitle2" fontWeight={800} noWrap sx={{ color: 'var(--c-slate-900)' }} title={mat.name}>
-                          {mat.name}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--c-slate-500)', display: 'block' }}>
-                          {formatFileSize(mat.size)}
-                          {mat.uploadedAt && !Number.isNaN(new Date(mat.uploadedAt).getTime())
-                            ? ` • Uploaded ${new Date(mat.uploadedAt).toLocaleDateString()}`
-                            : ''}
-                          {mat.uploadedBy ? ` • ${mat.uploadedBy}` : ''}
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<Visibility />}
-                        onClick={() => setViewMaterial(mat)}
-                        sx={{ fontWeight: 700, textTransform: 'none' }}
-                      >
-                        Preview
-                      </Button>
-                      {mat.fileUrl && (
-                        <Tooltip title="Open the original file in a new tab">
-                          <IconButton size="small" component="a" href={mat.fileUrl} target="_blank" rel="noopener noreferrer">
-                            <Download fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {isInstructor && (
-                        <IconButton size="small" color="error" onClick={() => setDeleteConfirm(mat.id)}>
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      )}
-                    </Box>
-                  </Paper>
-                ))}
-              </Box>
-            )}
-          </Box>
-        )}
-
-        {/* ── TAB 2: PEOPLE & ROSTER ── */}
-        {activeTab === 4 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Teacher Card */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)' }}>
@@ -824,105 +627,26 @@ export default function ClassroomDetail() {
         )}
 
         {/* ── TAB 3: GRADEBOOK (INSTRUCTOR ONLY) ── */}
-        {activeTab === 5 && isInstructor && (
+        {activeTab === 3 && isInstructor && (
           <>
-          <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)', overflow: 'hidden', mb: 3 }}>
-            <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: '1px solid var(--c-slate-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-              <Box>
-                <Typography variant="h6" fontWeight={900} sx={{ color: 'var(--c-slate-900)' }}>Academic Gradebook</Typography>
-                <Typography variant="caption" sx={{ color: 'var(--c-slate-500)' }}>
-                  Grades on a 65–100 scale · 75 is passing · short-answer and essay items wait for your check
-                </Typography>
-              </Box>
-            </Box>
-
-            <TableContainer sx={{ overflowX: 'auto' }}>
-              <Table sx={{ minWidth: 650 }}>
-                <TableHead sx={{ bgcolor: 'var(--c-slate-50)' }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>Student Name</TableCell>
-                    {rawClassExams.map((exam) => (
-                      <TableCell key={exam.id} align="center" sx={{ fontWeight: 800, color: 'var(--c-slate-700)' }}>
-                        {exam.title} ({exam.totalPoints} pts)
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {students.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={rawClassExams.length + 1} align="center" sx={{ py: 4, color: 'var(--c-slate-500)' }}>
-                        No enrolled students to record grades for.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    students.map((student) => (
-                      <TableRow key={student.id} hover>
-                        <TableCell sx={{ fontWeight: 700, color: 'var(--c-slate-900)' }}>
-                          {student.name}
-                        </TableCell>
-                        {rawClassExams.map((exam) => {
-                          const attempt = examAttempts.find(
-                            (a) => a.examId === exam.id && a.studentId === student.id && a.submittedAt
-                          );
-                          if (!attempt) {
-                            return (
-                              <TableCell key={exam.id} align="center" sx={{ color: 'var(--c-slate-400)', fontSize: '0.85rem' }}>
-                                Not submitted
-                              </TableCell>
-                            );
-                          }
-
-                          const pending = isPending(attempt);
-                          const result = gradeFor(attempt.score || 0, exam.totalPoints);
-                          return (
-                            <TableCell key={exam.id} align="center">
-                              {pending ? (
-                                <Chip label="Needs checking" size="small" sx={{ bgcolor: 'var(--c-amber-100)', color: 'var(--c-amber-800)', fontWeight: 800, fontSize: '0.72rem' }} />
-                              ) : (
-                                <Chip
-                                  label={`${attempt.score}/${exam.totalPoints} • ${result.grade}`}
-                                  size="small"
-                                  sx={{ bgcolor: result.bg, color: result.color, fontWeight: 800, fontSize: '0.72rem' }}
-                                />
-                              )}
-                              <AttemptInsight attempt={attempt} studentName={student.name} />
-                              <Button
-                                size="small"
-                                variant={pending ? 'contained' : 'text'}
-                                onClick={() => setGrading({ attempt, exam, studentName: student.name })}
-                                sx={{ mt: 0.5, fontWeight: 700, textTransform: 'none', fontSize: '0.72rem', py: 0.25 }}
-                              >
-                                {pending ? 'Check answers' : 'Review'}
-                              </Button>
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-
-          {/* ── Item analysis ── */}
-          <Box sx={{ mb: 1.5 }}>
-            <Typography variant="h6" fontWeight={900} sx={{ color: 'var(--c-slate-900)' }}>Item Analysis</Typography>
-            <Typography variant="caption" sx={{ color: 'var(--c-slate-500)' }}>
-              Difficulty index, most-missed questions, distractor analysis and time to completion.
-            </Typography>
-          </Box>
-          <ItemAnalysisPanel exams={rawClassExams} attempts={examAttempts} />
-          <GradeSheet classroom={classroom} students={students} exams={rawClassExams} attempts={examAttempts} />
-          <GradeAttemptDialog
-            open={Boolean(grading)}
-            onClose={() => setGrading(null)}
-            attempt={grading?.attempt}
-            exam={grading?.exam}
-            studentName={grading?.studentName}
-            onSave={submitExamAttempt}
-          />
+            <GradesView
+              classroom={classroom}
+              students={students}
+              exams={rawClassExams}
+              classwork={classClasswork}
+              attempts={examAttempts}
+              submissions={submissions}
+              accent={classTheme.flat}
+              onCheckAttempt={setGrading}
+            />
+            <GradeAttemptDialog
+              open={Boolean(grading)}
+              onClose={() => setGrading(null)}
+              attempt={grading?.attempt}
+              exam={grading?.exam}
+              studentName={grading?.studentName}
+              onSave={submitExamAttempt}
+            />
           </>
         )}
 

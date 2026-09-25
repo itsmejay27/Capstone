@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   Box, Typography, Paper, Button, Divider, IconButton, Menu, MenuItem, Snackbar, Alert, CircularProgress, TextField,
 } from '@mui/material';
 import {
   AssignmentOutlined, BookmarkBorder, HelpOutline, MoreVert, Add, PeopleOutline, PersonOutline, ArrowBack,
-  InsertDriveFile, PictureAsPdf, Description, Close, Link as LinkIcon,
+  InsertDriveFile, PictureAsPdf, Description, Close, Link as LinkIcon, AttachFile,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import CommentThread from '../components/CommentThread';
+import FileCard from '../components/classroom/FileCard';
 import { classThemeFor } from '../theme/classThemes';
 import { uploadClassroomFile } from '../services/fileStorage';
 import { isOverdue } from '../services/todo';
@@ -22,42 +23,6 @@ import type { AnnouncementAttachment, Classwork, ClassworkSubmission } from '../
 
 const KIND_ICON: Record<string, any> = { assignment: AssignmentOutlined, material: BookmarkBorder, question: HelpOutline };
 
-function fileKind(att: AnnouncementAttachment) {
-  const n = (att.name || '').toLowerCase();
-  const t = (att.mimeType || '').toLowerCase();
-  if (t === 'text/uri-list') return /youtu\.?be/i.test(att.fileUrl || '') ? { label: 'YouTube', Icon: InsertDriveFile, color: '#ff0000' } : { label: 'Link', Icon: LinkIcon, color: '#1a73e8' };
-  if (t.includes('pdf') || n.endsWith('.pdf')) return { label: 'PDF', Icon: PictureAsPdf, color: '#d93025' };
-  if (n.endsWith('.doc') || n.endsWith('.docx') || t.includes('word')) return { label: 'Microsoft Word', Icon: Description, color: '#1a73e8' };
-  if (n.endsWith('.ppt') || n.endsWith('.pptx') || t.includes('presentation')) return { label: 'PowerPoint', Icon: Description, color: '#d24726' };
-  if (n.endsWith('.xls') || n.endsWith('.xlsx') || t.includes('sheet')) return { label: 'Excel', Icon: Description, color: '#188038' };
-  if (t.startsWith('image/')) return { label: 'Image', Icon: InsertDriveFile, color: '#8e24aa' };
-  return { label: (n.split('.').pop() || 'File').toUpperCase(), Icon: InsertDriveFile, color: '#5f6368' };
-}
-
-/** File card with a preview strip, like Classroom's attachment tiles. */
-export function FileCard({ att, onRemove }: { att: AnnouncementAttachment; onRemove?: () => void }) {
-  const k = fileKind(att);
-  const isImage = (att.mimeType || '').startsWith('image/');
-  return (
-    <Box sx={{ display: 'flex', border: '1px solid var(--c-border)', borderRadius: '8px', overflow: 'hidden', height: 72, bgcolor: 'var(--c-surface)', minWidth: 0 }}>
-      <Box component="a" href={att.fileUrl} target="_blank" rel="noopener noreferrer"
-        sx={{ flex: 1, minWidth: 0, px: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: 'inherit', textDecoration: 'none', '&:hover .n': { textDecoration: 'underline' } }}>
-        <Typography className="n" noWrap sx={{ fontWeight: 500, fontSize: '0.9rem', textDecoration: 'underline' }} title={att.name}>{att.name}</Typography>
-        <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>{k.label}</Typography>
-      </Box>
-      <Box sx={{ width: 90, flexShrink: 0, borderLeft: '1px solid var(--c-border)', position: 'relative', display: 'grid', placeItems: 'center',
-        background: isImage && att.fileUrl ? `center/cover no-repeat url("${att.fileUrl}")` : `linear-gradient(135deg, ${k.color}22, ${k.color}08)` }}>
-        {!isImage && <k.Icon sx={{ color: k.color, fontSize: 30 }} />}
-        {onRemove && (
-          <IconButton size="small" onClick={onRemove} aria-label={`Remove ${att.name}`} sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'var(--c-surface)' }}>
-            <Close sx={{ fontSize: 14 }} />
-          </IconButton>
-        )}
-      </Box>
-    </Box>
-  );
-}
-
 export default function ClassworkDetail() {
   const { classroomId = '', workId = '' } = useParams();
   const navigate = useNavigate();
@@ -65,6 +30,8 @@ export default function ClassworkDetail() {
     currentUser, users, classrooms, classwork, submissions, comments, saveSubmission, saveComment, deleteComment,
   } = useAuth();
   const [menuEl, setMenuEl] = useState<HTMLElement | null>(null);
+  const [addEl, setAddEl] = useState<HTMLElement | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
@@ -242,11 +209,28 @@ export default function ClassworkDetail() {
               {turnedIn && text && <Typography variant="body2" sx={{ whiteSpace: 'pre-line', mb: 1.5, color: 'var(--c-ink-secondary)' }}>{text}</Typography>}
 
               {!turnedIn && (
-                <Button fullWidth variant="outlined" component="label" startIcon={uploading ? <CircularProgress size={16} /> : <Add />} disabled={uploading}
-                  sx={{ textTransform: 'none', borderRadius: 999, mb: 1.5, color: theme.flat, borderColor: 'var(--c-border)' }}>
-                  {uploading ? 'Uploading…' : 'Add or create'}
-                  <input type="file" hidden multiple onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
-                </Button>
+                <>
+                  <Button fullWidth variant="outlined" startIcon={uploading ? <CircularProgress size={16} /> : <Add />} disabled={uploading}
+                    onClick={(e) => setAddEl(e.currentTarget)}
+                    sx={{ textTransform: 'none', borderRadius: 999, mb: 1.5, color: theme.flat, borderColor: 'var(--c-border)' }}>
+                    {uploading ? 'Uploading…' : 'Add or create'}
+                  </Button>
+                  <input ref={fileRef} type="file" hidden multiple onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
+                  <Menu anchorEl={addEl} open={Boolean(addEl)} onClose={() => setAddEl(null)} PaperProps={{ sx: { width: addEl?.offsetWidth } }}>
+                    <MenuItem onClick={() => {
+                      setAddEl(null);
+                      const url = window.prompt('Paste a link');
+                      if (!url || !/^https?:\/\//i.test(url.trim())) return;
+                      const u = url.trim();
+                      setDraftFiles([...(files || []), { id: crypto.randomUUID(), name: u.replace(/^https?:\/\//, ''), size: 0, mimeType: 'text/uri-list', fileUrl: u, storagePath: null, isDataUrl: false }]);
+                    }}>
+                      <LinkIcon fontSize="small" sx={{ mr: 1.5 }} /> Link
+                    </MenuItem>
+                    <MenuItem onClick={() => { setAddEl(null); fileRef.current?.click(); }}>
+                      <AttachFile fontSize="small" sx={{ mr: 1.5 }} /> File
+                    </MenuItem>
+                  </Menu>
+                </>
               )}
               {mine?.status === 'returned' && mine.feedback && (
                 <Alert severity="info" sx={{ mb: 1.5 }}>{mine.feedback}</Alert>

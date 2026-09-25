@@ -125,7 +125,7 @@ export default function CommentThread({
           {fixedVisibility === 'private'
             ? (privateComments.length === 0 ? 'Add comment to your teacher' : `${privateComments.length} private comment${privateComments.length === 1 ? '' : 's'}`)
             : classComments.length === 0
-              ? 'Add class comment'
+              ? 'Add comment'
               : `${classComments.length} class comment${classComments.length === 1 ? '' : 's'}`}
         </Button>
 
