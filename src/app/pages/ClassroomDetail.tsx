@@ -38,6 +38,9 @@ import {
   Alert,
   Menu,
   Popover,
+  BottomNavigation,
+  BottomNavigationAction,
+  Paper as NavPaper,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -64,6 +67,10 @@ import {
   Palette as PaletteIcon,
   Link as LinkIcon,
   InfoOutlined,
+  Forum,
+  AssignmentOutlined,
+  PeopleOutline,
+  GradeOutlined,
 } from '@mui/icons-material';
 import { CLASS_THEMES, classThemeFor, isGlowTheme, BANNER_GRID } from '../theme/classThemes';
 import AttemptInsight from '../components/AttemptInsight';
@@ -268,10 +275,10 @@ export default function ClassroomDetail() {
   const formatFileSize = (bytes?: number) => formatBytes(bytes);
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'var(--c-slate-50)', py: 3, px: { xs: 2, sm: 3, md: 5, lg: 6 } }}>
-      <Container maxWidth="xl">
-        {/* Navigation Breadcrumb */}
-        <Button
+    <Box sx={{ minHeight: '100vh', bgcolor: 'var(--c-slate-50)', py: { xs: 1.5, sm: 3 }, pb: { xs: 11, sm: 3 }, px: { xs: 1.5, sm: 3, md: 5, lg: 6 } }}>
+      <Container maxWidth="xl" disableGutters={isMobile}>
+        {/* Navigation Breadcrumb (phones use the menu and the bottom bar instead) */}
+        {!isMobile && <Button
           startIcon={<ArrowBack />}
           onClick={() => navigate('/dashboard')}
           sx={{
@@ -283,10 +290,10 @@ export default function ClassroomDetail() {
           }}
         >
           Back to Classrooms
-        </Button>
+        </Button>}
 
         {/* ── Tabs, then a Google-Classroom-style banner ── */}
-        <Tabs
+        {!isMobile && <Tabs
           value={activeTab}
           onChange={(_, val) => setActiveTab(val)}
           variant={isMobile ? 'fullWidth' : 'scrollable'}
@@ -302,12 +309,12 @@ export default function ClassroomDetail() {
           <Tab label="Classwork" />
           <Tab label="People" />
           {isInstructor && <Tab label="Grades" />}
-        </Tabs>
+        </Tabs>}
 
         <Box
           sx={{
             position: 'relative', mb: 3, borderRadius: '10px', overflow: 'hidden', color: '#fff',
-            bgcolor: classTheme.flat, minHeight: { xs: 150, md: 240 },
+            bgcolor: classTheme.flat, minHeight: { xs: 120, sm: 180, md: 240 },
             ...(isGlowTheme(classroom?.theme) ? { backgroundImage: `${BANNER_GRID}, ${classTheme.background}`, backgroundSize: '32px 32px, 32px 32px, auto' } : {}), px: { xs: 2.5, md: 3.5 }, py: { xs: 2.5, md: 3 },
             display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
           }}
@@ -760,6 +767,23 @@ export default function ClassroomDetail() {
           </Alert>
         </Snackbar>
       </Container>
+
+      {/* Phones: the class tabs live in a bottom bar, as in the Google Classroom app. */}
+      {isMobile && (
+        <NavPaper elevation={8} sx={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 1100, borderTop: '1px solid var(--c-border)', pb: 'env(safe-area-inset-bottom)' }}>
+          <BottomNavigation
+            showLabels
+            value={activeTab}
+            onChange={(_, v) => { setActiveTab(v); window.scrollTo({ top: 0 }); }}
+            sx={{ height: 64, bgcolor: 'var(--c-surface)', '& .Mui-selected': { color: `${classTheme.flat} !important` } }}
+          >
+            <BottomNavigationAction label="Stream" icon={<Forum />} />
+            <BottomNavigationAction label="Classwork" icon={<AssignmentOutlined />} />
+            <BottomNavigationAction label="People" icon={<PeopleOutline />} />
+            {isInstructor && <BottomNavigationAction label="Grades" icon={<GradeOutlined />} />}
+          </BottomNavigation>
+        </NavPaper>
+      )}
     </Box>
   );
 }

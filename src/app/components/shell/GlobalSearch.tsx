@@ -150,7 +150,7 @@ export default function GlobalSearch() {
         <TextField
           {...params}
           inputRef={inputRef}
-          placeholder="Search classes, exams, questions…"
+          placeholder="Search…"
           size="small"
           InputProps={{
             ...params.InputProps,
@@ -165,6 +165,7 @@ export default function GlobalSearch() {
                   label="⌘K"
                   size="small"
                   sx={{
+                    display: { xs: 'none', md: 'inline-flex' },
                     height: 20, fontSize: '0.65rem', fontWeight: 700,
                     bgcolor: palette.surfaceSunken, color: palette.inkTertiary,
                   }}

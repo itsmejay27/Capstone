@@ -23,9 +23,12 @@ export default function StreamActivityRow({
       <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: accent, color: '#fff', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
         <Icon fontSize="small" />
       </Box>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
-          {author} posted a new {WORD[kind] || 'item'}: {title}
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography variant="body2" sx={{ fontWeight: 500, display: '-webkit-box', WebkitLineClamp: { xs: 2, sm: 1 }, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {/* Phones drop the author, like the Google Classroom app: "New material: Lesson 3". */}
+          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{author} posted a new {WORD[kind] || 'item'}: </Box>
+          <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>New {WORD[kind] || 'item'}: </Box>
+          {title}
         </Typography>
         <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>{when}</Typography>
       </Box>

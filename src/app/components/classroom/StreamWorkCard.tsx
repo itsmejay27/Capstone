@@ -29,15 +29,22 @@ export default function StreamWorkCard({
         <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: `${accent}1f`, color: accent, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
           <Icon fontSize="small" />
         </Box>
-        <Typography className="t" noWrap sx={{ flex: 1, minWidth: 0, fontSize: '0.92rem' }}>
-          {author} posted a new {work.kind === 'question' ? 'question' : 'assignment'}: {work.title}
-        </Typography>
-        <Typography variant="body2" sx={{ fontWeight: 500, whiteSpace: 'nowrap', color: 'var(--c-ink-secondary)' }}>{due}</Typography>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography className="t" sx={{ fontSize: '0.92rem', display: { xs: '-webkit-box', sm: 'block' }, WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: { sm: 'nowrap' }, textOverflow: 'ellipsis' }}>
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{author} posted a new {work.kind === 'question' ? 'question' : 'assignment'}: </Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>New {work.kind === 'question' ? 'question' : 'assignment'}: </Box>
+            {work.title}
+          </Typography>
+          <Typography variant="caption" sx={{ display: { xs: 'block', sm: 'none' }, color: 'var(--c-ink-secondary)' }}>
+            {posted.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {due}
+          </Typography>
+        </Box>
+        <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 500, whiteSpace: 'nowrap', color: 'var(--c-ink-secondary)' }}>{due}</Typography>
         <IconButton size="small" aria-label="Open" onClick={(e) => { e.stopPropagation(); onOpen(); }}><MoreVert fontSize="small" /></IconButton>
       </Box>
       <Box sx={{ px: { xs: 2, sm: 3 }, pt: 1.5, pb: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-          <Typography variant="caption" sx={{ fontWeight: 600, color: 'var(--c-ink-secondary)' }}>
+          <Typography variant="caption" sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 600, color: 'var(--c-ink-secondary)' }}>
             Posted {posted.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           </Typography>
           {status && <Typography variant="body2" sx={{ fontWeight: 600, color: status === 'Missing' ? '#d93025' : 'var(--c-ink)' }}>{status}</Typography>}
