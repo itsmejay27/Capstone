@@ -16,7 +16,7 @@ const ACTIVATION_POLL_ATTEMPTS = 10;
 
 export default function Billing() {
   const { currentUser } = useAuth();
-  const { plans, subscription, currentPlan, loading, refresh } = useSubscription(currentUser?.id);
+  const { plans, subscription, currentPlan, loading, refresh } = useSubscription(currentUser?.id, currentUser?.role === 'student' ? 'student' : 'instructor');
   const { toast, ToastHost } = useToast();
 
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
@@ -76,7 +76,9 @@ export default function Billing() {
     <PageContainer>
       <PageHeader
         title="Plans & billing"
-        subtitle="Choose the plan that fits how many classes you run. Payments are processed securely by PayMongo."
+        subtitle={currentUser?.role === 'student'
+          ? 'Upgrade for more AI study help. Payments are processed securely by PayMongo.'
+          : 'Choose the plan that fits how many classes you run. Payments are processed securely by PayMongo.'}
       />
 
       {returnState === 'success' && (
@@ -152,7 +154,7 @@ export default function Billing() {
             const isCurrent = plan.id === currentPlan?.id;
             const isFree = plan.priceCentavos === 0;
             // The middle paid plan is the one most instructors want.
-            const isFeatured = plan.id === 'educator';
+            const isFeatured = plan.id === 'educator' || plan.id === 'student_plus';
             return (
               <Paper
                 key={plan.id}

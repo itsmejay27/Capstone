@@ -9,7 +9,8 @@ import type { SubscriptionPlan, UserSubscription } from '../services/billing';
  * subscription — which is also what a lapsed paid plan resolves to, since PayMongo
  * Checkout does not auto-renew.
  */
-export function useSubscription(userId?: string | null) {
+/** Plans and subscription for a user; `audience` limits the catalogue to instructor or student plans. */
+export function useSubscription(userId?: string | null, audience?: 'instructor' | 'student') {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,10 +21,10 @@ export function useSubscription(userId?: string | null) {
       fetchSubscriptionPlans(),
       userId ? fetchUserSubscription(userId) : Promise.resolve(null),
     ]);
-    setPlans(planRows as SubscriptionPlan[]);
+    setPlans((planRows as SubscriptionPlan[]).filter((p) => !audience || (p.audience || 'instructor') === audience));
     setSubscription(sub as UserSubscription | null);
     setLoading(false);
-  }, [userId]);
+  }, [userId, audience]);
 
   useEffect(() => { refresh(); }, [refresh]);
 

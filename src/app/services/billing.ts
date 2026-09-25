@@ -17,6 +17,8 @@ export interface SubscriptionPlan {
   maxClassrooms: number | null;
   maxExamsPerMonth: number | null;
   sortOrder: number;
+  /** Who the plan is for: instructors or students. */
+  audience: 'instructor' | 'student';
 }
 
 export interface UserSubscription {
