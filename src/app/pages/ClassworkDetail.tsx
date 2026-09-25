@@ -25,6 +25,7 @@ const KIND_ICON: Record<string, any> = { assignment: AssignmentOutlined, materia
 function fileKind(att: AnnouncementAttachment) {
   const n = (att.name || '').toLowerCase();
   const t = (att.mimeType || '').toLowerCase();
+  if (t === 'text/uri-list') return /youtu\.?be/i.test(att.fileUrl || '') ? { label: 'YouTube', Icon: InsertDriveFile, color: '#ff0000' } : { label: 'Link', Icon: LinkIcon, color: '#1a73e8' };
   if (t.includes('pdf') || n.endsWith('.pdf')) return { label: 'PDF', Icon: PictureAsPdf, color: '#d93025' };
   if (n.endsWith('.doc') || n.endsWith('.docx') || t.includes('word')) return { label: 'Microsoft Word', Icon: Description, color: '#1a73e8' };
   if (n.endsWith('.ppt') || n.endsWith('.pptx') || t.includes('presentation')) return { label: 'PowerPoint', Icon: Description, color: '#d24726' };
