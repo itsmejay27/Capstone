@@ -93,7 +93,7 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
             </Box>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>Confirm it’s you</Typography>
             <Typography variant="body2" sx={{ color: palette.inkSecondary, mt: 0.5, mb: 2 }}>
-              {pending?.reason} {mode === 'password' ? 'Enter your password to continue.' : mode === 'code' ? 'Enter the code we emailed you.' : ''}
+              {pending?.reason} {mode === 'password' ? 'Enter your Aspire e Learning password (not your Gmail password), or get a code by email.' : mode === 'code' ? 'Enter the code we emailed you.' : ''}
             </Typography>
 
             {info && !error && <Alert severity="success" sx={{ mb: 2, borderRadius: 2, fontSize: '0.8rem' }}>{info}</Alert>}
@@ -128,6 +128,12 @@ export function ReauthProvider({ children }: { children: ReactNode }) {
             {mode === 'code' && (
               <Button size="small" fullWidth disabled={busy} onClick={() => { setError(''); void sendCode(email); }} sx={{ mt: 1, textTransform: 'none' }}>
                 Send a new code
+              </Button>
+            )}
+            {/* Forgot the password, or signed up with Google and never used it: a code works too. */}
+            {mode === 'password' && (
+              <Button size="small" fullWidth disabled={busy} onClick={() => { setError(''); setValue(''); setMode('code'); void sendCode(email); }} sx={{ mt: 1, textTransform: 'none' }}>
+                Email me a code instead
               </Button>
             )}
           </Box>
