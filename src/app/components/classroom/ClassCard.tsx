@@ -27,7 +27,7 @@ export default function ClassCard({
     <Box
       sx={{
         borderRadius: '10px', overflow: 'hidden', bgcolor: 'var(--c-surface)', border: '1px solid var(--c-border)',
-        display: 'flex', flexDirection: 'column', minHeight: 290, transition: 'box-shadow .2s',
+        display: 'flex', flexDirection: 'column', minHeight: { xs: 210, sm: 290 }, transition: 'box-shadow .2s',
         '&:hover': { boxShadow: '0 2px 10px rgba(0,0,0,.18)' },
       }}
     >
@@ -49,7 +49,7 @@ export default function ClassCard({
         )}
       </Box>
       <Box sx={{ position: 'relative', flex: 1, px: 2, pt: 3.5, pb: 1 }}>
-        <Avatar src={teacherAvatar} sx={{ position: 'absolute', top: -38, right: 16, width: 76, height: 76, fontSize: '2rem', bgcolor: '#5c6bc0', border: '3px solid var(--c-surface)' }}>
+        <Avatar src={teacherAvatar} sx={{ position: 'absolute', top: { xs: -30, sm: -38 }, right: 16, width: { xs: 60, sm: 76 }, height: { xs: 60, sm: 76 }, fontSize: { xs: '1.6rem', sm: '2rem' }, bgcolor: '#5c6bc0', border: '3px solid var(--c-surface)' }}>
           {teacherName?.charAt(0)?.toUpperCase()}
         </Avatar>
         {badge}
