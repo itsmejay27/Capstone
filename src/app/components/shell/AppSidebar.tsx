@@ -255,6 +255,23 @@ export default function AppSidebar({
       )}
 
       <Box sx={{ flex: 1 }} />
+
+      <Box sx={{ px: collapsed ? 0 : 2.25, py: 1.5, borderTop: `1px solid ${palette.border}`, textAlign: collapsed ? 'center' : 'left' }}>
+        <Typography
+          component="a"
+          href="/terms"
+          onClick={(e: any) => { e.preventDefault(); go('/terms'); }}
+          title="Terms & Privacy"
+          sx={{ fontSize: '0.72rem', fontWeight: 600, color: palette.inkTertiary, textDecoration: 'none', '&:hover': { color: palette.inkSecondary, textDecoration: 'underline' } }}
+        >
+          {collapsed ? 'Terms' : 'Terms of Service & Privacy'}
+        </Typography>
+        {!collapsed && (
+          <Typography sx={{ fontSize: '0.66rem', color: palette.inkDisabled, mt: 0.25 }}>
+            © {new Date().getFullYear()} Aspire e Learning
+          </Typography>
+        )}
+      </Box>
     </Box>
   );
 }
