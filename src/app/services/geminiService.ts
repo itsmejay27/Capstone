@@ -27,163 +27,7 @@ export function getStoredGeminiApiKey(): string {
 export { geminiEndpoint, isGeminiAvailable } from './geminiEndpoint';
 
 /** Which hosted model service a generation request is routed to. */
-export type AIProvider = 'gemini' | 'nvidia';
-
-/** NVIDIA NIM is always reached through the server proxy, which holds NVIDIA_API_KEY. */
-const NVIDIA_PROXY_URL = '/api/nvidia';
-
-/**
- * Empty until the live catalogue is fetched.
- *
- * NVIDIA retires models on a schedule — the ids shipped here previously (llama-3.3-70b,
- * llama-3.1-8b) reached end of life on 2026-08-26 and every request came back 410 Gone.
- * A baked-in list is therefore a slow-motion outage, so the catalogue is read at runtime
- * and the dropdown is built from whatever is actually being served.
- */
-export const DEFAULT_NVIDIA_MODEL = '';
-
-export interface NvidiaModel {
-  id: string;
-  name: string;
-  speed?: ModelSpeed;
-  bestFor?: string;
-  recommended?: boolean;
-}
-
-export type ModelSpeed = 'Ultra fast' | 'Fast' | 'Balanced' | 'Slow · deep thinking';
-
-/**
- * Hand-picked NVIDIA models, best first. Matched by pattern so a new version of the same
- * family (e.g. -v3.1 → -v3.2) keeps its label. `rank` orders the dropdown.
- */
-const CURATED: { re: RegExp; speed: ModelSpeed; bestFor: string; rank: number }[] = [
-  { re: /^deepseek-ai\/deepseek-v4\.1-flash$/i, speed: 'Fast', bestFor: 'Best overall', rank: 1 },
-  { re: /^nvidia\/nemotron-3\.5-lightning-30b-a3b$/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 2 },
-  { re: /^z-ai\/glm-5\.3-flash$/i, speed: 'Fast', bestFor: 'Best overall', rank: 3 },
-  { re: /^openai\/gpt-oss-20b$/i, speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 4 },
-  { re: /^nvidia\/nemotron-3-super-120b-a12b$/i, speed: 'Balanced', bestFor: 'Best overall', rank: 5 },
-  { re: /^google\/gemma-4-31b-it$/i, speed: 'Fast', bestFor: 'Short answer', rank: 6 },
-  { re: /^mistralai\/mistral-large-2-instruct$/i, speed: 'Balanced', bestFor: 'Short answer', rank: 7 },
-  { re: /^z-ai\/glm-5\.3$/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 8 },
-  { re: /^moonshotai\/kimi-k3$/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 9 },
-  { re: /^nvidia\/llama-3\.1-nemotron-ultra-253b-v1$/i, speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 10 },
-];
-
-/** Result of a live check: did the model answer, and how long did it take. */
-export interface ModelCheck { ok: boolean; ms: number; at: number }
-
-/** Speed label from a measured round trip for a tiny prompt. */
-export function speedFromMs(ms: number): ModelSpeed {
-  if (ms < 2500) return 'Ultra fast';
-  if (ms < 6000) return 'Fast';
-  if (ms < 15000) return 'Balanced';
-  return 'Slow · deep thinking';
-}
-
-/** Sends a tiny prompt to one NVIDIA model and times the reply. */
-export async function checkNvidiaModel(id: string, timeoutMs = 45000): Promise<ModelCheck> {
-  const started = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const send = () => fetch(NVIDIA_PROXY_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: id,
-        messages: [{ role: 'user', content: 'Write one multiple-choice question about the sun as JSON: {"q":"","options":["","","",""],"answer":0}' }],
-        max_tokens: 400,
-        temperature: 0.2,
-        ...(/gpt-oss/i.test(id) ? { reasoning_effort: 'low' } : {}),
-      }),
-    });
-    let res = await send();
-    if (res.status === 429) {
-      await new Promise((r) => setTimeout(r, 5000));
-      res = await send();
-    }
-    const data = res.ok ? await res.json().catch(() => null) : null;
-    const msg = data?.choices?.[0]?.message || {};
-    const ok = res.ok && !!String(msg.content || msg.reasoning_content || '').trim();
-    return { ok, ms: Date.now() - started, at: Date.now() };
-  } catch {
-    return { ok: false, ms: Date.now() - started, at: Date.now() };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** "meta/llama-3.3-70b-instruct" → "Llama 3.3 70B Instruct". */
-export function prettyModelName(id: string): string {
-  return (id.split('/').pop() || id)
-    .split(/[-_]/)
-    .map((w) => (/^\d+(\.\d+)?[bm]$/i.test(w) ? w.toUpperCase() : /^[a-z]/.test(w) ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
-}
-
-/** Speed and "best for" label for any model id; curated first, then a size-based guess. */
-export function modelProfile(id: string): { speed: ModelSpeed; bestFor: string; rank: number; recommended: boolean } {
-  const hit = CURATED.find((c) => c.re.test(id));
-  if (hit) return { speed: hit.speed, bestFor: hit.bestFor, rank: hit.rank, recommended: hit.rank <= 5 };
-  const size = Number((id.match(/(\d+(?:\.\d+)?)b\b/i) || [])[1] || 0);
-  const thinks = /(reason|thinking|\br1\b|-r1|qwq)/i.test(id);
-  if (thinks) return { speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 40, recommended: false };
-  if (size && size <= 12) return { speed: 'Ultra fast', bestFor: 'Multiple choice & true/false', rank: 30, recommended: false };
-  if (size && size <= 40) return { speed: 'Fast', bestFor: 'Short answer', rank: 25, recommended: false };
-  if (size && size > 200) return { speed: 'Slow · deep thinking', bestFor: 'Essay & hard questions', rank: 35, recommended: false };
-  return { speed: 'Balanced', bestFor: 'Best overall', rank: 20, recommended: false };
-}
-
-/** A reranker scores relevance and an embedding model returns a vector: neither writes text. */
-const NON_GENERATIVE_MODEL = /(^|[/_-])(rerank|embed|embedqa|reranking)([/_-]|$)/i;
-
-/**
- * Models that do not help students or teachers write and explain questions: image/vision,
- * safety and guard classifiers, reward scorers, code-only models, speech/translation/OCR,
- * retrievers and parsers.
- */
-const NOT_FOR_STUDY = /(vision|vila|neva|paligemma|kosmos|fuyu|deplot|llava|guard|safety|shield|nemoguard|reward|reranker|retriever|embed|code|coder|starcoder|codestral|granite-\d.*-code|riva|parakeet|asr|tts|translate|ocr|parse|detector|pii|cosmos|clip|sdxl|flux|stable-diffusion|audio|speech|whisper|canary)/i;
-/** Chat/instruct or reasoning models — the ones that can write and explain exam questions. */
-const STUDY_CAPABLE = /(instruct|chat|-it\b|[-_]it$|reason|thinking|\br1\b|-r1|qwq|deepseek|gpt-oss|kimi|glm|nemotron-(super|ultra|nano)|mixtral|mistral-(large|medium|small)|magistral|qwen3|phi-4)/i;
-/** Reasoning models first: they think through a topic before writing questions. */
-const REASONING = /(reason|thinking|\br1\b|-r1|qwq|gpt-oss|nemotron-(super|ultra)|kimi|qwen3|magistral|deepseek-v3)/i;
-
-/**
- * Fetches the models NVIDIA is currently serving, newest-looking Llama first so the
- * default selection is a sensible instruct model rather than whatever sorts first.
- */
-export async function fetchNvidiaModels(): Promise<NvidiaModel[]> {
-  try {
-    const response = await fetch(NVIDIA_PROXY_URL, { method: 'GET' });
-    if (!response.ok) {
-      const detail = await response.text().catch(() => '');
-      console.warn(`Could not list NVIDIA models (HTTP ${response.status}): ${detail.slice(0, 200)}`);
-      return [];
-    }
-    const data = await response.json();
-    const ids: string[] = (data?.data || [])
-      .map((m: any) => String(m?.id || ''))
-      .filter((id: string) => id && !NON_GENERATIVE_MODEL.test(id) && !NOT_FOR_STUDY.test(id) && STUDY_CAPABLE.test(id));
-
-    // Only the hand-picked models are offered; the full catalogue is hundreds long.
-    const curated = ids.filter((id) => CURATED.some((c) => c.re.test(id)));
-    curated.sort((a, b) => modelProfile(a).rank - modelProfile(b).rank || a.localeCompare(b));
-
-    return curated.map((id) => {
-      const p = modelProfile(id);
-      const recommended = curated[0] === id;
-      return {
-        id,
-        name: `${prettyModelName(id)} · ${p.speed} · Best ${p.bestFor === 'Best overall' ? 'overall' : `for ${p.bestFor.toLowerCase()}`}${recommended ? ' (Recommended)' : ''}`,
-        speed: p.speed, bestFor: p.bestFor, recommended,
-      };
-    });
-  } catch (err) {
-    console.warn('Could not list NVIDIA models:', err);
-    return [];
-  }
-}
+export type AIProvider = 'gemini';
 
 export interface GeminiExamParams {
   apiKey?: string;
@@ -199,7 +43,6 @@ export interface GeminiExamParams {
   uploadedText?: string;
   tosData?: TOSData;
   onProgress?: (current: number, total: number, message: string) => void;
-  /** Defaults to Gemini; 'nvidia' routes the same prompts to NVIDIA NIM via /api/nvidia. */
   provider?: AIProvider;
 }
 
@@ -219,10 +62,10 @@ export class AIGenerationError extends Error {
 
 /** Turns an HTTP status / network failure into something a teacher can act on. */
 function friendlyAIError(provider: AIProvider, status: number, detail: string): string {
-  const who = provider === 'nvidia' ? 'NVIDIA' : 'Google Gemini';
+  const who = 'Google Gemini';
   const d = detail.toLowerCase();
   if (status === 0) return 'No internet connection, or the AI server could not be reached. Check your connection and try again.';
-  if (status === -1) return `${who} took too long to answer (over 2 minutes). Free NVIDIA models can be slow when busy. Try again, pick a model marked Fast or Ultra fast, or switch to Google Gemini.`;
+  if (status === -1) return `${who} took too long to answer. Try again, or pick Gemini 3.5 Flash-Lite (the fastest).`;
   if (status === 429) return `${who} is busy or your free quota is used up. Wait a minute, or pick another model.`;
   if (status === 401 || status === 403) return `${who} rejected the API key. Check the key in the Vercel project settings.`;
   if (status === 404 || status === 410 || d.includes('not found') || d.includes('end of life')) return `This model is no longer available on ${who}. Pick another model.`;
@@ -263,77 +106,52 @@ async function callGeminiApiForBatch(
   if (provider === 'gemini' && !apiKey && !isGeminiAvailable(apiKey)) {
     throw new AIGenerationError('Google Gemini is not set up on the server (missing API key).');
   }
-  // Reasoning models think before answering and need longer.
-  const wait = provider === 'nvidia' ? Math.max(timeoutMs, 110000) : timeoutMs;
+  const wait = timeoutMs;
   let lastError = '';
   for (const modelCandidate of modelsToTry) {
-    // NVIDIA: some models reject response_format, so retry once without it.
-    const modes = provider === 'nvidia' ? [true, false] : [true];
     let rateRetries = 0;
-    for (let strictAttempt = 0; strictAttempt < modes.length; strictAttempt++) {
-      const strictJson = modes[strictAttempt];
+    for (let attempt = 0; attempt < 1; attempt++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), wait);
       try {
         const response = await fetch(
-          provider === 'nvidia' ? NVIDIA_PROXY_URL : geminiEndpoint(modelCandidate, apiKey),
+          geminiEndpoint(modelCandidate, apiKey),
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: controller.signal,
-            body: JSON.stringify(
-              provider === 'nvidia'
-                ? {
-                    model: modelCandidate,
-                    messages: [
-                      { role: 'system', content: systemPrompt },
-                      { role: 'user', content: promptText },
-                    ],
-                    temperature: 0.25,
-                    max_tokens: 4096,
-                    // Keep thinking short so the answer arrives within the time limit.
-                    ...(/gpt-oss/i.test(modelCandidate) ? { reasoning_effort: 'low' } : {}),
-                    ...(strictJson ? { response_format: { type: 'json_object' } } : {}),
-                  }
-                : {
-                    system_instruction: { parts: [{ text: systemPrompt }] },
-                    contents: [{ role: 'user', parts: [{ text: promptText }] }],
-                    generationConfig: { responseMimeType: 'application/json', temperature: 0.25, maxOutputTokens: 8192 },
-                  }
-            ),
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents: [{ role: 'user', parts: [{ text: promptText }] }],
+              generationConfig: { responseMimeType: 'application/json', temperature: 0.25, maxOutputTokens: 8192 },
+            }),
           }
         );
         clearTimeout(timeoutId);
 
-        if (response.status === 429 && rateRetries < 3) {
-          // Free tiers throttle bursts; wait (Retry-After if given) and ask again.
+        if (response.status === 429 && rateRetries < 1) {
+          // A short burst limit clears quickly; wait once (Retry-After if given) and ask again.
           const after = Number(response.headers.get('retry-after')) || 0;
           rateRetries++;
           params_onWait?.(rateRetries);
           await new Promise((r) => setTimeout(r, Math.max(after * 1000, 4000 * 2 ** (rateRetries - 1))));
-          strictAttempt--; // retry the same attempt
+          attempt--; // retry the same attempt
           continue;
         }
         if (!response.ok) {
           const detail = await response.text().catch(() => '');
           console.warn(`${provider} batch HTTP ${response.status}: ${detail.slice(0, 300)}`);
           lastError = friendlyAIError(provider, response.status, detail);
-          if (response.status === 400 && strictJson && provider === 'nvidia') continue;
           break;
         }
         const resData = await response.json();
-        const msg = resData.choices?.[0]?.message || {};
-        const rawText =
-          provider === 'nvidia'
-            ? msg.content || msg.reasoning_content || ''
-            : resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || '';
         try {
           const parsed = extractJson(rawText);
           const list = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.items || []);
           if (list.length > 0) return list;
         } catch { /* unusable reply */ }
         lastError = friendlyAIError(provider, -2, '');
-        if (strictJson && provider === 'nvidia') continue;
         break;
       } catch (err: any) {
         clearTimeout(timeoutId);
@@ -482,12 +300,8 @@ function mapRawToExamItem(q: any, spec: any, defaultTopic: string, fallbackIdx: 
 export async function generateExamWithGemini(params: GeminiExamParams): Promise<any[]> {
   const apiKey = (params.apiKey || getStoredGeminiApiKey()).trim();
   const provider: AIProvider = params.provider || 'gemini';
-  const requestedModel = params.model || (provider === 'nvidia' ? DEFAULT_NVIDIA_MODEL : 'gemini-3.6-flash');
-  const modelsToTry = provider === 'nvidia'
-    // Only the selected model: the dropdown is populated from the live catalogue, so a
-    // hard-coded fallback would just retry ids NVIDIA may already have retired.
-    ? [requestedModel].filter(Boolean)
-    : Array.from(new Set([requestedModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']));
+  const requestedModel = params.model || 'gemini-3.6-flash';
+  const modelsToTry = Array.from(new Set([requestedModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']));
 
   const primaryTopic = params.generationPrompt?.trim()
     || (params.tosData?.courseTitle)
@@ -519,8 +333,7 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
   if (specsToGenerate.length > 0) {
     const totalQuestions = specsToGenerate.length;
     const finalQuestions: any[] = [];
-    // NVIDIA's free endpoints are slower per token, so smaller batches run in parallel finish sooner.
-    const BATCH_SIZE = (params as any).provider === 'nvidia' ? 3 : 8;
+    const BATCH_SIZE = 8;
 
     // Slice the specs into batches up front so they can be dispatched concurrently.
     const specChunks: any[][] = [];
@@ -531,7 +344,7 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
     let completedBatches = 0;
     params.onProgress?.(0, totalQuestions, `Generating ${totalQuestions} items in ${specChunks.length} batches...`);
 
-    const chunkResults = await mapWithConcurrency(specChunks, (params as any).provider === 'nvidia' ? 2 : BATCH_CONCURRENCY, async (chunkSpecs, chunkIndex) => {
+    const chunkResults = await mapWithConcurrency(specChunks, BATCH_CONCURRENCY, async (chunkSpecs, chunkIndex) => {
       const batchQuestions: any[] = [];
       const baseIndex = chunkIndex * BATCH_SIZE;
       const startNum = chunkSpecs[0].itemNumber;
@@ -640,7 +453,7 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
     throw new Error('Please select at least 1 question type or attach a Table of Specifications to generate.');
   }
 
-  const BATCH_SIZE = (params as any).provider === 'nvidia' ? 3 : 8;
+  const BATCH_SIZE = 8;
   const finalQuestions: any[] = [];
   const diffDirective = getDifficultyPromptDirective(params.difficulty);
 
@@ -653,7 +466,7 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
   let completedManualBatches = 0;
   params.onProgress?.(0, totalQuestions, `Generating ${totalQuestions} questions in ${typeChunks.length} batches...`);
 
-  const manualResults = await mapWithConcurrency(typeChunks, (params as any).provider === 'nvidia' ? 2 : BATCH_CONCURRENCY, async (chunkTypes, chunkIndex) => {
+  const manualResults = await mapWithConcurrency(typeChunks, BATCH_CONCURRENCY, async (chunkTypes, chunkIndex) => {
     const batchQuestions: any[] = [];
     const i = chunkIndex * BATCH_SIZE;
     const startNum = i + 1;

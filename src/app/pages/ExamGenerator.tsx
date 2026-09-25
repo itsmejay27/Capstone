@@ -6,7 +6,6 @@ import ExamImportDialog from '../components/ExamImportDialog';
 import { Dialog as FailDialog, DialogTitle as FailTitle, DialogContent as FailContent, DialogActions as FailActions } from '@mui/material';
 import { WifiOff, ErrorOutline } from '@mui/icons-material';
 import AIEngineControl, { AIEngineType } from '../components/AIEngineControl';
-import { DEFAULT_NVIDIA_MODEL, modelProfile } from '../services/geminiService';
 import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey, regenerateItemsForSpecs } from '../services/geminiService';
 import { parseTOSFile, extractFilesContentEnhanced, TOSData, BLOOM_LEVELS } from '../services/tosParser';
 import { enforceTOSCompliance, type TOSComplianceReport } from '../services/tosValidator';
@@ -271,7 +270,6 @@ export default function ExamGenerator() {
 
   // AI Engine states
   const [aiEngine, setAiEngine] = useState<AIEngineType>('gemini');
-  const [nvidiaModel, setNvidiaModel] = useState(DEFAULT_NVIDIA_MODEL);
   const [geminiModel, setGeminiModel] = useState('gemini-3.6-flash');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [aiFailure, setAiFailure] = useState<string | null>(null);
@@ -452,17 +450,13 @@ export default function ExamGenerator() {
       const effectiveTopics = Array.from(new Set([primarySubject, ...topics.filter((t) => t && t !== 'General Subject Matter')]));
       const effectivePrompt = generationPrompt.trim() || primarySubject;
 
-      if (aiEngine === 'gemini' || aiEngine === 'nvidia') {
+      if (aiEngine === 'gemini') {
         try {
-          // This banner named Gemini even when NVIDIA was the selected engine, so an
-          // instructor watching the progress text had no way to tell which engine was
-          // actually running.
-          const engineLabel = aiEngine === 'nvidia' ? `NVIDIA Cloud (${nvidiaModel})` : `Google Gemini AI (${geminiModel})`;
+          const engineLabel = `Google Gemini AI (${geminiModel})`;
           setGenerationStatusText(`Connecting to ${engineLabel} for ${isTosActive ? 'TOS-aligned' : 'topic-driven'} generation on "${primarySubject}"...`);
 
           const geminiParams = {
-            provider: aiEngine === 'nvidia' ? 'nvidia' as const : 'gemini' as const,
-            model: aiEngine === 'nvidia' ? nvidiaModel : geminiModel,
+            model: geminiModel,
             mcCount,
             tfCount,
             saCount,
@@ -1065,8 +1059,6 @@ export default function ExamGenerator() {
                     <Box sx={{ mt: 1 }}>
                       <AIEngineControl
                         engine={aiEngine}
-                        nvidiaModel={nvidiaModel}
-                        onNvidiaModelChange={setNvidiaModel}
                         onEngineChange={setAiEngine}
                         geminiModel={geminiModel}
                         onGeminiModelChange={setGeminiModel}
@@ -1718,16 +1710,15 @@ export default function ExamGenerator() {
                   </Box>
                   <Typography variant="h6" fontWeight={900} sx={{ color: 'var(--c-slate-900)' }}>Generating your exam…</Typography>
                   <Box sx={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 0.75, mt: 1.25, mb: 2 }}>
-                    <Chip size="small" label={aiEngine === 'gemini' ? 'Google Gemini' : 'NVIDIA'} sx={{ fontWeight: 700 }} />
-                    <Chip size="small" variant="outlined" label={(aiEngine === 'gemini' ? geminiModel : nvidiaModel).split('/').pop()} sx={{ maxWidth: 260 }} />
-                    {aiEngine === 'nvidia' && <Chip size="small" color="primary" variant="outlined" label={modelProfile(nvidiaModel).speed} />}
+                    <Chip size="small" label="Google Gemini" sx={{ fontWeight: 700 }} />
+                    <Chip size="small" variant="outlined" label={geminiModel} sx={{ maxWidth: 260 }} />
                   </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5, minHeight: 20 }}>
                     {generationStatusText || `Building ${totalGeneratedCount} items (${activeQuestionCount} active, ${extraCount} anti-cheat extras).`}
                   </Typography>
                   <LinearProgress sx={{ height: 6, borderRadius: 3 }} />
                   <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'var(--c-ink-tertiary)' }}>
-                    Keep this tab open. Larger "deep thinking" models can take a minute or two.
+                    Keep this tab open. This usually takes under a minute.
                   </Typography>
                 </Box>
               </Box>
@@ -1764,9 +1755,7 @@ export default function ExamGenerator() {
                           {generationError ? 'Question Bank Built (Topic Engine Fallback)' : 'Question Bank Successfully Generated!'}
                         </Typography>
                         <Typography variant="body2" sx={{ color: generationError ? 'var(--c-amber-700)' : 'var(--c-green-800)', mt: 0.5, fontWeight: 500 }}>
-                          {aiEngine === 'gemini'
-                            ? `Engine: Google Gemini AI (${geminiModel})`
-                            : `Engine: NVIDIA Cloud (${nvidiaModel})`} &bull; Created <strong>{generatedQuestions.length} total items</strong>
+                          {`Engine: Google Gemini AI (${geminiModel})`} &bull; Created <strong>{generatedQuestions.length} total items</strong>
                         </Typography>
                       </Box>
                     </Box>

@@ -1,7 +1,7 @@
 import { extractFileText } from './tosParser';
 
 /**
- * Helpers shared by the AI generators (Gemini and NVIDIA): reading attached files and the
+ * Helpers shared by the AI generators: reading attached files and the
  * wording that steers question difficulty.
  */
 
