@@ -86,7 +86,7 @@ export async function checkNvidiaModel(id: string, timeoutMs = 45000): Promise<M
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(NVIDIA_PROXY_URL, {
+    const send = () => fetch(NVIDIA_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
@@ -98,6 +98,11 @@ export async function checkNvidiaModel(id: string, timeoutMs = 45000): Promise<M
         ...(/gpt-oss/i.test(id) ? { reasoning_effort: 'low' } : {}),
       }),
     });
+    let res = await send();
+    if (res.status === 429) {
+      await new Promise((r) => setTimeout(r, 5000));
+      res = await send();
+    }
     const data = res.ok ? await res.json().catch(() => null) : null;
     const msg = data?.choices?.[0]?.message || {};
     const ok = res.ok && !!String(msg.content || msg.reasoning_content || '').trim();
@@ -249,7 +254,8 @@ async function callGeminiApiForBatch(
   systemPrompt: string,
   promptText: string,
   timeoutMs: number = 40000,
-  provider: AIProvider = 'gemini'
+  provider: AIProvider = 'gemini',
+  params_onWait?: (attempt: number) => void
 ): Promise<any[]> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     throw new AIGenerationError(friendlyAIError(provider, 0, ''));
@@ -262,7 +268,10 @@ async function callGeminiApiForBatch(
   let lastError = '';
   for (const modelCandidate of modelsToTry) {
     // NVIDIA: some models reject response_format, so retry once without it.
-    for (const strictJson of provider === 'nvidia' ? [true, false] : [true]) {
+    const modes = provider === 'nvidia' ? [true, false] : [true];
+    let rateRetries = 0;
+    for (let strictAttempt = 0; strictAttempt < modes.length; strictAttempt++) {
+      const strictJson = modes[strictAttempt];
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), wait);
       try {
@@ -296,6 +305,15 @@ async function callGeminiApiForBatch(
         );
         clearTimeout(timeoutId);
 
+        if (response.status === 429 && rateRetries < 3) {
+          // Free tiers throttle bursts; wait (Retry-After if given) and ask again.
+          const after = Number(response.headers.get('retry-after')) || 0;
+          rateRetries++;
+          params_onWait?.(rateRetries);
+          await new Promise((r) => setTimeout(r, Math.max(after * 1000, 4000 * 2 ** (rateRetries - 1))));
+          strictAttempt--; // retry the same attempt
+          continue;
+        }
         if (!response.ok) {
           const detail = await response.text().catch(() => '');
           console.warn(`${provider} batch HTTP ${response.status}: ${detail.slice(0, 300)}`);
@@ -513,7 +531,7 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
     let completedBatches = 0;
     params.onProgress?.(0, totalQuestions, `Generating ${totalQuestions} items in ${specChunks.length} batches...`);
 
-    const chunkResults = await mapWithConcurrency(specChunks, BATCH_CONCURRENCY, async (chunkSpecs, chunkIndex) => {
+    const chunkResults = await mapWithConcurrency(specChunks, (params as any).provider === 'nvidia' ? 2 : BATCH_CONCURRENCY, async (chunkSpecs, chunkIndex) => {
       const batchQuestions: any[] = [];
       const baseIndex = chunkIndex * BATCH_SIZE;
       const startNum = chunkSpecs[0].itemNumber;
@@ -635,7 +653,7 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
   let completedManualBatches = 0;
   params.onProgress?.(0, totalQuestions, `Generating ${totalQuestions} questions in ${typeChunks.length} batches...`);
 
-  const manualResults = await mapWithConcurrency(typeChunks, BATCH_CONCURRENCY, async (chunkTypes, chunkIndex) => {
+  const manualResults = await mapWithConcurrency(typeChunks, (params as any).provider === 'nvidia' ? 2 : BATCH_CONCURRENCY, async (chunkTypes, chunkIndex) => {
     const batchQuestions: any[] = [];
     const i = chunkIndex * BATCH_SIZE;
     const startNum = i + 1;

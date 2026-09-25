@@ -58,16 +58,18 @@ export default function AIEngineControl({
     const todo = models.filter((m) => force || !stored[m.id] || Date.now() - stored[m.id].at > CHECK_TTL);
     if (todo.length === 0) return;
     setChecking((c) => ({ ...c, ...Object.fromEntries(todo.map((m) => [m.id, true])) }));
-    todo.forEach((m) => {
-      checkNvidiaModel(m.id).then((r) => {
+    // One at a time, so the test itself never trips NVIDIA's rate limit.
+    (async () => {
+      for (const m of todo) {
+        const r = await checkNvidiaModel(m.id);
         setChecks((prev) => {
           const next = { ...prev, [m.id]: r };
           try { localStorage.setItem(CHECKS_KEY, JSON.stringify(next)); } catch { /* not persisted */ }
           return next;
         });
         setChecking((c) => ({ ...c, [m.id]: false }));
-      });
-    });
+      }
+    })();
   }, []);
 
   // If the chosen model turned out broken, move to the fastest one that works.
