@@ -6,6 +6,7 @@ import {
 import { Add, Delete, Download, TableChart } from '@mui/icons-material';
 import { fetchGradeSheet, saveGradeSheet } from '../services/supabaseData';
 import { gradeFor, isPending } from '../services/grading';
+import { useConfirm } from './ConfirmDialog';
 
 /**
  * Class record sheet. Exam columns fill in from the system automatically; the instructor can
@@ -27,6 +28,7 @@ export default function GradeSheet({ classroom, students, exams, attempts }: {
   });
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'local'>('saved');
   const [adding, setAdding] = useState(false);
+  const { confirm, ConfirmHost } = useConfirm();
   const [draft, setDraft] = useState({ title: '', max: '100', weight: '1' });
   const loaded = useRef(false);
 
@@ -83,8 +85,8 @@ export default function GradeSheet({ classroom, students, exams, attempts }: {
     setAdding(false);
   };
 
-  const removeColumn = (id: string) => {
-    if (!window.confirm('Remove this column and its scores?')) return;
+  const removeColumn = async (id: string) => {
+    if (!(await confirm({ title: 'Remove this column?', message: 'Its scores will be deleted too.', confirmLabel: 'Remove', tone: 'danger' }))) return;
     setSheet((s) => ({ ...s, columns: s.columns.filter((c) => c.id !== id) }));
   };
 
@@ -175,6 +177,7 @@ export default function GradeSheet({ classroom, students, exams, attempts }: {
         </Table>
       </TableContainer>
 
+      {ConfirmHost}
       <Dialog open={adding} onClose={() => setAdding(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>Add a column</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '12px !important' }}>

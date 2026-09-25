@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useReauth } from '../components/ReauthProvider';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
+import { minDueLocal, dueDateProblem } from '../services/dueDates';
 import {
   Container,
   FormControl,
@@ -277,6 +278,11 @@ export default function ExamRepository() {
   };
   const [postDate, setPostDate] = useState(getLocalDateTimeString(new Date()));
   const [dueDate, setDueDate] = useState(getLocalDateTimeString(new Date(Date.now() + 86400000)));
+  const nowLocal = () => getLocalDateTimeString(new Date());
+  // Due must be in the future (at least a few minutes out) and after the post time.
+  const assignDueError = dueDate
+    ? (dueDateProblem(dueDate) || (postDate && new Date(dueDate) <= new Date(postDate) ? 'Must be after the post date.' : ''))
+    : '';
   // Per-assignment detail. Title and points start from the template and can be overridden
   // for this class only, the way Google Classroom lets the same material be posted twice.
   const [assignTitle, setAssignTitle] = useState('');
@@ -979,7 +985,9 @@ export default function ExamRepository() {
                 value={postDate}
                 onChange={(e) => setPostDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                helperText="Hidden from students until this time."
+                inputProps={{ min: nowLocal() }}
+                error={Boolean(postDate) && new Date(postDate).getTime() < Date.now() - 60_000}
+                helperText={postDate && new Date(postDate).getTime() < Date.now() - 60_000 ? 'This time has already passed.' : 'Hidden from students until this time.'}
               />
               <TextField
                 label="Due"
@@ -987,12 +995,9 @@ export default function ExamRepository() {
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                error={Boolean(postDate && dueDate) && new Date(dueDate) <= new Date(postDate)}
-                helperText={
-                  postDate && dueDate && new Date(dueDate) <= new Date(postDate)
-                    ? 'Must be after the post date.'
-                    : ' '
-                }
+                inputProps={{ min: postDate && postDate > minDueLocal() ? postDate : minDueLocal() }}
+                error={Boolean(assignDueError)}
+                helperText={assignDueError || ' '}
               />
             </Box>
 
@@ -1036,7 +1041,7 @@ export default function ExamRepository() {
           <Button
             onClick={handleAssignConfirm}
             variant="contained"
-            disabled={!selectedClassroomId || !assignTitle.trim()}
+            disabled={!selectedClassroomId || !assignTitle.trim() || Boolean(assignDueError)}
           >
             Assign
           </Button>

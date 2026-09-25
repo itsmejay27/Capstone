@@ -197,7 +197,8 @@ export default function Notifications() {
     return c;
   }, [todos]);
 
-  const visible = filter === 'all' ? todos : todos.filter((t) => t.bucket === filter);
+  // Finished items drop off the list; they are still counted in the Done tile.
+  const visible = filter === 'all' ? todos.filter((t) => t.bucket !== 'done') : todos.filter((t) => t.bucket === filter);
 
   /** Recent announcements across the user's classes, newest first. */
   const recentAnnouncements = useMemo(() => {
@@ -229,6 +230,15 @@ export default function Notifications() {
     setClearedAt(now);
     markCommentsSeen(currentUser?.id);
   };
+  const [annClearedAt, setAnnClearedAt] = useState(() => {
+    try { return Number(localStorage.getItem(`announcementsClearedAt:${currentUser?.id}`) || 0); } catch { return 0; }
+  });
+  const clearAnnouncements = () => {
+    const now = Date.now();
+    try { localStorage.setItem(`announcementsClearedAt:${currentUser?.id}`, String(now)); } catch { /* storage blocked */ }
+    setAnnClearedAt(now);
+  };
+  const shownAnnouncements = recentAnnouncements.filter((a: any) => new Date(a.createdAt).getTime() > annClearedAt);
   const commentActivity = useMemo(
     () => commentActivityFor(currentUser, classrooms, comments)
       .filter((c) => new Date(c.createdAt).getTime() > clearedAt)
@@ -414,12 +424,13 @@ export default function Notifications() {
       )}
 
       {/* Recent announcements */}
-      {recentAnnouncements.length > 0 && (
+      {shownAnnouncements.length > 0 && (
         <>
           <Divider sx={{ my: 3 }} />
-          <SectionHeading title="Recent announcements" count={recentAnnouncements.length} />
+          <SectionHeading title="Recent announcements" count={shownAnnouncements.length}
+            action={<Button size="small" onClick={clearAnnouncements} sx={{ textTransform: 'none', fontWeight: 600 }}>Clear all</Button>} />
           <Box>
-            {recentAnnouncements.map((a: any) => {
+            {shownAnnouncements.map((a: any) => {
               const tint = tintFor(a.classroomId);
               return (
                 <Paper

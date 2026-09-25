@@ -10,6 +10,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import type { Announcement, AnnouncementAttachment, MutationResult, PostComment } from '../types';
 import CommentThread from './CommentThread';
+import { usePrompt } from './PromptDialog';
 import FileCard from './classroom/FileCard';
 import { sanitizeRichText, isBlankRichText } from '../utils/sanitizeHtml';
 import { uploadClassroomFile, formatBytes } from '../services/fileStorage';
@@ -88,6 +89,7 @@ function Composer({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [empty, setEmpty] = useState(isBlankRichText(initial?.bodyHtml ?? ''));
+  const { prompt, PromptHost } = usePrompt();
 
   const exec = (command: string, value?: string) => {
     try {
@@ -141,6 +143,7 @@ function Composer({
 
   return (
     <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 3, border: '1px solid var(--c-slate-200)', bgcolor: 'var(--c-surface)', mb: 2.5 }}>
+      {PromptHost}
       <Stack direction="row" spacing={0.5} sx={{ mb: 1, flexWrap: 'wrap', gap: 0.5 }}>
         <Tooltip title="Bold"><IconButton size="small" onMouseDown={(e) => { e.preventDefault(); exec('bold'); }}><FormatBold fontSize="small" /></IconButton></Tooltip>
         <Tooltip title="Italic"><IconButton size="small" onMouseDown={(e) => { e.preventDefault(); exec('italic'); }}><FormatItalic fontSize="small" /></IconButton></Tooltip>
@@ -148,10 +151,17 @@ function Composer({
         <Tooltip title="Insert link">
           <IconButton
             size="small"
-            onMouseDown={(e) => {
+            onMouseDown={async (e) => {
               e.preventDefault();
-              const url = window.prompt('Link URL (http:// or https://)');
-              if (url) exec('createLink', url);
+              // The dialog takes focus, so remember where the cursor was in the editor.
+              const sel = window.getSelection();
+              const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
+              const url = await prompt({ title: 'Insert link', kind: 'link' });
+              if (!url) return;
+              editorRef.current?.focus();
+              if (range) { const s2 = window.getSelection(); s2?.removeAllRanges(); s2?.addRange(range); }
+              if (range && !range.collapsed) exec('createLink', url);
+              else exec('insertHTML', `<a href="${url.replace(/"/g, '&quot;')}">${url.replace(/</g, '&lt;')}</a>`);
             }}
           >
             <InsertLink fontSize="small" />

@@ -20,6 +20,9 @@ import { uploadClassroomFile, formatBytes } from '../services/fileStorage';
 import { useIsMobile } from '../hooks/useResponsive';
 import { dueLabel, isOverdue } from '../services/todo';
 import CommentThread from './CommentThread';
+import { usePrompt } from './PromptDialog';
+import { useConfirm } from './ConfirmDialog';
+import { minDueLocal, dueDateProblem } from '../services/dueDates';
 
 /**
  * Classwork tab: assignments, materials and questions, grouped under instructor-defined
@@ -92,6 +95,8 @@ export default function ClassworkPanel({
 }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { prompt, PromptHost } = usePrompt();
+  const { confirm, ConfirmHost } = useConfirm();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [toast, setToast] = useState<{ severity: 'success' | 'error'; message: string } | null>(null);
   const [menuFor, setMenuFor] = useState<{ el: HTMLElement; work: Classwork } | null>(null);
@@ -187,8 +192,12 @@ export default function ClassworkPanel({
     setUploading(false);
   };
 
+  // A due date that has not changed while editing is left alone, even if it has passed.
+  const dueChanged = form.dueDate !== toLocalInput(editing?.dueDate);
+  const dueError = dueChanged ? dueDateProblem(form.dueDate) : '';
+
   const saveWork = async () => {
-    if (!form.title.trim()) return;
+    if (!form.title.trim() || dueError) return;
     setBusy(true);
     const work: Classwork = {
       id: editing?.id ?? crypto.randomUUID(),
@@ -283,9 +292,14 @@ export default function ClassworkPanel({
   const toggleGroup = (id: string) => setCollapsed((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const openWork = (w: Classwork) => navigate(`/classroom/${classroomId}/work/${w.id}`);
 
-  const addLink = (kind: string) => {
-    const url = window.prompt(kind === 'youtube' ? 'Paste a YouTube link' : 'Paste a link');
-    if (!url || !/^https?:\/\//i.test(url.trim())) return;
+  const addLink = async (kind: string) => {
+    const url = await prompt({
+      title: kind === 'youtube' ? 'Add YouTube video' : 'Add link',
+      label: kind === 'youtube' ? 'YouTube link' : 'Link',
+      placeholder: kind === 'youtube' ? 'https://youtube.com/watch?v=…' : 'https://…',
+      kind: 'link',
+    });
+    if (!url) return;
     const clean = url.trim();
     const att: AnnouncementAttachment = {
       id: crypto.randomUUID(),
@@ -454,6 +468,9 @@ export default function ClassworkPanel({
         );
       })}
 
+      {PromptHost}
+      {ConfirmHost}
+
       {/* Item menu */}
       <Menu anchorEl={menuFor?.el} open={Boolean(menuFor)} onClose={() => setMenuFor(null)}>
         <MenuItem onClick={async () => {
@@ -477,8 +494,11 @@ export default function ClassworkPanel({
         )}
         {isInstructor && (
           <MenuItem sx={{ color: palette.danger }} onClick={async () => {
-            if (menuFor && window.confirm(`Delete "${menuFor.work.title}"? Comments and student work will also be deleted.`)) report(await onDeleteClasswork(menuFor.work.id), 'Classwork deleted.');
+            const w = menuFor?.work;
             setMenuFor(null);
+            if (w && await confirm({ title: `Delete "${w.title}"?`, message: 'Comments and student work on it will also be deleted.', confirmLabel: 'Delete', tone: 'danger' })) {
+              report(await onDeleteClasswork(w.id), 'Classwork deleted.');
+            }
           }}>
             <ListItemIcon><Delete fontSize="small" sx={{ color: palette.danger }} /></ListItemIcon>
             <ListItemText>Delete</ListItemText>
@@ -490,12 +510,12 @@ export default function ClassworkPanel({
       <Menu anchorEl={topicMenu?.el} open={Boolean(topicMenu)} onClose={() => setTopicMenu(null)}>
         <MenuItem onClick={async () => {
           const t = topicMenu?.topic; setTopicMenu(null);
-          const name = t ? window.prompt('Rename topic', t.name) : null;
+          const name = t ? await prompt({ title: 'Rename topic', label: 'Topic name', initial: t.name, confirmLabel: 'Rename' }) : null;
           if (t && name && name.trim()) report(await onSaveTopic({ ...t, name: name.trim() }), 'Topic renamed.');
         }}>Rename</MenuItem>
         <MenuItem sx={{ color: palette.danger }} onClick={async () => {
           const t = topicMenu?.topic; setTopicMenu(null);
-          if (t && window.confirm(`Delete topic "${t.name}"? Its classwork is kept under "No topic".`)) report(await onDeleteTopic(t.id), 'Topic removed.');
+          if (t && await confirm({ title: `Delete topic "${t.name}"?`, message: 'Its classwork is kept under "No topic".', confirmLabel: 'Delete', tone: 'danger' })) report(await onDeleteTopic(t.id), 'Topic removed.');
         }}>Delete</MenuItem>
       </Menu>
 
@@ -507,7 +527,7 @@ export default function ClassworkPanel({
             {(() => { const I = KIND_META[form.kind].icon; return <I sx={{ fontSize: 20, color: palette.primary }} />; })()}
           </Box>
           <Typography sx={{ fontSize: '1.4rem', flex: 1 }}>{KIND_META[form.kind].label}</Typography>
-          <Button variant="contained" onClick={saveWork} disabled={!form.title.trim() || busy || uploading} sx={{ borderRadius: 999, px: 3, textTransform: 'none', fontWeight: 600 }}>
+          <Button variant="contained" onClick={saveWork} disabled={!form.title.trim() || busy || uploading || Boolean(dueError)} sx={{ borderRadius: 999, px: 3, textTransform: 'none', fontWeight: 600 }}>
             {editing ? 'Save' : form.kind === 'assignment' || form.kind === 'question' ? 'Assign' : 'Post'}
           </Button>
         </Box>
@@ -569,7 +589,10 @@ export default function ClassworkPanel({
                 <Box>
                   <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.75 }}>Due</Typography>
                   <TextField fullWidth size="small" type="datetime-local" value={form.dueDate}
-                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })} helperText={form.dueDate ? '' : 'No due date'} />
+                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                    inputProps={{ min: minDueLocal() }}
+                    error={Boolean(dueError)}
+                    helperText={dueError || (form.dueDate ? '' : 'No due date')} />
                 </Box>
               </>
             )}
