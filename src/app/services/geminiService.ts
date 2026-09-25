@@ -51,6 +51,17 @@ export interface NvidiaModel {
 const NON_GENERATIVE_MODEL = /(^|[/_-])(rerank|embed|embedqa|reranking)([/_-]|$)/i;
 
 /**
+ * Models that do not help students or teachers write and explain questions: image/vision,
+ * safety and guard classifiers, reward scorers, code-only models, speech/translation/OCR,
+ * retrievers and parsers.
+ */
+const NOT_FOR_STUDY = /(vision|vila|neva|paligemma|kosmos|fuyu|deplot|llava|guard|safety|shield|nemoguard|reward|reranker|retriever|embed|code|coder|starcoder|codestral|granite-\d.*-code|riva|parakeet|asr|tts|translate|ocr|parse|detector|pii|cosmos|clip|sdxl|flux|stable-diffusion|audio|speech|whisper|canary)/i;
+/** Chat/instruct or reasoning models — the ones that can write and explain exam questions. */
+const STUDY_CAPABLE = /(instruct|chat|-it\b|[-_]it$|reason|thinking|\br1\b|-r1|qwq|deepseek|gpt-oss|kimi|glm|nemotron-(super|ultra|nano)|mixtral|mistral-(large|medium|small)|magistral|qwen3|phi-4)/i;
+/** Reasoning models first: they think through a topic before writing questions. */
+const REASONING = /(reason|thinking|\br1\b|-r1|qwq|gpt-oss|nemotron-(super|ultra)|kimi|qwen3|magistral|deepseek-v3)/i;
+
+/**
  * Fetches the models NVIDIA is currently serving, newest-looking Llama first so the
  * default selection is a sensible instruct model rather than whatever sorts first.
  */
@@ -65,12 +76,12 @@ export async function fetchNvidiaModels(): Promise<NvidiaModel[]> {
     const data = await response.json();
     const ids: string[] = (data?.data || [])
       .map((m: any) => String(m?.id || ''))
-      .filter((id: string) => id && !NON_GENERATIVE_MODEL.test(id));
+      .filter((id: string) => id && !NON_GENERATIVE_MODEL.test(id) && !NOT_FOR_STUDY.test(id) && STUDY_CAPABLE.test(id));
 
     const rank = (id: string) => {
       const l = id.toLowerCase();
-      if (l.includes('llama') && l.includes('instruct')) return 0;
-      if (l.includes('llama')) return 1;
+      if (REASONING.test(l)) return 0;
+      if (l.includes('llama') && l.includes('instruct') && /(70b|405b|90b)/.test(l)) return 1;
       if (l.includes('instruct') || l.includes('chat')) return 2;
       return 3;
     };

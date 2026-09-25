@@ -97,7 +97,7 @@ function SettingsCard({
 export default function Settings() {
   const { currentUser, updateProfile } = useAuth();
   const requireReauth = useReauth();
-  const { preference, mode, setPreference } = useThemeMode();
+  const { preference, mode, setPreference, palette: colorScheme, setPalette } = useThemeMode();
   const { toast, ToastHost } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -407,6 +407,25 @@ export default function Settings() {
             : `Always ${preference}.`}
           {' '}This preference is saved on this device.
         </Typography>
+
+        <Typography variant="body2" sx={{ fontWeight: 700, mt: 3, mb: 1 }}>Colour theme</Typography>
+        <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          {([
+            { id: 'aspire', name: 'Aspire Blue', colors: ['#0891b2', '#2563eb', '#05070c'] },
+            { id: 'classic', name: 'Classic Green', colors: ['#059669', '#0d9488', '#0b1120'] },
+          ] as const).map((t) => (
+            <Box key={t.id} role="button" tabIndex={0} onClick={() => setPalette(t.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter') setPalette(t.id); }}
+              sx={{ cursor: 'pointer', p: 1.5, borderRadius: '12px', minWidth: 150,
+                border: `2px solid ${colorScheme === t.id ? t.colors[0] : palette.border}` }}>
+              <Box sx={{ display: 'flex', gap: 0.5, mb: 1 }}>
+                {t.colors.map((c) => <Box key={c} sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: c }} />)}
+              </Box>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>{t.name}</Typography>
+              {colorScheme === t.id && <Typography variant="caption" sx={{ color: palette.inkTertiary }}>In use</Typography>}
+            </Box>
+          ))}
+        </Box>
       </SettingsCard>
 
       {ToastHost}

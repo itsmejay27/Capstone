@@ -220,9 +220,20 @@ export default function Notifications() {
       .slice(0, 5);
   }, [announcements, classrooms, currentUser, isInstructor]);
 
+  const [clearedAt, setClearedAt] = useState(() => {
+    try { return Number(localStorage.getItem(`notificationsClearedAt:${currentUser?.id}`) || 0); } catch { return 0; }
+  });
+  const clearAll = () => {
+    const now = Date.now();
+    try { localStorage.setItem(`notificationsClearedAt:${currentUser?.id}`, String(now)); } catch { /* storage blocked */ }
+    setClearedAt(now);
+    markCommentsSeen(currentUser?.id);
+  };
   const commentActivity = useMemo(
-    () => commentActivityFor(currentUser, classrooms, comments).slice(0, 15),
-    [currentUser, classrooms, comments]
+    () => commentActivityFor(currentUser, classrooms, comments)
+      .filter((c) => new Date(c.createdAt).getTime() > clearedAt)
+      .slice(0, 15),
+    [currentUser, classrooms, comments, clearedAt]
   );
   // Snapshot the previous "seen" time so new items stay highlighted during this visit,
   // then mark everything seen so the sidebar badge clears.
@@ -350,7 +361,8 @@ export default function Notifications() {
       {commentActivity.length > 0 && (
         <>
           <Divider sx={{ my: 3 }} />
-          <SectionHeading title="Recent comments" count={commentActivity.length} />
+          <SectionHeading title="Recent comments" count={commentActivity.length}
+            action={<Button size="small" onClick={clearAll} sx={{ textTransform: 'none', fontWeight: 600 }}>Clear all</Button>} />
           <Box>
             {commentActivity.map((c) => {
               const tint = tintFor(c.classroomId);

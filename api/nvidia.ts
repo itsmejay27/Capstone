@@ -30,8 +30,25 @@ const NON_GENERATIVE = /(^|[/_-])(rerank|embed|embedqa|reranking)([/_-]|$)/i;
 
 export const config = { maxDuration: 60 };
 
+
+/**
+ * All configured keys for a provider, in order: NAME may hold several keys separated by
+ * commas, and NAME_2 … NAME_10 add more. When one key is rate-limited or rejected, the
+ * next one is tried, so several free-tier keys can share the load.
+ */
+function keysFor(name: string): string[] {
+  const list: string[] = [];
+  const push = (v?: string) => (v || '').split(/[,\s]+/).map((k) => k.trim()).filter(Boolean).forEach((k) => { if (!list.includes(k)) list.push(k); });
+  push(process.env[name]);
+  for (let i = 1; i <= 10; i++) push(process.env[`${name}_${i}`]);
+  return list;
+}
+/** Worth trying another key: quota/rate limit, or this key rejected. */
+const tryNextKey = (status: number) => status === 429 || status === 401 || status === 403;
+
 export default async function handler(req: any, res: any) {
-  const apiKey = process.env.NVIDIA_API_KEY;
+  const apiKeys = keysFor('NVIDIA_API_KEY');
+  const apiKey = apiKeys[0];
   if (!apiKey) {
     res.status(503).json({
       error: 'NVIDIA_API_KEY is not configured on the server. Add it in the Vercel project settings.',
@@ -87,20 +104,25 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const response = await fetch(`${NVIDIA_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        Accept: 'application/json',
-      },
-      // Streaming would need a different response path here; the client waits for the
-      // whole completion, so it is forced off regardless of what was sent.
-      body: JSON.stringify({ ...body, stream: false }),
-    });
-
-    const text = await response.text();
-    res.status(response.status).setHeader('Content-Type', 'application/json');
+    let status = 502;
+    let text = '';
+    for (const key of apiKeys) {
+      const response = await fetch(`${NVIDIA_BASE}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+          Accept: 'application/json',
+        },
+        // Streaming would need a different response path here; the client waits for the
+        // whole completion, so it is forced off regardless of what was sent.
+        body: JSON.stringify({ ...body, stream: false }),
+      });
+      status = response.status;
+      text = await response.text();
+      if (!tryNextKey(status)) break;
+    }
+    res.status(status).setHeader('Content-Type', 'application/json');
     res.send(text);
   } catch (error) {
     res.status(502).json({ error: `Upstream request failed: ${(error as Error).message}` });

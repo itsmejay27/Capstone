@@ -346,7 +346,6 @@ export default function QuestionBank() {
               >
                 <Typography
                   sx={{
-                    fontFamily: font.mono,
                     fontSize: '0.92rem',
                     fontWeight: 600,
                     color: palette.ink,

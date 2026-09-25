@@ -21,6 +21,9 @@ interface ThemeModeContextValue {
   /** The mode currently rendered — never 'system'. */
   mode: ResolvedMode;
   setPreference: (p: ThemePreference) => void;
+  /** Colour scheme: the current Aspire blue or the original Classic green. */
+  palette: 'aspire' | 'classic';
+  setPalette: (p: 'aspire' | 'classic') => void;
   /** Flips between light and dark, leaving 'system' behind. */
   toggle: () => void;
 }
@@ -61,6 +64,14 @@ function systemPrefersDark(): boolean {
 export function ThemeModeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>(readStoredPreference);
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
+  const [palette, setPaletteState] = useState<'aspire' | 'classic'>(() => {
+    try { return localStorage.getItem('themePalette') === 'classic' ? 'classic' : 'aspire'; } catch { return 'aspire'; }
+  });
+  useEffect(() => { document.documentElement.setAttribute('data-palette', palette); }, [palette]);
+  const setPalette = useCallback((p: 'aspire' | 'classic') => {
+    setPaletteState(p);
+    try { localStorage.setItem('themePalette', p); } catch { /* not persisted */ }
+  }, []);
 
   const mode: ResolvedMode =
     preference === 'system' ? (systemDark ? 'dark' : 'light') : preference;
@@ -131,10 +142,10 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
     [mode, setPreference]
   );
 
-  const muiTheme = useMemo(() => createAppTheme(mode), [mode]);
+  const muiTheme = useMemo(() => createAppTheme(mode, palette), [mode, palette]);
   const value = useMemo(
-    () => ({ preference, mode, setPreference, toggle }),
-    [preference, mode, setPreference, toggle]
+    () => ({ preference, mode, setPreference, toggle, palette, setPalette }),
+    [preference, mode, setPreference, toggle, palette, setPalette]
   );
 
   return (

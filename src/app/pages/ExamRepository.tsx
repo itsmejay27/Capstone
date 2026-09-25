@@ -723,32 +723,23 @@ export default function ExamRepository() {
                   sx={{
                     // Tab and card move as one: the hover lift lives on this wrapper, so the
                     // tab can no longer be left behind with a gap under it.
-                    position: 'relative', pt: '14px', height: '100%',
+                    position: 'relative', height: '100%',
                     transition: 'transform .2s ease',
                     '&:hover': { transform: 'translateY(-3px)' },
                     '&:hover .folder-body': { boxShadow: '0 20px 44px -22px var(--glow-a), var(--shadow-md)', borderColor: 'var(--c-emerald-200)' },
                   }}
                 >
-                  {/* The folder tab: same fill as the header band, no seam where they meet. */}
-                  <Box
-                    aria-hidden
-                    sx={{
-                      position: 'absolute', top: 0, left: 16, width: 96, height: 16, zIndex: 1,
-                      borderTopLeftRadius: '10px', borderTopRightRadius: '10px',
-                      background: tint.from,
-                      border: '1px solid var(--c-border)', borderBottom: 'none',
-                    }}
-                  />
                   <Paper
                     elevation={0}
                     className="folder-body"
                     sx={{
                       position: 'relative',
-                      height: 'calc(100% - 14px)',
+                      height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
                       p: 2.25,
-                      borderRadius: '4px 16px 16px 16px',
+                      borderRadius: '14px',
+                      borderTop: `4px solid ${tint.ink}`,
                       overflow: 'hidden',
                       border: '1px solid var(--c-border)',
                       bgcolor: 'var(--c-surface)',
@@ -759,19 +750,16 @@ export default function ExamRepository() {
                     {/* Header band in the folder's colour, fading into the card. */}
                     <Box
                       sx={{
-                        mx: -2.25, mt: -2.25, mb: 1.75, px: 2.25, py: 1.75,
-                        background: `linear-gradient(180deg, ${tint.from} 0%, ${tint.to} 100%)`,
-                        borderBottom: '1px solid var(--c-border)',
-                        display: 'flex', alignItems: 'center', gap: 1.25,
+                        mb: 1.5,
+                        display: 'flex', alignItems: 'flex-start', gap: 1.25,
                         position: 'relative', zIndex: 2,
                       }}
                     >
                       <Box
                         sx={{
-                          width: 36, height: 36, borderRadius: '10px', flexShrink: 0,
-                          bgcolor: 'var(--c-surface)', border: '1px solid var(--c-border)',
+                          width: 40, height: 40, borderRadius: '12px', flexShrink: 0,
+                          bgcolor: tint.from, color: tint.ink,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: 'var(--c-emerald-600)', boxShadow: 'var(--shadow-xs)',
                         }}
                       >
                         <Quiz sx={{ fontSize: 19 }} />
@@ -779,16 +767,13 @@ export default function ExamRepository() {
                       <Box sx={{ minWidth: 0 }}>
                         <Typography
                           sx={{
-                            fontSize: '0.95rem', fontWeight: 800, letterSpacing: '-0.01em',
+                            fontSize: '1rem', fontWeight: 700, lineHeight: 1.3,
                             color: 'var(--c-ink)', minWidth: 0,
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', wordBreak: 'break-word',
                           }}
                           title={exam.title}
                         >
                           {exam.title}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)', fontWeight: 600 }}>
-                          {exam.questions.length} question{exam.questions.length === 1 ? '' : 's'}
                         </Typography>
                       </Box>
                     </Box>
@@ -816,14 +801,13 @@ export default function ExamRepository() {
                       </Box>
                     )}
 
-                    <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
-                      <Chip label={`Pool: ${exam.questions.length}`} size="small" color="secondary" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }} />
-                      <Chip label={`Set: ${exam.activeQuestionCount || exam.questions.length}`} size="small" color="primary" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 700 }} />
-                      <Chip label={`${exam.totalPoints} pts`} size="small" variant="outlined" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 600 }} />
-                      {Number.isFinite(Number(exam.duration)) && Number(exam.duration) > 0 && (
-                        <Chip label={`${exam.duration}m`} size="small" variant="outlined" sx={{ height: 22, fontSize: '0.68rem', fontWeight: 600 }} />
-                      )}
-                    </Box>
+                    <Typography variant="body2" sx={{ color: 'var(--c-ink-secondary)', mb: 1.5 }}>
+                      {exam.activeQuestionCount && exam.activeQuestionCount !== exam.questions.length
+                        ? `${exam.activeQuestionCount} of ${exam.questions.length} questions`
+                        : `${exam.questions.length} questions`}
+                      {` · ${exam.totalPoints} pts`}
+                      {Number.isFinite(Number(exam.duration)) && Number(exam.duration) > 0 ? ` · ${exam.duration} min` : ''}
+                    </Typography>
 
                     {/* Provenance, collapsed to a count so it cannot push the card out of the
                         grid; the full list stays available on hover. */}
