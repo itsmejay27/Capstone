@@ -53,20 +53,16 @@ export default function GradesView({
   }, [students, sort]);
 
   /** Score for one student and column, or a status word, plus a fraction for averages. */
-  // Tab switches, copy/paste, screenshot keys etc. recorded while the student took the exam.
-  const flagsOf = (a: any) => ['tabSwitches', 'copyAttempts', 'pasteAttempts', 'screenshotAttempts', 'rightClicks', 'shortcutAttempts']
-    .reduce((n, k) => n + (Number(a?.integrity?.[k]) || 0), 0);
-
-  const cell = (st: any, c: Col): { text: string; sub?: string; flags?: number; tone: 'score' | 'missing' | 'pending' | 'done' | 'none'; frac?: number; onClick?: () => void } => {
+  const cell = (st: any, c: Col): { text: string; sub?: string; tone: 'score' | 'missing' | 'pending' | 'done' | 'none'; frac?: number; onClick?: () => void } => {
     if (c.kind === 'exam') {
       const a = attempts.find((x) => x.examId === c.exam.id && x.studentId === st.id && x.submittedAt);
       if (!a) {
         const overdue = c.exam.dueDate && new Date(c.exam.dueDate).getTime() < Date.now();
         return { text: overdue ? 'Missing' : '—', tone: overdue ? 'missing' : 'none' };
       }
-      if (isPending(a)) return { text: 'Needs checking', flags: flagsOf(a), tone: 'pending', onClick: () => onCheckAttempt({ attempt: a, exam: c.exam, studentName: st.name }) };
+      if (isPending(a)) return { text: 'Needs checking', tone: 'pending', onClick: () => onCheckAttempt({ attempt: a, exam: c.exam, studentName: st.name }) };
       const g = gradeFor(a.score || 0, c.outOf);
-      return { text: `${a.score ?? 0}`, sub: `Grade ${g.grade}`, flags: flagsOf(a), tone: 'score', frac: c.outOf ? (a.score || 0) / c.outOf : 0, onClick: () => onCheckAttempt({ attempt: a, exam: c.exam, studentName: st.name }) };
+      return { text: `${a.score ?? 0}`, sub: `Grade ${g.grade}`, tone: 'score', frac: c.outOf ? (a.score || 0) / c.outOf : 0, onClick: () => onCheckAttempt({ attempt: a, exam: c.exam, studentName: st.name }) };
     }
     const s = submissions.find((x) => x.classworkId === c.work.id && x.studentId === st.id);
     const open = () => navigate(`/classroom/${classroom.id}/work/${c.work.id}`);
@@ -104,7 +100,7 @@ export default function GradesView({
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
         <ToggleButtonGroup exclusive size="small" value={view} onChange={(_, v) => v && setView(v)}
-          sx={{ '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 600, px: 2 }, '& .Mui-selected': { color: `${accent} !important` } }}>
+          sx={{ '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 600, px: 2, width: { xs: 'auto', sm: 170 }, flex: { xs: 1, sm: 'none' } }, '& .Mui-selected': { color: `${accent} !important` } }}>
           <ToggleButton value="grades">Grades</ToggleButton>
           <ToggleButton value="record">Class record sheet</ToggleButton>
           <ToggleButton value="analysis">Item analysis</ToggleButton>
@@ -136,16 +132,16 @@ export default function GradesView({
             </Box>
           ) : (
             <TableContainer sx={{ maxHeight: '70vh' }}>
-              <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', width: 220 + 110 + cols.length * 170, minWidth: '100%' }}>
+              <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', width: '100%', minWidth: 220 + (cols.length + 1) * 150 }}>
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ ...cellSx, position: 'sticky', left: 0, zIndex: 3, bgcolor: 'var(--c-surface)', width: 220 }} />
-                    <TableCell align="center" sx={{ ...cellSx, bgcolor: 'var(--c-surface)', width: 110 }}>
+                    <TableCell align="center" sx={{ ...cellSx, bgcolor: 'var(--c-surface)' }}>
                       <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>Overall</Typography>
                       <Typography sx={{ fontWeight: 600, fontSize: '0.85rem' }}>Average</Typography>
                     </TableCell>
                     {cols.map((c) => (
-                      <TableCell key={c.id} sx={{ ...cellSx, bgcolor: 'var(--c-surface)', width: 170, verticalAlign: 'top' }}>
+                      <TableCell key={c.id} sx={{ ...cellSx, bgcolor: 'var(--c-surface)', verticalAlign: 'top' }}>
                         <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>
                           {c.date ? new Date(c.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'} · {c.kind === 'exam' ? 'Quiz' : 'Assignment'}
                         </Typography>
@@ -192,11 +188,6 @@ export default function GradesView({
                               sx={{ ...cellSx, cursor: v.onClick ? 'pointer' : 'default', '&:hover': v.onClick ? { bgcolor: 'var(--c-surface-sunken)' } : {} }}>
                               <Typography sx={{ fontSize: '0.88rem', ...toneSx(v.tone) }}>{v.text}</Typography>
                               {v.sub && <Typography variant="caption" sx={{ color: 'var(--c-ink-tertiary)' }}>{v.sub}</Typography>}
-                              {v.flags ? (
-                                <Typography variant="caption" sx={{ display: 'block', color: 'var(--c-amber-700)', fontWeight: 700 }}>
-                                  ⚠ {v.flags} flag{v.flags === 1 ? '' : 's'}
-                                </Typography>
-                              ) : null}
                             </TableCell>
                           );
                         })}
@@ -210,7 +201,6 @@ export default function GradesView({
           <Box sx={{ px: 2, py: 1.25, borderTop: '1px solid var(--c-border)', display: 'flex', gap: 3, flexWrap: 'wrap' }}>
             <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>Averages use the 65–100 scale · 75 is passing</Typography>
             <Typography variant="caption" sx={{ color: '#b06000' }}>Needs checking = has short-answer/essay items</Typography>
-            <Typography variant="caption" sx={{ color: 'var(--c-amber-700)' }}>⚠ flags = tab switches, copy/paste or screenshot keys (click the cell for details and time per question)</Typography>
             <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>Click a cell to review or grade it</Typography>
           </Box>
         </Paper>

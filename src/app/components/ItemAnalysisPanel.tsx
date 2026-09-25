@@ -313,9 +313,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
                 <TrendingDown sx={{ fontSize: 20, color: 'var(--c-red-600)' }} /> Most missed questions
               </Typography>
               <Typography variant="caption" sx={{ color: 'var(--c-slate-500)' }}>
-                All {analysis.mostMissed.length} question{analysis.mostMissed.length === 1 ? '' : 's'} that at least one student missed, ranked by failure rate
-                {analysis.items.length > analysis.mostMissed.length && ` (${analysis.items.length - analysis.mostMissed.length} answered correctly by everyone are not listed)`}.
-                Scroll for the rest; expand a row for its distractor breakdown.
+                Questions that 80% or more of the students got wrong ({analysis.mostMissed.length} found), ranked by failure rate. Expand a row for its distractor breakdown.
                 {!analysis.discriminationAvailable &&
                   ` Discrimination needs at least ${MIN_N_FOR_DISCRIMINATION} submissions (currently ${analysis.submittedAttempts}).`}
               </Typography>
@@ -325,7 +323,7 @@ export default function ItemAnalysisPanel({ exams, attempts }: { exams: any[]; a
               <Box sx={{ p: 4, textAlign: 'center' }}>
                 <CheckCircle sx={{ fontSize: 40, color: 'var(--c-green-600)', mb: 1 }} />
                 <Typography variant="body2" sx={{ color: 'var(--c-slate-600)', fontWeight: 700 }}>
-                  Every analysable item was answered correctly by the whole cohort.
+                  No question was missed by 80% or more of the students.
                 </Typography>
               </Box>
             ) : (
