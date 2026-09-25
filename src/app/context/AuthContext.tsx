@@ -675,8 +675,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (existingUser) {
         const updatedUser: User = {
           ...existingUser,
-          name: payload.name || existingUser.name,
-          avatar: payload.picture || existingUser.avatar,
+          // Keep what the user set in Settings; Google's name/photo only fill in blanks.
+          // Overwriting here reset a custom photo every time the account signed in on
+          // another device.
+          name: existingUser.name || payload.name,
+          avatar: existingUser.avatar || payload.picture,
         };
         setUsers((prev) => prev.some((u) => u.id === updatedUser.id)
           ? prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))

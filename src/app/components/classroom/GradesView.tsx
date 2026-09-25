@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import {
-  Box, Typography, Paper, Avatar, ToggleButtonGroup, ToggleButton, Tooltip, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, TextField, MenuItem,
+  Box, Typography, Paper, Avatar, Button, ToggleButtonGroup, ToggleButton, Tooltip, Table, TableHead, TableRow, TableCell, TableBody, TableContainer, TextField, MenuItem,
 } from '@mui/material';
 import { useNavigate } from 'react-router';
 import { gradeFor, isPending } from '../../services/grading';
 import ItemAnalysisPanel from '../ItemAnalysisPanel';
 import GradeSheet from '../GradeSheet';
+import IntegrityReport from './IntegrityReport';
+import { Flag } from '@mui/icons-material';
 
 /**
  * The Grades tab, organised like Google Classroom's grade grid: one row per student, one
@@ -33,6 +35,7 @@ export default function GradesView({
   const navigate = useNavigate();
   const [view, setView] = useState<'grades' | 'record' | 'analysis'>('grades');
   const [sort, setSort] = useState<'last' | 'first'>('last');
+  const [flagsOpen, setFlagsOpen] = useState(false);
 
   const cols: Col[] = useMemo(() => {
     const list: Col[] = [
@@ -98,20 +101,24 @@ export default function GradesView({
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-        <ToggleButtonGroup exclusive size="small" value={view} onChange={(_, v) => v && setView(v)}
-          sx={{ '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 600, px: 2, width: { xs: 'auto', sm: 170 }, flex: { xs: 1, sm: 'none' } }, '& .Mui-selected': { color: `${accent} !important` } }}>
+      <IntegrityReport open={flagsOpen} onClose={() => setFlagsOpen(false)} exams={exams} attempts={attempts} students={students} />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.25, sm: 2 }, flexWrap: 'wrap', mb: 2 }}>
+        <ToggleButtonGroup exclusive size="small" value={view} onChange={(_, v) => v && setView(v)} fullWidth={false}
+          sx={{ width: { xs: '100%', sm: 'auto' }, '& .MuiToggleButton-root': { textTransform: 'none', fontWeight: 600, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.78rem', sm: '0.85rem' }, width: { xs: 'auto', sm: 170 }, flex: { xs: 1, sm: 'none' } }, '& .Mui-selected': { color: `${accent} !important` } }}>
           <ToggleButton value="grades">Grades</ToggleButton>
           <ToggleButton value="record">Class record sheet</ToggleButton>
           <ToggleButton value="analysis">Item analysis</ToggleButton>
         </ToggleButtonGroup>
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{ flex: 1, display: { xs: 'none', sm: 'block' } }} />
         {view === 'grades' && (
           <>
             {pendingCount > 0 && (
               <Typography variant="body2" sx={{ color: '#b06000', fontWeight: 600 }}>{pendingCount} to check</Typography>
             )}
-            <TextField select size="small" value={sort} onChange={(e) => setSort(e.target.value as any)} sx={{ width: 190 }}>
+            <Button variant="outlined" startIcon={<Flag />} onClick={() => setFlagsOpen(true)} sx={{ textTransform: 'none', fontWeight: 600 }}>
+              Exam flags
+            </Button>
+            <TextField select size="small" value={sort} onChange={(e) => setSort(e.target.value as any)} sx={{ width: { xs: '100%', sm: 190 } }}>
               <MenuItem value="last">Sort by last name</MenuItem>
               <MenuItem value="first">Sort by first name</MenuItem>
             </TextField>
@@ -132,10 +139,10 @@ export default function GradesView({
             </Box>
           ) : (
             <TableContainer sx={{ maxHeight: '70vh' }}>
-              <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', width: '100%', minWidth: 220 + (cols.length + 1) * 150 }}>
+              <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', width: '100%', minWidth: { xs: 140 + (cols.length + 1) * 110, sm: 220 + (cols.length + 1) * 150 } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ ...cellSx, position: 'sticky', left: 0, zIndex: 3, bgcolor: 'var(--c-surface)', width: 220 }} />
+                    <TableCell sx={{ ...cellSx, position: 'sticky', left: 0, zIndex: 3, bgcolor: 'var(--c-surface)', width: { xs: 140, sm: 220 } }} />
                     <TableCell align="center" sx={{ ...cellSx, bgcolor: 'var(--c-surface)' }}>
                       <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>Overall</Typography>
                       <Typography sx={{ fontWeight: 600, fontSize: '0.85rem' }}>Average</Typography>
@@ -174,7 +181,7 @@ export default function GradesView({
                       <TableRow key={st.id} hover>
                         <TableCell sx={{ ...cellSx, position: 'sticky', left: 0, zIndex: 1, bgcolor: 'var(--c-surface)' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-                            <Avatar src={st.avatar} sx={{ width: 30, height: 30, fontSize: '0.85rem' }}>{st.name?.charAt(0)}</Avatar>
+                            <Avatar src={st.avatar} sx={{ width: 30, height: 30, fontSize: '0.85rem', display: { xs: 'none', sm: 'flex' } }}>{st.name?.charAt(0)}</Avatar>
                             <Typography noWrap sx={{ fontSize: '0.88rem' }}>{st.name}</Typography>
                           </Box>
                         </TableCell>

@@ -6,7 +6,7 @@
 export default function ClassArt({ variant = 0, height = '100%' }: { variant?: number; height?: number | string }) {
   const v = Math.abs(variant) % 3;
   return (
-    <svg viewBox="0 0 420 240" height={height} preserveAspectRatio="xMaxYMid meet" aria-hidden
+    <svg className="class-art" viewBox="0 0 420 240" height={height} preserveAspectRatio="xMaxYMid meet" aria-hidden
       style={{ position: 'absolute', right: 0, top: 0, bottom: 0, pointerEvents: 'none' }}>
       <circle cx="400" cy="250" r="230" fill="rgba(0,0,0,.14)" />
       {v === 0 && (

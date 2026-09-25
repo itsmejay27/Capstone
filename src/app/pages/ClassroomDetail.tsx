@@ -289,9 +289,8 @@ export default function ClassroomDetail() {
         <Tabs
           value={activeTab}
           onChange={(_, val) => setActiveTab(val)}
-          variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
+          variant={isMobile ? 'fullWidth' : 'scrollable'}
+          scrollButtons={isMobile ? false : 'auto'}
           sx={{
             mb: 2, borderBottom: '1px solid var(--c-border)',
             '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '0.9rem', minHeight: 48, color: 'var(--c-ink-secondary)', px: { xs: 1.5, sm: 2.5 }, minWidth: 'auto' },
@@ -314,9 +313,9 @@ export default function ClassroomDetail() {
           }}
         >
           <ClassArt variant={artVariant(classroom.id)} />
-          <Box sx={{ position: 'relative', maxWidth: '70%' }}>
-            <Typography sx={{ fontSize: { xs: '1.8rem', md: '2.4rem' }, fontWeight: 500, lineHeight: 1.15 }}>{classroom.name}</Typography>
-            <Typography sx={{ fontSize: { xs: '1rem', md: '1.3rem' }, fontWeight: 400, mt: 0.5, opacity: 0.95 }}>
+          <Box sx={{ position: 'relative', maxWidth: { xs: '85%', sm: '70%' } }}>
+            <Typography sx={{ fontSize: { xs: '1.45rem', md: '2.4rem' }, fontWeight: 500, lineHeight: 1.15, wordBreak: 'break-word', textShadow: '0 1px 3px rgba(0,0,0,.25)' }}>{classroom.name}</Typography>
+            <Typography sx={{ fontSize: { xs: '0.9rem', md: '1.3rem' }, fontWeight: 400, mt: 0.5, opacity: 0.95 }}>
               {classroom.section}{classroom.subject ? ` · ${classroom.subject}` : ''}
             </Typography>
           </Box>

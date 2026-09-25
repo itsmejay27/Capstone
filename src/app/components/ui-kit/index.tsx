@@ -96,8 +96,8 @@ export function SectionHeading({
   sx?: any;
 }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1.75, ...sx }}>
-      <Typography variant="h4" sx={{ color: palette.ink }}>{title}</Typography>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1.75, flexWrap: 'wrap', ...sx }}>
+      <Typography variant="h4" sx={{ color: palette.ink, whiteSpace: 'nowrap' }}>{title}</Typography>
       {count !== undefined && (
         <Box
           sx={{
@@ -111,7 +111,7 @@ export function SectionHeading({
         </Box>
       )}
       <Box sx={{ flex: 1 }} />
-      {action}
+      {action && <Box sx={{ width: { xs: '100%', sm: 'auto' }, display: 'flex', justifyContent: 'flex-end' }}>{action}</Box>}
     </Box>
   );
 }
@@ -214,8 +214,8 @@ export function FilterBar({ children }: { children: ReactNode }) {
   return (
     <Box
       sx={{
-        display: 'flex', gap: 1, alignItems: 'center', mb: 2.5,
-        overflowX: 'auto', pb: 0.5,
+        display: 'flex', gap: 1, alignItems: 'center', mb: 2.5, flexWrap: 'wrap',
+        pb: 0.5,
         '&::-webkit-scrollbar': { height: 0 },
         scrollbarWidth: 'none',
       }}
