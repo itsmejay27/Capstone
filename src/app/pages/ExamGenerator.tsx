@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import ExamImportDialog from '../components/ExamImportDialog';
+import { Dialog as FailDialog, DialogTitle as FailTitle, DialogContent as FailContent, DialogActions as FailActions } from '@mui/material';
+import { WifiOff, ErrorOutline } from '@mui/icons-material';
 import AIEngineControl, { AIEngineType } from '../components/AIEngineControl';
 import { DEFAULT_NVIDIA_MODEL, modelProfile } from '../services/geminiService';
 import { generateExamWithGemini, regenerateQuestionWithGemini, buildTopicDrivenQuestions, getStoredGeminiApiKey, regenerateItemsForSpecs } from '../services/geminiService';
@@ -272,6 +274,7 @@ export default function ExamGenerator() {
   const [nvidiaModel, setNvidiaModel] = useState(DEFAULT_NVIDIA_MODEL);
   const [geminiModel, setGeminiModel] = useState('gemini-3.6-flash');
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [aiFailure, setAiFailure] = useState<string | null>(null);
   const [generationStatusText, setGenerationStatusText] = useState('');
 
   // TOS compliance
@@ -483,21 +486,11 @@ export default function ExamGenerator() {
           );
           setGeneratedQuestions(withBankedQuestions(finalQuestions));
         } catch (err: any) {
-          console.error('Gemini Generation error:', err);
-          const fallbackQuestions = buildTopicDrivenQuestions({
-            model: geminiModel,
-            mcCount,
-            tfCount,
-            saCount,
-            essayCount,
-            extraCount: isTosActive ? 0 : extraCount,
-            difficulty,
-            topics: effectiveTopics,
-            generationPrompt: effectivePrompt,
-            tosData: effectiveTos,
-          });
-          setGeneratedQuestions(withBankedQuestions(fallbackQuestions));
-          setGenerationError(`Notice: Cloud AI call hit an error (${err.message || err}). Generated using topic-driven engine fallback.`);
+          console.error('AI generation error:', err);
+          // Stop here and tell the user; no placeholder questions.
+          setGeneratedQuestions([]);
+          setAiFailure(err?.message || String(err));
+          setActiveStep(1);
         } finally {
           setGenerating(false);
         }
@@ -2523,6 +2516,22 @@ export default function ExamGenerator() {
           </Box>
         )}
       </Paper>
+      <FailDialog open={!!aiFailure} onClose={() => setAiFailure(null)} maxWidth="xs" fullWidth>
+        <FailTitle sx={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/internet|connection|reached/i.test(aiFailure || '') ? <WifiOff color="error" /> : <ErrorOutline color="error" />}
+          {/internet|connection|reached/i.test(aiFailure || '') ? 'No internet connection' : 'Generation stopped'}
+        </FailTitle>
+        <FailContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>{aiFailure}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Nothing was generated. Your settings are kept, so you can try again or pick another model.
+          </Typography>
+        </FailContent>
+        <FailActions>
+          <Button onClick={() => setAiFailure(null)}>Close</Button>
+          <Button variant="contained" onClick={() => { setAiFailure(null); handleGenerateQuestions(); }}>Try again</Button>
+        </FailActions>
+      </FailDialog>
       <ExamImportDialog
         open={importOpen}
         onClose={() => setImportOpen(false)}
