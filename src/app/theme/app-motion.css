@@ -77,6 +77,14 @@
   filter: brightness(1.06);
   box-shadow: 0 16px 32px -12px var(--glow-a);
 }
+/* Disabled: a plain, clearly-readable grey pill, not a faded gradient. */
+.ea-app .MuiButton-containedPrimary.Mui-disabled {
+  background-image: none;
+  background-color: var(--c-surface-sunken);
+  color: var(--c-ink-secondary);
+  box-shadow: none;
+  border: 1px solid var(--c-border);
+}
 .ea-app .MuiButton-outlined { border-radius: 999px; }
 
 /* Serif-italic accent, for any heading that wants the landing's flourish. */

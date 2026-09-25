@@ -122,7 +122,7 @@ export interface TimingStat {
   fastestSeconds: number | null;
   slowestSeconds: number | null;
   overTimeCount: number;
-  /** meanSeconds / allottedSeconds, or null when no time limit is set. */
+  /** medianSeconds / allottedSeconds (median, so one left-open tab does not skew it), or null when no time limit is set. */
   utilization: number | null;
   perAttempt: AttemptTiming[];
 }
@@ -505,7 +505,7 @@ export function analyzeExam(exam: any, attempts: any[]): ExamItemAnalysis {
     fastestSeconds: secs.length ? secs[0] : null,
     slowestSeconds: secs.length ? secs[secs.length - 1] : null,
     overTimeCount: perAttempt.filter((t) => t.overTime).length,
-    utilization: mean !== null && allottedSeconds ? mean / allottedSeconds : null,
+    utilization: median !== null && allottedSeconds ? median / allottedSeconds : null,
     perAttempt,
   };
 
