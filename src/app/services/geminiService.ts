@@ -6,6 +6,7 @@
 import { getDifficultyPromptDirective } from './generationUtils';
 import { TOSData, buildTOSConstraintText, normaliseCogLevel, isAdministrativeMetadata } from './tosParser';
 import { geminiEndpoint, isGeminiAvailable } from './geminiEndpoint';
+import { buildSourcePassages, passagesForTopics, passagesForBatch, syllabusOutline, GROUNDING_RULES } from './sourceMaterial';
 
 export const DEFAULT_GEMINI_API_KEY =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) || '';
@@ -245,6 +246,8 @@ function mapRawToExamItem(q: any, spec: any, defaultTopic: string, fallbackIdx: 
     aiClaimedCognitiveLevel,
     aiClaimedTopic: q?.topic || undefined,
     aiClaimedPlacement: Number(q?.itemPlacement) || undefined,
+    // Where in the instructor's files the question came from ("Lesson3.pptx · Slide 7").
+    sourceRef: typeof q?.source === 'string' ? q.source.slice(0, 120) : undefined,
   };
 
   if (qType === 'multiple-choice') {
@@ -301,6 +304,13 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
     || (params.topics && params.topics.find((t) => t && t !== 'General Subject Matter' && !isAdministrativeMetadata(t)))
     || (params.tosData?.itemSpecs?.[0]?.topic && !isAdministrativeMetadata(params.tosData.itemSpecs[0].topic) ? params.tosData.itemSpecs[0].topic : '')
     || 'General Subject';
+
+  // The uploaded files, cleaned and split into labelled passages (see sourceMaterial.ts).
+  const passages = buildSourcePassages(params.uploadedText);
+  const outline = syllabusOutline(passages);
+  const sourceBlock = (material: string) => (material || outline)
+    ? `\n${outline ? `COURSE SYLLABUS (outline):\n${outline}\n\n` : ''}${material ? `SOURCE MATERIAL:\n<<<\n${material}\n>>>\n` : ''}\n${GROUNDING_RULES}\n`
+    : '';
 
   // 1. TOS BLUEPRINT MODE: Generate questions matching every TOS item spec in manageable batches
   let specsToGenerate: any[] = [];
@@ -363,7 +373,7 @@ ANTI-HALLUCINATION GUARDRAILS:
 3. Every multiple-choice question must have 4 distinct, plausible options and the correct answer index (0-3). Distractors must be plausible to a student who holds a specific misconception — never filler.`;
 
       const promptText = `Generate the exact ${chunkSpecs.length} questions for Items #${startNum} through #${endNum} strictly matching their specified Topic and Cognitive Level.
-${params.uploadedText ? `Attached Syllabus / Curriculum Reference:\n${params.uploadedText.slice(0, 3000)}\n` : ''}
+${sourceBlock(passagesForTopics(passages, chunkSpecs.map((s: any) => s.topic)))}
 
 Respond ONLY with raw valid JSON:
 {
@@ -376,7 +386,8 @@ Respond ONLY with raw valid JSON:
       "question": "Clear, rigorous question stem testing ${chunkSpecs[0].topic}...",
       "options": ["Plausible Choice A", "Plausible Choice B", "Plausible Choice C", "Plausible Choice D"],
       "correctAnswer": 0,
-      "points": ${chunkSpecs[0].points || 1}
+      "points": ${chunkSpecs[0].points || 1},
+      "source": "file · slide/page it came from"
     }
   ]
 }
@@ -468,9 +479,10 @@ Ensure the "questions" array contains ALL ${chunkSpecs.length} items for this ba
 Difficulty Target: ${diffDirective.levelLabel}
 ${diffDirective.instructions}
 ${diffDirective.stemLengthRule}
-Generate high quality questions in valid JSON format only.`;
+Generate high quality questions in valid JSON format only.${params.generationPrompt?.trim() ? `\nInstructor focus: ${params.generationPrompt.trim()}` : ''}`;
 
     const promptText = `Generate ${chunkTypes.length} questions (Items #${startNum} to #${endNum}) on "${primaryTopic}":
+${sourceBlock(passagesForBatch(passages, chunkIndex, typeChunks.length))}
 Requested types in this batch:
 ${chunkTypes.map((t, idx) => `Item #${startNum + idx}: type "${t.type}"`).join('\n')}
 
@@ -485,7 +497,8 @@ Respond ONLY with raw valid JSON:
       "question": "Question text...",
       "options": ["Choice A", "Choice B", "Choice C", "Choice D"],
       "correctAnswer": 0,
-      "points": ${chunkTypes[0].defaultPoints}
+      "points": ${chunkTypes[0].defaultPoints},
+      "source": "file · slide/page it came from"
     }
   ]
 }`;

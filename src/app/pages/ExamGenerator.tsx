@@ -436,7 +436,10 @@ export default function ExamGenerator() {
       );
 
       const allFiles = [syllabus, tos, ...materials].filter(Boolean) as File[];
-      const { text: extractedText, tosData: parsedFromExtractor } = await extractFilesContentEnhanced(allFiles, tos, getStoredGeminiApiKey());
+      const { text: extractedText, tosData: parsedFromExtractor, unreadable } = await extractFilesContentEnhanced(allFiles, tos, getStoredGeminiApiKey(), syllabus);
+      if (unreadable.length) {
+        toast(`Could not read text from ${unreadable.join(', ')}. Scanned PDFs and old .ppt files have no readable text — save as .pptx or a text PDF.`, 'warning');
+      }
       const effectiveTos = tosData || parsedFromExtractor;
 
       // Prioritize TOS course title or topic when prompt is empty

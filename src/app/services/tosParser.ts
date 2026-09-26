@@ -311,9 +311,42 @@ async function extractXlsxData(file: File): Promise<{ text: string; sheetsData: 
   }
 }
 
+/**
+ * PowerPoint (.pptx) text, slide by slide in presentation order, with speaker notes.
+ * A .pptx is a zip of XML parts; text runs are <a:t> elements and paragraphs end at </a:p>.
+ * Old binary .ppt files cannot be read in the browser and return ''.
+ */
+async function extractPptxText(file: File): Promise<string> {
+  try {
+    const JSZip = (await import('jszip')).default;
+    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const decode = (t: string) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+    // One line per paragraph: the text runs (<a:t>) inside each <a:p>, joined in order.
+    const xmlText = (xml: string) => (xml.match(/<a:p[ >][\s\S]*?<\/a:p>/g) || [])
+      .map((para) => (para.match(/<a:t>([^<]*)<\/a:t>/g) || []).map((r) => decode(r.slice(5, -6))).join('').trim())
+      .filter(Boolean)
+      .join('\n');
+    const num = (path: string) => Number(path.match(/(\d+)\.xml$/)?.[1] || 0);
+    const slides = Object.keys(zip.files).filter((p) => /^ppt\/slides\/slide\d+\.xml$/.test(p)).sort((a, b) => num(a) - num(b));
+    const out: string[] = [];
+    for (const path of slides) {
+      const n = num(path);
+      const body = xmlText(await zip.file(path)!.async('string'));
+      const notesFile = zip.file(`ppt/notesSlides/notesSlide${n}.xml`);
+      const notes = notesFile ? xmlText(await notesFile.async('string')).replace(/^\d+$/gm, '').trim() : '';
+      if (body || notes) out.push(`--- Slide ${n} ---\n${body}${notes ? `\nSpeaker notes: ${notes}` : ''}`);
+    }
+    return out.join('\n\n');
+  } catch (err) {
+    console.warn('[TOSParser] PPTX extraction failed:', err);
+    return '';
+  }
+}
+
 export async function extractFileText(file: File): Promise<string> {
   const name = file.name.toLowerCase();
   if (name.endsWith('.pdf')) return extractPdfText(file);
+  if (name.endsWith('.pptx')) return extractPptxText(file);
   if (name.endsWith('.docx') || name.endsWith('.doc')) return extractDocxText(file);
   if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.ods')) {
     const res = await extractXlsxData(file);
@@ -1139,10 +1172,13 @@ export function buildTOSConstraintText(tosData: TOSData): string {
 export async function extractFilesContentEnhanced(
   files: File[],
   tosFile: File | null,
-  apiKey?: string
-): Promise<{ text: string; tosData?: TOSData }> {
+  apiKey?: string,
+  syllabusFile?: File | null
+): Promise<{ text: string; tosData?: TOSData; unreadable: string[] }> {
   const validFiles = files.filter(Boolean);
-  if (validFiles.length === 0) return { text: '' };
+  if (validFiles.length === 0) return { text: '', unreadable: [] };
+  // Files that gave no text (scanned PDFs, old .ppt), so the user can be told.
+  const unreadable: string[] = [];
 
   let extractedAll = '';
   let parsedTos: TOSData | undefined = undefined;
@@ -1156,13 +1192,17 @@ export async function extractFilesContentEnhanced(
       } else {
         const text = await extractFileText(file);
         if (text) {
-          extractedAll += `\n\n=== ATTACHED MATERIAL: ${file.name} ===\n${text}\n`;
+          const isSyllabus = syllabusFile && (file === syllabusFile || file.name === syllabusFile.name);
+          extractedAll += `\n\n=== ${isSyllabus ? 'COURSE SYLLABUS' : 'ATTACHED MATERIAL'}: ${file.name} ===\n${text}\n`;
+        } else {
+          unreadable.push(file.name);
         }
       }
     } catch (err) {
       console.warn(`[TOSParser] Failed to extract ${file.name}:`, err);
+      unreadable.push(file.name);
     }
   }
 
-  return { text: extractedAll.trim(), tosData: parsedTos };
+  return { text: extractedAll.trim(), tosData: parsedTos, unreadable };
 }
