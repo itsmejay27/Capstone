@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useExamGuard } from '../hooks/useExamGuard';
+import ExamIntro from '../components/ExamIntro';
 import { useToast } from '../components/Toast';
 import { useParams, useNavigate } from 'react-router';
 import { scoreAttempt } from '../services/grading';
@@ -197,58 +198,7 @@ export default function TakeExam() {
   }
 
   if (!hasStarted) {
-    return (
-      <Container maxWidth="md" sx={{ py: 8 }}>
-        <Paper sx={{ p: 6, borderRadius: 4, textAlign: 'center', boxShadow: '0 8px 30px rgba(15,23,42,0.08)' }}>
-          <Typography variant="h4" fontWeight={900} gutterBottom sx={{ letterSpacing: '-0.02em', color: 'var(--c-slate-900)' }}>
-            {exam.title}
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4, px: { md: 4 } }}>
-            {exam.instructions || exam.description || 'Please read the instructions carefully before starting the assessment.'}
-          </Typography>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: { xs: 2, sm: 4 }, my: 4, flexWrap: 'wrap' }}>
-            <Box sx={{ px: 3, py: 1.5, bgcolor: 'var(--c-slate-50)', borderRadius: 3 }}>
-              <Typography variant="h5" fontWeight="black" color="primary.main">{exam.duration} Mins</Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>TIME LIMIT</Typography>
-            </Box>
-            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-            <Box sx={{ px: 3, py: 1.5, bgcolor: 'var(--c-slate-50)', borderRadius: 3 }}>
-              <Typography variant="h5" fontWeight="black" color="primary.main">{exam.activeQuestionCount || exam.questions.length}</Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>QUESTIONS</Typography>
-            </Box>
-            <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-            <Box sx={{ px: 3, py: 1.5, bgcolor: 'var(--c-slate-50)', borderRadius: 3 }}>
-              <Typography variant="h5" fontWeight="black" color="primary.main">{exam.totalPoints} pts</Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>TOTAL WEIGHT</Typography>
-            </Box>
-          </Box>
-
-          <Alert severity="warning" sx={{ mb: 4, textAlign: 'left', borderRadius: 3 }}>
-            <strong>Important Notice:</strong> Once the assessment begins, the timer runs continuously. Do not exit, refresh, or navigate away from the exam workspace.
-          </Alert>
-
-          <Button 
-            variant="contained" 
-            size="large" 
-            onClick={handleStartExam}
-            startIcon={<AutoAwesome />}
-            sx={{
-              px: 6,
-              py: 1.8,
-              fontSize: '1.05rem',
-              borderRadius: 3.5,
-              textTransform: 'none',
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, var(--c-banner-from) 0%, var(--c-banner-to) 100%)',
-              boxShadow: '0 10px 25px -5px rgba(15,23,42,0.3)'
-            }}
-          >
-            Start Assessment
-          </Button>
-        </Paper>
-      </Container>
-    );
+    return <ExamIntro exam={exam} isLate={isPastDue} onStart={handleStartExam} onBack={() => navigate(-1)} />;
   }
 
   const activeQuestions = attempt.questions || [];
