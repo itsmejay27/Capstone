@@ -97,8 +97,7 @@ async function callGeminiApiForBatch(
   systemPrompt: string,
   promptText: string,
   timeoutMs: number = 40000,
-  provider: AIProvider = 'gemini',
-  params_onWait?: (attempt: number) => void
+  provider: AIProvider = 'gemini'
 ): Promise<any[]> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     throw new AIGenerationError(friendlyAIError(provider, 0, ''));
@@ -109,7 +108,6 @@ async function callGeminiApiForBatch(
   const wait = timeoutMs;
   let lastError = '';
   for (const modelCandidate of modelsToTry) {
-    let rateRetries = 0;
     for (let attempt = 0; attempt < 1; attempt++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), wait);
@@ -129,15 +127,8 @@ async function callGeminiApiForBatch(
         );
         clearTimeout(timeoutId);
 
-        if (response.status === 429 && rateRetries < 1) {
-          // A short burst limit clears quickly; wait once (Retry-After if given) and ask again.
-          const after = Number(response.headers.get('retry-after')) || 0;
-          rateRetries++;
-          params_onWait?.(rateRetries);
-          await new Promise((r) => setTimeout(r, Math.max(after * 1000, 4000 * 2 ** (rateRetries - 1))));
-          attempt--; // retry the same attempt
-          continue;
-        }
+        // Busy or rate-limited (the server already tried every key): move straight on to
+        // the next model instead of waiting on this one.
         if (!response.ok) {
           const detail = await response.text().catch(() => '');
           console.warn(`${provider} batch HTTP ${response.status}: ${detail.slice(0, 300)}`);
@@ -301,7 +292,8 @@ export async function generateExamWithGemini(params: GeminiExamParams): Promise<
   const apiKey = (params.apiKey || getStoredGeminiApiKey()).trim();
   const provider: AIProvider = params.provider || 'gemini';
   const requestedModel = params.model || 'gemini-3.6-flash';
-  const modelsToTry = Array.from(new Set([requestedModel, 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']));
+  // Fallbacks fastest-first, so a busy model hands off to the quickest one.
+  const modelsToTry = Array.from(new Set([requestedModel, 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash']));
 
   const primaryTopic = params.generationPrompt?.trim()
     || (params.tosData?.courseTitle)
