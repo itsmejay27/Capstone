@@ -3,6 +3,7 @@ import RootLayout from './layouts/RootLayout';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import ClassworkDetail from './pages/ClassworkDetail';
+import ExamDetail from './pages/ExamDetail';
 import ClassroomDetail from './pages/ClassroomDetail';
 import ExamGenerator from './pages/ExamGenerator';
 import ExamRepository from './pages/ExamRepository';
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', Component: Dashboard },
       { path: 'classroom/:classroomId', Component: ClassroomDetail },
       { path: 'classroom/:classroomId/work/:workId', Component: ClassworkDetail },
+      { path: 'classroom/:classroomId/exam/:examId', Component: ExamDetail },
       { path: 'exam-generator', Component: ExamGenerator },
       { path: 'exam-generator/:classroomId', Component: ExamGenerator },
       { path: 'exam-repository', Component: ExamRepository },

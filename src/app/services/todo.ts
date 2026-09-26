@@ -92,7 +92,7 @@ export function buildStudentTodo(
       postDate: exam.postDate,
       totalPoints: exam.totalPoints,
       bucket: submitted ? 'done' : isOverdue(exam.dueDate) ? 'missing' : 'assigned',
-      href: `/exam/${exam.id}/take`,
+      href: `/classroom/${cls.id}/exam/${exam.id}`,
     });
   }
 

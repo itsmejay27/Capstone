@@ -7,7 +7,7 @@ import { untrustDevice, isDeviceTrusted } from '../services/deviceTrust';
 import { syncGoogleAuthUser } from '../services/otpService';
 import * as db from '../services/supabaseData';
 import { removeClassroomFile } from '../services/fileStorage';
-import { notifyAnnouncement, notifyAssignment, notifyComment } from '../services/emailService';
+import { notifyAnnouncement, notifyAssignment, notifyComment, notifyExam } from '../services/emailService';
 
 /** Per-assignment detail captured when a template is posted to a class. */
 export interface AssignmentOptions {
@@ -923,6 +923,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const classroom = classrooms.find((c: any) => c.id === work.classroomId);
         if (classroom) {
           void notifyAssignment(classroom, users, {
+            id: work.id,
             title: work.title,
             instructions: work.instructions,
             dueLabel: work.dueDate ? `due ${new Date(work.dueDate).toLocaleDateString()}` : undefined,
@@ -980,7 +981,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (recipient?.email && recipient.id !== comment.authorId) {
           const post = comment.postType === 'announcement'
             ? (announcements[classroom.id] || []).find((a: any) => a.id === comment.postId)
-            : (classwork[classroom.id] || []).find((w: any) => w.id === comment.postId);
+            : (classwork[classroom.id] || []).find((w: any) => w.id === comment.postId)
+              || exams.find((e: any) => e.id === comment.postId);
           const postTitle = post?.title
             || String(post?.bodyHtml || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 70)
             || 'your post';
@@ -1060,6 +1062,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       setExams((prev) => [...prev, activeExam]);
       db.upsertExam(activeExam);
+
+      // Email the class. A scheduled exam says when it opens; the link shows "not open yet"
+      // until then.
+      const classroom = classrooms.find((c: any) => c.id === classroomId);
+      if (classroom) {
+        const fmt = (d: Date) => d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        const opens = activeExam.postDate;
+        void notifyExam(classroom, users, {
+          id: activeExam.id,
+          title: activeExam.title,
+          instructions: activeExam.instructions,
+          authorName: currentUser?.name,
+          dueLabel: `due ${fmt(activeExam.dueDate)}`,
+          opensLabel: opens.getTime() > Date.now() + 60_000 ? `Opens ${fmt(opens)}` : undefined,
+          duration: activeExam.duration,
+          questionCount: activeExam.activeQuestionCount || activeExam.questions?.length,
+        });
+      }
     }
   };
 
