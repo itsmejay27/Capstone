@@ -404,7 +404,12 @@ export default function ClassroomDetail() {
             .filter((w: any) => { const t = new Date(w.dueDate).getTime(); return t >= now && t <= week; })
             .filter((w: any) => isInstructor || !submissions.some((x: any) => x.classworkId === w.id && x.studentId === currentUser?.id && x.status !== 'assigned'))
             .sort((x: any, y: any) => new Date(x.dueDate).getTime() - new Date(y.dueDate).getTime())
-            .map((w: any) => ({ id: w.id, title: w.title, due: `Due ${new Date(w.dueDate).toLocaleDateString(undefined, { weekday: 'long' })}` }));
+            .map((w: any) => ({ id: w.id, title: w.title, due: `Due ${new Date(w.dueDate).toLocaleDateString(undefined, { weekday: 'long' })}`, at: new Date(w.dueDate).getTime() }))
+            .concat(classExams
+              .filter((e: any) => e.dueDate && (() => { const t = new Date(e.dueDate).getTime(); return t >= now && t <= week; })())
+              .filter((e: any) => isInstructor || getExamStatus(e.id) !== 'completed')
+              .map((e: any) => ({ id: `exam:${e.id}`, title: e.title, due: `Due ${new Date(e.dueDate).toLocaleDateString(undefined, { weekday: 'long' })}`, at: new Date(e.dueDate).getTime() })))
+            .sort((x: any, y: any) => x.at - y.at);
           const activity = [
             ...classClasswork.filter((w: any) => w.isPublished !== false).map((w: any) => {
               const open = () => navigate(`/classroom/${classroomId}/work/${w.id}`);
@@ -431,7 +436,7 @@ export default function ClassroomDetail() {
             ...classExams.filter((e: any) => e.createdAt || e.postDate).map((e: any) => ({
               id: `exam-${e.id}`, at: e.postDate || e.createdAt,
               node: <StreamActivityRow kind="exam" author={(instructor?.name || 'Your teacher').toUpperCase()} title={e.title} at={e.postDate || e.createdAt} accent={classTheme.flat}
-                onOpen={() => setActiveTab(1)} />,
+                onOpen={() => navigate(`/classroom/${classroomId}/exam/${e.id}`)} />,
             })),
           ];
           return (
@@ -444,7 +449,7 @@ export default function ClassroomDetail() {
                   accent={classTheme.flat}
                   onCopyCode={handleCopyClassCode}
                   onViewAll={() => setActiveTab(1)}
-                  onOpen={(id) => navigate(`/classroom/${classroomId}/work/${id}`)}
+                  onOpen={(id) => navigate(id.startsWith('exam:') ? `/classroom/${classroomId}/exam/${id.slice(5)}` : `/classroom/${classroomId}/work/${id}`)}
                   extra={isInstructor ? (
                     <Button fullWidth variant="outlined" startIcon={<Add />} onClick={() => navigate(`/exam-generator/${classroomId}`)}
                       sx={{ textTransform: 'none', fontWeight: 600, borderRadius: '10px', borderColor: 'var(--c-border)', color: classTheme.flat }}>
@@ -491,7 +496,7 @@ export default function ClassroomDetail() {
                       ? `Due ${new Date(exam.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${new Date(exam.dueDate).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
                       : `${exam.activeQuestionCount || exam.questions?.length || 0} questions · ${exam.duration} min`,
                     status: st === 'completed' ? 'Done' : st === 'in-progress' ? 'In progress' : undefined,
-                    onOpen: () => navigate(isInstructor ? `/classroom/${classroomId}?tab=gradebook` : st === 'completed' ? `/exam/${exam.id}/results` : `/exam/${exam.id}/take`),
+                    onOpen: () => navigate(`/classroom/${classroomId}/exam/${exam.id}`),
                   };
                 }),
               },

@@ -113,9 +113,42 @@ export async function notifyAnnouncement(
   });
 }
 
+/** Link straight to one piece of classwork or one exam, not the class page. */
+export function workUrl(classroomId: string, workId: string): string {
+  return `${appOrigin()}/classroom/${classroomId}/work/${workId}`;
+}
+export function examUrl(classroomId: string, examId: string): string {
+  return `${appOrigin()}/classroom/${classroomId}/exam/${examId}`;
+}
+
+/** Notify a class that an exam was assigned; the button opens the exam's own page. */
+export async function notifyExam(
+  classroom: any, users: any[],
+  exam: { id: string; title: string; instructions?: string; authorName?: string; dueLabel?: string; opensLabel?: string; duration?: number; questionCount?: number }
+): Promise<EmailResult> {
+  const facts = [
+    exam.opensLabel,
+    exam.duration ? `Time limit: ${exam.duration} minutes` : '',
+    exam.questionCount ? `${exam.questionCount} questions` : '',
+  ].filter(Boolean).join(' · ');
+  return sendEmail({
+    template: 'exam',
+    to: classRecipients(classroom, users),
+    data: {
+      className: classroom?.name,
+      title: exam.title,
+      authorName: exam.authorName,
+      dueLabel: exam.dueLabel,
+      body: [exam.instructions?.slice(0, 500), facts].filter(Boolean).join('\n\n'),
+      ctaUrl: examUrl(classroom?.id, exam.id),
+      ctaLabel: 'Open the exam',
+    },
+  });
+}
+
 /** Notify a class that new classwork was posted. */
 export async function notifyAssignment(
-  classroom: any, users: any[], work: { title: string; instructions?: string; dueLabel?: string }
+  classroom: any, users: any[], work: { id?: string; title: string; instructions?: string; dueLabel?: string }
 ): Promise<EmailResult> {
   return sendEmail({
     template: 'assignment',
@@ -125,7 +158,7 @@ export async function notifyAssignment(
       title: work.title,
       body: work.instructions?.slice(0, 600),
       dueLabel: work.dueLabel,
-      ctaUrl: classroomUrl(classroom?.id, 'classwork'),
+      ctaUrl: work.id ? workUrl(classroom?.id, work.id) : classroomUrl(classroom?.id, 'classwork'),
       ctaLabel: 'View the assignment',
     },
   });
