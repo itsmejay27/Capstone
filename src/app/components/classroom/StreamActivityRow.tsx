@@ -30,7 +30,14 @@ export default function StreamActivityRow({
           <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>New {WORD[kind] || 'item'}: </Box>
           {title}
         </Typography>
-        <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>{when}</Typography>
+        {d.getTime() > Date.now() ? (
+          // Only the instructor sees a future item; students get it at this time.
+          <Typography variant="caption" sx={{ color: 'var(--c-amber-700)', fontWeight: 700 }}>
+            Scheduled · students see it {d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+          </Typography>
+        ) : (
+          <Typography variant="caption" sx={{ color: 'var(--c-ink-secondary)' }}>{when}</Typography>
+        )}
       </Box>
     </Paper>
   );

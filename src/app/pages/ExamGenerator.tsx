@@ -270,7 +270,7 @@ export default function ExamGenerator() {
 
   // AI Engine states
   const [aiEngine, setAiEngine] = useState<AIEngineType>('gemini');
-  const [geminiModel, setGeminiModel] = useState('gemini-3.6-flash');
+  const [geminiModel, setGeminiModel] = useState('gemini-3.5-flash-lite');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [aiFailure, setAiFailure] = useState<string | null>(null);
   const [generationStatusText, setGenerationStatusText] = useState('');

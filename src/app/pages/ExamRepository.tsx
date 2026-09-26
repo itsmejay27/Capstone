@@ -278,7 +278,6 @@ export default function ExamRepository() {
   };
   const [postDate, setPostDate] = useState(getLocalDateTimeString(new Date()));
   const [dueDate, setDueDate] = useState(getLocalDateTimeString(new Date(Date.now() + 86400000)));
-  const nowLocal = () => getLocalDateTimeString(new Date());
   // Due must be in the future (at least a few minutes out) and after the post time.
   const assignDueError = dueDate
     ? (dueDateProblem(dueDate) || (postDate && new Date(dueDate) <= new Date(postDate) ? 'Must be after the post date.' : ''))
@@ -408,8 +407,10 @@ export default function ExamRepository() {
       return;
     }
     const className = myClassrooms.find((c) => c.id === selectedClassroomId)?.name || 'the class';
+    // A post time that has already passed just means "post now".
+    const effectivePost = new Date(postDate).getTime() < Date.now() ? getLocalDateTimeString(new Date()) : postDate;
     assignExamToClassroom(selectedExamId, selectedClassroomId, {
-      postDate,
+      postDate: effectivePost,
       dueDate,
       title: assignTitle,
       instructions: assignInstructions,
@@ -985,9 +986,9 @@ export default function ExamRepository() {
                 value={postDate}
                 onChange={(e) => setPostDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
-                inputProps={{ min: nowLocal() }}
-                error={Boolean(postDate) && new Date(postDate).getTime() < Date.now() - 60_000}
-                helperText={postDate && new Date(postDate).getTime() < Date.now() - 60_000 ? 'This time has already passed.' : 'Hidden from students until this time.'}
+                helperText={!postDate || new Date(postDate).getTime() <= Date.now() + 60_000
+                  ? 'Students see it right away.'
+                  : `Hidden from students until ${new Date(postDate).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.`}
               />
               <TextField
                 label="Due"
